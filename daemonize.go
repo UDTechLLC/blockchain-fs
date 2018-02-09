@@ -6,7 +6,6 @@ import (
 	"os/exec"
 	"os/signal"
 	"syscall"
-	"time"
 
 	"github.com/leedark/storage-system/internal/exitcodes"
 )
@@ -51,10 +50,6 @@ func forkChild() int {
 		return exitcodes.ForkChild
 	}
 	fmt.Printf("forkChild: starting %s with PID = %d\n", name, pid)
-
-	// FIXME: do something
-	time.Sleep(10 * time.Second)
-
 	// The child exited with 0 - let's do the same.
 	return 0
 }

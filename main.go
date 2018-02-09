@@ -47,7 +47,7 @@ func main() {
 	// Every operation below requires CIPHERDIR. Exit if we don't have it.
 	if flagSet.NArg() == 0 {
 		if flagSet.NFlag() == 0 {
-			// Naked call to "gocryptfs". Just print the help text.
+			// Naked call to "storage-system". Just print the help text.
 			helpShort()
 		} else {
 			// The user has passed some flags, but CIPHERDIR is missing. State
