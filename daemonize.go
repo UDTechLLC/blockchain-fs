@@ -39,6 +39,7 @@ func forkChild() int {
 		fmt.Printf("forkChild: starting %s failed: %v\n", name, err)
 		return exitcodes.ForkChild
 	}
+	fmt.Printf("forkChild: starting %s with PID = %d\n", name, pid)
 	err = c.Wait()
 	if err != nil {
 		if exiterr, ok := err.(*exec.ExitError); ok {
@@ -49,7 +50,6 @@ func forkChild() int {
 		fmt.Printf("forkChild: wait returned an unknown error: %v\n", err)
 		return exitcodes.ForkChild
 	}
-	fmt.Printf("forkChild: starting %s with PID = %d\n", name, pid)
 	// The child exited with 0 - let's do the same.
 	return 0
 }

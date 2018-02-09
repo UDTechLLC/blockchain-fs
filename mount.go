@@ -60,7 +60,7 @@ func initFuseFrontend(args *argContainer) *fuse.Server {
 	}
 
 	jsonBytes, _ := json.MarshalIndent(frontendArgs, "", "\t")
-	fmt.Println("frontendArgs: %s", string(jsonBytes))
+	fmt.Printf("frontendArgs: %s\n", string(jsonBytes))
 	var finalFs pathfs.FileSystem
 	// pathFsOpts are passed into go-fuse/pathfs
 	pathFsOpts := &pathfs.PathNodeFsOptions{ClientInodes: true}
