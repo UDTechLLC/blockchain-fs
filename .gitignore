@@ -1,6 +1,6 @@
-*
-!.gitignore
-!*.go
+#*
+#!.gitignore
+#!*.go
 
-#*.log
-#*.zip
+*.log
+*.zip
