@@ -24,6 +24,8 @@ import (
 // Called from main.
 func doMount(args *argContainer) int {
 
+	var err error
+
 	// Initialize FUSE server
 	srv := initFuseFrontend(args)
 	fmt.Println("Filesystem mounted and ready.")

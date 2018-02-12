@@ -176,6 +176,8 @@ func FilesystemMountAction(c *cli.Context) error {
 		os.Exit(exitcodes.MountPoint)
 	}
 
+	args.notifypid = c.GlobalInt("notifypid")
+
 	fmt.Printf("Mount Filesystem %s into %s\n", args.origindir, args.mountpoint)
 
 	// TODO: do something with Storage Database and/or Configuration
