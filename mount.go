@@ -7,7 +7,6 @@ import (
 	"os/exec"
 	"os/signal"
 	"path"
-	"path/filepath"
 	"runtime"
 	"runtime/debug"
 	"syscall"
@@ -24,13 +23,6 @@ import (
 // doMount mounts an directory.
 // Called from main.
 func doMount(args *argContainer) int {
-	// Check mountpoint
-	var err error
-	args.mountpoint, err = filepath.Abs(flagSet.Arg(1))
-	if err != nil {
-		fmt.Println("Invalid mountpoint: %v", err)
-		os.Exit(exitcodes.MountPoint)
-	}
 
 	// Initialize FUSE server
 	srv := initFuseFrontend(args)
@@ -101,13 +93,25 @@ func setOpenFileLimit() {
 	}
 }
 
+// checkDir - check if "dir" exists and is a directory
+func checkDir(dir string) error {
+	fi, err := os.Stat(dir)
+	if err != nil {
+		return err
+	}
+	if !fi.IsDir() {
+		return fmt.Errorf("%s is not a directory", dir)
+	}
+	return nil
+}
+
 // initFuseFrontend - initialize storage-system/fusefrontend
 // Calls os.Exit on errors
 func initFuseFrontend(args *argContainer) *fuse.Server {
 	// Reconciliate CLI and config file arguments into a fusefrontend.Args struct
 	// that is passed to the filesystem implementation
 	frontendArgs := fusefrontend.Args{
-		Cipherdir: args.cipherdir,
+		Cipherdir: args.origindir,
 	}
 
 	jsonBytes, _ := json.MarshalIndent(frontendArgs, "", "\t")

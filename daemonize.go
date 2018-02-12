@@ -28,8 +28,10 @@ func exitOnUsr1() {
 func forkChild() int {
 	name := os.Args[0]
 	pid := os.Getpid()
-	newArgs := []string{"-fg", fmt.Sprintf("-notifypid=%d", pid)}
+	newArgs := []string{"--fg", fmt.Sprintf("--notifypid=%d", pid)}
 	newArgs = append(newArgs, os.Args[1:]...)
+	fmt.Printf("forkChild: newArgs = %s\n", newArgs)
+
 	c := exec.Command(name, newArgs...)
 	c.Stdout = os.Stdout
 	c.Stderr = os.Stderr
