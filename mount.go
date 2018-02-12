@@ -36,6 +36,37 @@ func doMount(args *argContainer) int {
 	srv := initFuseFrontend(args)
 	fmt.Println("Filesystem mounted and ready.")
 
+	// We have been forked into the background, as evidenced by the set
+	// "notifypid".
+	if args.notifypid > 0 {
+		// Chdir to the root directory so we don't block unmounting the CWD
+		os.Chdir("/")
+		// Switch to syslog
+		//if !args.nosyslog {
+		if true {
+			// Switch all of our logs and the generic logger to syslog
+			//tlog.Info.SwitchToSyslog(syslog.LOG_USER | syslog.LOG_INFO)
+			//tlog.Debug.SwitchToSyslog(syslog.LOG_USER | syslog.LOG_DEBUG)
+			//tlog.Warn.SwitchToSyslog(syslog.LOG_USER | syslog.LOG_WARNING)
+			//tlog.SwitchLoggerToSyslog(syslog.LOG_USER | syslog.LOG_WARNING)
+			// Daemons should redirect stdin, stdout and stderr
+			redirectStdFds()
+		}
+		// Disconnect from the controlling terminal by creating a new session.
+		// This prevents us from getting SIGINT when the user presses Ctrl-C
+		// to exit a running script that has called gocryptfs.
+		_, err = syscall.Setsid()
+		if err != nil {
+			fmt.Printf("Setsid: %v\n", err)
+		}
+		// Send SIGUSR1 to our parent
+		sendUsr1(args.notifypid)
+	}
+
+	// Increase the open file limit to 4096. This is not essential, so do it after
+	// we have switched to syslog and don't bother the user with warnings.
+	setOpenFileLimit()
+
 	// Wait for SIGINT in the background and unmount ourselves if we get it.
 	// This prevents a dangling "Transport endpoint is not connected"
 	// mountpoint if the user hits CTRL-C.
@@ -48,6 +79,26 @@ func doMount(args *argContainer) int {
 	// Jump into server loop. Returns when it gets an umount request from the kernel.
 	srv.Serve()
 	return 0
+}
+
+// setOpenFileLimit tries to increase the open file limit to 4096 (the default hard
+// limit on Linux).
+func setOpenFileLimit() {
+	var lim syscall.Rlimit
+	err := syscall.Getrlimit(syscall.RLIMIT_NOFILE, &lim)
+	if err != nil {
+		fmt.Printf("Getting RLIMIT_NOFILE failed: %v", err)
+		return
+	}
+	if lim.Cur >= 4096 {
+		return
+	}
+	lim.Cur = 4096
+	err = syscall.Setrlimit(syscall.RLIMIT_NOFILE, &lim)
+	if err != nil {
+		fmt.Printf("Setting RLIMIT_NOFILE to %+v failed: %v", lim, err)
+		//         %+v output: "{Cur:4097 Max:4096}" ^
+	}
 }
 
 // initFuseFrontend - initialize storage-system/fusefrontend
@@ -113,7 +164,7 @@ func initFuseFrontend(args *argContainer) *fuse.Server {
 		}
 		os.Exit(exitcodes.FuseNewServer)
 	}
-	srv.SetDebug(true)
+	srv.SetDebug(false)
 
 	// All FUSE file and directory create calls carry explicit permission
 	// information. We need an unrestricted umask to create the files and
