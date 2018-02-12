@@ -21,7 +21,7 @@ import (
 	"github.com/leedark/storage-system/internal/fusefrontend"
 )
 
-// doMount mounts an encrypted directory.
+// doMount mounts an directory.
 // Called from main.
 func doMount(args *argContainer) int {
 	// Check mountpoint

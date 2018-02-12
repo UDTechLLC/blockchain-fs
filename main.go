@@ -11,7 +11,7 @@ import (
 
 const (
 	ProgramName    = "storage-system"
-	ProgramVersion = "0.0"
+	ProgramVersion = "0.0.1"
 )
 
 func printVersion() {
