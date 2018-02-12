@@ -22,6 +22,20 @@ func exitOnUsr1() {
 	}()
 }
 
+// Send signal USR1 to "pid" (usually our parent process). This notifies it
+// that the mounting has completed successfully.
+func sendUsr1(pid int) {
+	p, err := os.FindProcess(pid)
+	if err != nil {
+		fmt.Printf("sendUsr1: FindProcess: %v\n", err)
+		return
+	}
+	err = p.Signal(syscall.SIGUSR1)
+	if err != nil {
+		fmt.Printf("sendUsr1: Signal: %v\n", err)
+	}
+}
+
 // forkChild - execute ourselves once again, this time with the "-fg" flag, and
 // wait for SIGUSR1 or child exit.
 // This is a workaround for the missing true fork function in Go.
@@ -30,7 +44,6 @@ func forkChild() int {
 	pid := os.Getpid()
 	newArgs := []string{"--fg", fmt.Sprintf("--notifypid=%d", pid)}
 	newArgs = append(newArgs, os.Args[1:]...)
-	fmt.Printf("forkChild: newArgs = %s\n", newArgs)
 
 	c := exec.Command(name, newArgs...)
 	c.Stdout = os.Stdout
@@ -38,11 +51,14 @@ func forkChild() int {
 	c.Stdin = os.Stdin
 	exitOnUsr1()
 	err := c.Start()
+
 	if err != nil {
 		fmt.Printf("forkChild: starting %s failed: %v\n", name, err)
 		return exitcodes.ForkChild
 	}
+
 	fmt.Printf("forkChild: starting %s with PID = %d\n", name, pid)
+
 	err = c.Wait()
 	if err != nil {
 		if exiterr, ok := err.(*exec.ExitError); ok {
@@ -53,6 +69,7 @@ func forkChild() int {
 		fmt.Printf("forkChild: wait returned an unknown error: %v\n", err)
 		return exitcodes.ForkChild
 	}
+
 	// The child exited with 0 - let's do the same.
 	return 0
 }
@@ -99,18 +116,4 @@ func redirectStdFds() {
 		fmt.Printf("redirectStdFds: stdin dup error: %v\n", err)
 	}
 	nullFd.Close()
-}
-
-// Send signal USR1 to "pid" (usually our parent process). This notifies it
-// that the mounting has completed successfully.
-func sendUsr1(pid int) {
-	p, err := os.FindProcess(pid)
-	if err != nil {
-		fmt.Printf("sendUsr1: FindProcess: %v\n", err)
-		return
-	}
-	err = p.Signal(syscall.SIGUSR1)
-	if err != nil {
-		fmt.Printf("sendUsr1: Signal: %v\n", err)
-	}
 }

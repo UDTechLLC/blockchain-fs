@@ -18,16 +18,9 @@ type argContainer struct {
 	notifypid             int
 }
 
-var args argContainer = argContainer{
-	fg: false,
-}
-
-var test bool = false
+var args argContainer = argContainer{}
 
 func main() {
-
-	fmt.Println("Start: ", os.Args)
-
 	mxp := runtime.GOMAXPROCS(0)
 	if mxp < 4 {
 		// On a 2-core machine, setting maxprocs to 4 gives 10% better performance
@@ -35,18 +28,10 @@ func main() {
 	}
 
 	app := cli.NewApp()
-
-	fmt.Println("NewApp")
-
 	app.Usage = "Internal API for Storage System"
 	app.Version = "0.0.2"
 
-	//	cli.BashCompletionFlag = cli.BoolFlag{
-	//		Name:   "bg",
-	//		Hidden: true,
-	//	}
-	//app.EnableBashCompletion = true
-
+	// Global flags
 	app.Flags = []cli.Flag{
 		cli.BoolFlag{
 			Name:  "fg",
@@ -68,11 +53,11 @@ func main() {
 				fmt.Printf("Bash create complete...\n")
 			},
 			Before: func(c *cli.Context) error {
-				fmt.Printf("Before command...\n")
+				fmt.Printf("Before create...\n")
 				return nil
 			},
 			After: func(c *cli.Context) error {
-				fmt.Printf("After command...\n")
+				fmt.Printf("After create...\n")
 				return nil
 			},
 			Action: FilesystemCreateAction,
@@ -87,22 +72,12 @@ func main() {
 			Name:    "mount",
 			Aliases: []string{"m"},
 			Usage:   "Mount Filesystem into directory",
-			//			BashComplete: func(c *cli.Context) {
-			//				fmt.Printf("Bash mount complete... %s and fg = %t and notifypid=%d\n", c.Args(), c.GlobalBool("fg"), c.GlobalInt("notifypid"))
-			//				if !c.GlobalBool("fg") {
-			//					ret := forkChild()
-			//					os.Exit(ret)
-			//				} else {
-			//					FilesystemMountAction(c)
-			//				}
-			//			},
 			Before: func(c *cli.Context) error {
-				//fmt.Printf("Before command...\n")
-				fmt.Printf("Before command... %s and fg = %t and notifypid=%d\n", c.Args(), c.GlobalBool("fg"), c.GlobalInt("notifypid"))
+				fmt.Printf("Before mount...\n")
 				return nil
 			},
 			After: func(c *cli.Context) error {
-				fmt.Printf("After command... %s and fg = %t and notifypid=%d\n", c.Args(), c.GlobalBool("fg"), c.GlobalInt("notifypid"))
+				fmt.Printf("After mount...\n")
 				return nil
 			},
 			Action: FilesystemMountAction,
@@ -115,11 +90,7 @@ func main() {
 		},
 	}
 
-	fmt.Println("Before Run")
-
 	app.Run(os.Args)
-
-	fmt.Println("After Run")
 }
 
 func FilesystemCreateAction(c *cli.Context) error {
@@ -142,12 +113,6 @@ func FilesystemMountAction(c *cli.Context) error {
 
 	// Fork a child into the background if "-fg" is not set AND we are mounting
 	// a filesystem. The child will do all the work.
-	//	if !c.GlobalBool("fg") {
-	//		ret := forkChild()
-	//		os.Exit(ret)
-	//	}
-
-	fmt.Printf("Mount... %s and fg = %t and notifypid=%d\n", c.Args(), c.GlobalBool("fg"), c.GlobalInt("notifypid"))
 	if !c.GlobalBool("fg") {
 		ret := forkChild()
 		os.Exit(ret)
@@ -163,6 +128,7 @@ func FilesystemMountAction(c *cli.Context) error {
 	// Check origindir and mountpoint
 	var err error
 
+	args.notifypid = c.GlobalInt("notifypid")
 	args.origindir, _ = filepath.Abs(c.Args()[0])
 	err = checkDir(args.origindir)
 	if err != nil {
@@ -176,27 +142,19 @@ func FilesystemMountAction(c *cli.Context) error {
 		os.Exit(exitcodes.MountPoint)
 	}
 
-	args.notifypid = c.GlobalInt("notifypid")
-
 	fmt.Printf("Mount Filesystem %s into %s\n", args.origindir, args.mountpoint)
 
 	// TODO: do something with Storage Database and/or Configuration
 	// TODO: do something else
 
 	// TODO: do mounting with options
-
-	fmt.Println("Do mount")
-
 	ret := doMount(&args)
 	if ret != 0 {
 		os.Exit(ret)
 	}
 
-	fmt.Println("After Do mount")
-
 	// Don't call os.Exit on success to give deferred functions a chance to
 	// run
-
 	return nil
 }
 
@@ -208,5 +166,17 @@ func FilesystemUnmountAction(c *cli.Context) error {
 	// TODO: do something with Storage Database and/or Configuration
 	// TODO: do something else
 
+	return nil
+}
+
+// checkDir - check if "dir" exists and is a directory
+func checkDir(dir string) error {
+	fi, err := os.Stat(dir)
+	if err != nil {
+		return err
+	}
+	if !fi.IsDir() {
+		return fmt.Errorf("%s is not a directory", dir)
+	}
 	return nil
 }
