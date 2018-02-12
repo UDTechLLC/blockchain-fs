@@ -7,7 +7,6 @@ import (
 	"os/exec"
 	"os/signal"
 	"path"
-	"path/filepath"
 	"runtime"
 	"runtime/debug"
 	"syscall"
@@ -24,13 +23,8 @@ import (
 // doMount mounts an directory.
 // Called from main.
 func doMount(args *argContainer) int {
-	// Check mountpoint
+
 	var err error
-	args.mountpoint, err = filepath.Abs(flagSet.Arg(1))
-	if err != nil {
-		fmt.Println("Invalid mountpoint: %v", err)
-		os.Exit(exitcodes.MountPoint)
-	}
 
 	// Initialize FUSE server
 	srv := initFuseFrontend(args)
@@ -41,17 +35,10 @@ func doMount(args *argContainer) int {
 	if args.notifypid > 0 {
 		// Chdir to the root directory so we don't block unmounting the CWD
 		os.Chdir("/")
-		// Switch to syslog
-		//if !args.nosyslog {
-		if true {
-			// Switch all of our logs and the generic logger to syslog
-			//tlog.Info.SwitchToSyslog(syslog.LOG_USER | syslog.LOG_INFO)
-			//tlog.Debug.SwitchToSyslog(syslog.LOG_USER | syslog.LOG_DEBUG)
-			//tlog.Warn.SwitchToSyslog(syslog.LOG_USER | syslog.LOG_WARNING)
-			//tlog.SwitchLoggerToSyslog(syslog.LOG_USER | syslog.LOG_WARNING)
-			// Daemons should redirect stdin, stdout and stderr
-			redirectStdFds()
-		}
+
+		// Daemons should redirect stdin, stdout and stderr
+		redirectStdFds()
+
 		// Disconnect from the controlling terminal by creating a new session.
 		// This prevents us from getting SIGINT when the user presses Ctrl-C
 		// to exit a running script that has called gocryptfs.
@@ -107,7 +94,7 @@ func initFuseFrontend(args *argContainer) *fuse.Server {
 	// Reconciliate CLI and config file arguments into a fusefrontend.Args struct
 	// that is passed to the filesystem implementation
 	frontendArgs := fusefrontend.Args{
-		Cipherdir: args.cipherdir,
+		Cipherdir: args.origindir,
 	}
 
 	jsonBytes, _ := json.MarshalIndent(frontendArgs, "", "\t")
@@ -164,7 +151,7 @@ func initFuseFrontend(args *argContainer) *fuse.Server {
 		}
 		os.Exit(exitcodes.FuseNewServer)
 	}
-	srv.SetDebug(false)
+	srv.SetDebug(true)
 
 	// All FUSE file and directory create calls carry explicit permission
 	// information. We need an unrestricted umask to create the files and

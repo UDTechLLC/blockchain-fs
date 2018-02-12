@@ -6,17 +6,19 @@ import (
 	"path/filepath"
 	"runtime"
 
+	"github.com/urfave/cli"
+
 	"github.com/leedark/storage-system/internal/exitcodes"
 )
 
-const (
-	ProgramName    = "storage-system"
-	ProgramVersion = "0.0.1"
-)
-
-func printVersion() {
-	fmt.Printf("%s %s\n", ProgramName, ProgramVersion)
+// argContainer stores the parsed CLI options and arguments
+type argContainer struct {
+	fg                    bool
+	origindir, mountpoint string
+	notifypid             int
 }
+
+var args argContainer = argContainer{}
 
 func main() {
 	mxp := runtime.GOMAXPROCS(0)
@@ -25,76 +27,127 @@ func main() {
 		runtime.GOMAXPROCS(4)
 	}
 
-	var err error
+	app := cli.NewApp()
+	app.Usage = "Internal API for Storage System"
+	app.Version = "0.0.2"
 
-	// Parse all command-line options (i.e. arguments starting with "-")
-	// into "args". Path arguments are parsed below.
-	args := parseCliOpts()
+	// Global flags
+	app.Flags = []cli.Flag{
+		cli.BoolFlag{
+			Name:  "fg",
+			Usage: "Foreground...",
+		},
+		cli.IntFlag{
+			Name:  "notifypid",
+			Value: 0,
+			Usage: "Notify PID...",
+		},
+	}
+
+	app.Commands = []cli.Command{
+		{
+			Name:    "create",
+			Aliases: []string{"c"},
+			Usage:   "Create new Filesystem into directory",
+			BashComplete: func(c *cli.Context) {
+				fmt.Printf("Bash create complete...\n")
+			},
+			Before: func(c *cli.Context) error {
+				fmt.Printf("Before create...\n")
+				return nil
+			},
+			After: func(c *cli.Context) error {
+				fmt.Printf("After create...\n")
+				return nil
+			},
+			Action: FilesystemCreateAction,
+		},
+		{
+			Name:    "delete",
+			Aliases: []string{"d"},
+			Usage:   "Delete existing Filesystem from directory",
+			Action:  FilesystemDeleteAction,
+		},
+		{
+			Name:    "mount",
+			Aliases: []string{"m"},
+			Usage:   "Mount Filesystem into directory",
+			Before: func(c *cli.Context) error {
+				fmt.Printf("Before mount...\n")
+				return nil
+			},
+			After: func(c *cli.Context) error {
+				fmt.Printf("After mount...\n")
+				return nil
+			},
+			Action: FilesystemMountAction,
+		},
+		{
+			Name:    "unmount",
+			Aliases: []string{"u"},
+			Usage:   "Unmount Filesystem from directory",
+			Action:  FilesystemUnmountAction,
+		},
+	}
+
+	app.Run(os.Args)
+}
+
+func FilesystemCreateAction(c *cli.Context) error {
+	fmt.Printf("Create new Filesystem: %s\n", c.Args()[0])
+
+	// TODO: create Directory?
+	// TODO: initialize Filesystem, its Configuration
+	// TODO: do something with Storage Database
+	// TODO: do something else
+
+	return nil
+}
+
+func FilesystemDeleteAction(c *cli.Context) error {
+	fmt.Printf("Delete existing Filesystem: %s\n", c.Args()[0])
+	return nil
+}
+
+func FilesystemMountAction(c *cli.Context) error {
 
 	// Fork a child into the background if "-fg" is not set AND we are mounting
 	// a filesystem. The child will do all the work.
-	if !args.fg && flagSet.NArg() == 2 {
+	if !c.GlobalBool("fg") {
 		ret := forkChild()
 		os.Exit(ret)
 	}
 
-	// "-v"
-	if args.version {
-		printVersion()
-		os.Exit(0)
-	}
-
-	// Every operation below requires CIPHERDIR. Exit if we don't have it.
-	if flagSet.NArg() == 0 {
-		if flagSet.NFlag() == 0 {
-			// Naked call to "storage-system". Just print the help text.
-			helpShort()
-		} else {
-			// The user has passed some flags, but CIPHERDIR is missing. State
-			// what is wrong.
-			fmt.Println("CIPHERDIR argument is missing")
-		}
+	// TODO: check Directories
+	if len(c.Args()) != 2 {
+		fmt.Println("Wrong number of arguments (have %d, want 2). You passed: %s",
+			len(c.Args()), c.Args())
 		os.Exit(exitcodes.Usage)
 	}
-	// Check that CIPHERDIR exists
-	args.cipherdir, _ = filepath.Abs(flagSet.Arg(0))
-	err = checkDir(args.cipherdir)
+
+	// Check origindir and mountpoint
+	var err error
+
+	args.notifypid = c.GlobalInt("notifypid")
+	args.origindir, _ = filepath.Abs(c.Args()[0])
+	err = checkDir(args.origindir)
 	if err != nil {
-		fmt.Println("Invalid cipherdir: %v", err)
+		fmt.Println("Invalid origindir: %v", err)
 		os.Exit(exitcodes.CipherDir)
 	}
 
-	// Operation flags
-	if args.info && args.init {
-		fmt.Println("At most one of -info, -init is allowed")
-		os.Exit(exitcodes.Usage)
-	}
-	// "-info"
-	if args.info {
-		if flagSet.NArg() > 1 {
-			fmt.Println("Usage: %s -info CIPHERDIR", ProgramName)
-			os.Exit(exitcodes.Usage)
-		}
-		info("configfile") // does not return
-	}
-	// "-init"
-	if args.init {
-		if flagSet.NArg() > 1 {
-			fmt.Println("Usage: %s -init [OPTIONS] CIPHERDIR", ProgramName)
-			os.Exit(exitcodes.Usage)
-		}
-		initDir(&args) // does not return
+	args.mountpoint, err = filepath.Abs(c.Args()[1])
+	if err != nil {
+		fmt.Println("Invalid mountpoint: %v", err)
+		os.Exit(exitcodes.MountPoint)
 	}
 
-	// Default operation: mount.
-	if flagSet.NArg() != 2 {
-		prettyArgs := prettyArgs()
-		fmt.Println("Wrong number of arguments (have %d, want 2). You passed: %s",
-			flagSet.NArg(), prettyArgs)
-		fmt.Printf("Usage: %s [OPTIONS] CIPHERDIR MOUNTPOINT\n",
-			ProgramName)
-		os.Exit(exitcodes.Usage)
-	}
+	fmt.Printf("Mount Filesystem %s into %s\n", args.origindir, args.mountpoint)
+
+	// TODO: do something with Storage Database and/or Configuration
+	// TODO: do something else
+
+	// TODO: do mounting with options
 	ret := doMount(&args)
 	if ret != 0 {
 		os.Exit(ret)
@@ -102,16 +155,18 @@ func main() {
 
 	// Don't call os.Exit on success to give deferred functions a chance to
 	// run
+	return nil
 }
 
-func info(filename string) {
-	fmt.Println("info")
-	os.Exit(0)
-}
+func FilesystemUnmountAction(c *cli.Context) error {
+	fmt.Printf("Unmount Filesystem %s\n", c.Args()[0])
 
-func initDir(args *argContainer) {
-	fmt.Println("initDir")
-	os.Exit(0)
+	// TODO: check Directory (Filesystem)
+	// TODO: do unmounting with options
+	// TODO: do something with Storage Database and/or Configuration
+	// TODO: do something else
+
+	return nil
 }
 
 // checkDir - check if "dir" exists and is a directory
