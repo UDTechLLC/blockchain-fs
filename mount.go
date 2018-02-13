@@ -16,8 +16,8 @@ import (
 	"github.com/hanwen/go-fuse/fuse/nodefs"
 	"github.com/hanwen/go-fuse/fuse/pathfs"
 
-	"github.com/leedark/storage-system/internal/exitcodes"
-	"github.com/leedark/storage-system/internal/fusefrontend"
+	"bitbucket.org/udt/wizefs/internal/exitcodes"
+	"bitbucket.org/udt/wizefs/internal/fusefrontend"
 )
 
 // mount mounts an directory.

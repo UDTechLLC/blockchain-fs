@@ -7,8 +7,8 @@ import (
 	"os/signal"
 	"syscall"
 
-	"github.com/leedark/storage-system/internal/exitcodes"
-	"github.com/leedark/storage-system/internal/syscallcompat"
+	"bitbucket.org/udt/wizefs/internal/exitcodes"
+	"bitbucket.org/udt/wizefs/internal/syscallcompat"
 )
 
 // The child sends us USR1 if the mount was successful. Exit with error code
