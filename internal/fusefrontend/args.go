@@ -4,5 +4,5 @@ package fusefrontend
 type Args struct {
 	// Origindir is the backing storage directory (absolute path).
 	// For reverse mode, Origindir actually contains *plaintext* files.
-	Origindir string
+	OriginDir string
 }

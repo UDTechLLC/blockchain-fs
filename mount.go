@@ -18,6 +18,7 @@ import (
 
 	"bitbucket.org/udt/wizefs/internal/exitcodes"
 	"bitbucket.org/udt/wizefs/internal/fusefrontend"
+	"bitbucket.org/udt/wizefs/internal/tlog"
 )
 
 // mount mounts an directory.
@@ -28,7 +29,7 @@ func mount(args *argContainer) int {
 
 	// Initialize FUSE server
 	srv := initFuseFrontend(args)
-	fmt.Println("Filesystem mounted and ready.")
+	tlog.Debug.Println("Filesystem mounted and ready.")
 
 	// We have been forked into the background, as evidenced by the set
 	// "notifypid".
@@ -44,7 +45,7 @@ func mount(args *argContainer) int {
 		// to exit a running script that has called gocryptfs.
 		_, err = syscall.Setsid()
 		if err != nil {
-			fmt.Printf("Setsid: %v\n", err)
+			tlog.Warn.Printf("Setsid: %v", err)
 		}
 		// Send SIGUSR1 to our parent
 		sendUsr1(args.notifypid)
@@ -72,7 +73,7 @@ func mount(args *argContainer) int {
 func unmountPanic(dir string) {
 	err := unmountErr(dir)
 	if err != nil {
-		fmt.Println(err)
+		tlog.Warn.Println(err)
 		panic(err)
 	}
 }
@@ -97,7 +98,7 @@ func setOpenFileLimit() {
 	var lim syscall.Rlimit
 	err := syscall.Getrlimit(syscall.RLIMIT_NOFILE, &lim)
 	if err != nil {
-		fmt.Printf("Getting RLIMIT_NOFILE failed: %v", err)
+		tlog.Warn.Printf("Getting RLIMIT_NOFILE failed: %v", err)
 		return
 	}
 	if lim.Cur >= 4096 {
@@ -106,22 +107,22 @@ func setOpenFileLimit() {
 	lim.Cur = 4096
 	err = syscall.Setrlimit(syscall.RLIMIT_NOFILE, &lim)
 	if err != nil {
-		fmt.Printf("Setting RLIMIT_NOFILE to %+v failed: %v", lim, err)
+		tlog.Warn.Printf("Setting RLIMIT_NOFILE to %+v failed: %v", lim, err)
 		//         %+v output: "{Cur:4097 Max:4096}" ^
 	}
 }
 
-// initFuseFrontend - initialize storage-system/fusefrontend
+// initFuseFrontend - initialize wizefs/fusefrontend
 // Calls os.Exit on errors
 func initFuseFrontend(args *argContainer) *fuse.Server {
 	// Reconciliate CLI and config file arguments into a fusefrontend.Args struct
 	// that is passed to the filesystem implementation
 	frontendArgs := fusefrontend.Args{
-		Origindir: args.origindir,
+		OriginDir: args.origindir,
 	}
 
 	jsonBytes, _ := json.MarshalIndent(frontendArgs, "", "\t")
-	fmt.Printf("frontendArgs: %s\n", string(jsonBytes))
+	tlog.Debug.Printf("frontendArgs: %s", string(jsonBytes))
 	var finalFs pathfs.FileSystem
 	// pathFsOpts are passed into go-fuse/pathfs
 	pathFsOpts := &pathfs.PathNodeFsOptions{ClientInodes: true}
@@ -156,21 +157,21 @@ func initFuseFrontend(args *argContainer) *fuse.Server {
 	// First column, "Filesystem"
 	//fsname := args.cipherdir
 	//mOpts.Options = append(mOpts.Options, "fsname="+fsname)
-	mOpts.FsName = "storage-system"
+	mOpts.FsName = tlog.ProgramName
 	// Second column, "Type", will be shown as "fuse." + Name
-	mOpts.Name = "storage-system"
+	mOpts.Name = tlog.ProgramName
 
 	// Add a volume name if running osxfuse. Otherwise the Finder will show it as
-	// something like "osxfuse Volume 0 (storage-system)".
+	// something like "osxfuse Volume 0 (wizefs)".
 	if runtime.GOOS == "darwin" {
 		mOpts.Options = append(mOpts.Options, "volname="+path.Base(args.mountpoint))
 	}
 
 	srv, err := fuse.NewServer(conn.RawFS(), args.mountpoint, &mOpts)
 	if err != nil {
-		fmt.Printf("fuse.NewServer failed: %v\n", err)
+		tlog.Warn.Printf("fuse.NewServer failed: %v\n", err)
 		if runtime.GOOS == "darwin" {
-			fmt.Println("Maybe you should run: /Library/Filesystems/osxfuse.fs/Contents/Resources/load_osxfuse")
+			tlog.Warn.Println("Maybe you should run: /Library/Filesystems/osxfuse.fs/Contents/Resources/load_osxfuse")
 		}
 		os.Exit(exitcodes.FuseNewServer)
 	}
@@ -192,10 +193,10 @@ func handleSigint(srv *fuse.Server, mountpoint string) {
 		<-ch
 		err := srv.Unmount()
 		if err != nil {
-			fmt.Print(err)
+			tlog.Warn.Print(err)
 			if runtime.GOOS == "linux" {
 				// MacOSX does not support lazy unmount
-				fmt.Println("Trying lazy unmount")
+				tlog.Warn.Println("Trying lazy unmount")
 				cmd := exec.Command("fusermount", "-u", "-z", mountpoint)
 				cmd.Stdout = os.Stdout
 				cmd.Stderr = os.Stderr

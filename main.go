@@ -1,11 +1,12 @@
 package main
 
 import (
-	"fmt"
 	"os"
 	"runtime"
 
 	"github.com/urfave/cli"
+
+	"bitbucket.org/udt/wizefs/internal/tlog"
 )
 
 // argContainer stores the parsed CLI options and arguments
@@ -24,8 +25,9 @@ func main() {
 		runtime.GOMAXPROCS(4)
 	}
 
+	tlog.Debug.Enabled = true
+
 	app := cli.NewApp()
-	app.Name = "storage-system"
 	app.Usage = "Internal API for Storage System"
 	app.Version = "0.0.3"
 
@@ -49,11 +51,11 @@ func main() {
 			Aliases: []string{"c"},
 			Usage:   "Create new Filesystem into directory",
 			Before: func(c *cli.Context) error {
-				fmt.Printf("Before create...\n")
+				tlog.Debug.Printf("Before create...")
 				return nil
 			},
 			After: func(c *cli.Context) error {
-				fmt.Printf("After create...\n")
+				tlog.Debug.Printf("After create...")
 				return nil
 			},
 			Action: filesystemCreateAction,
@@ -69,11 +71,11 @@ func main() {
 			Aliases: []string{"m"},
 			Usage:   "Mount Filesystem into directory",
 			Before: func(c *cli.Context) error {
-				fmt.Printf("Before mount...\n")
+				tlog.Debug.Printf("Before mount...")
 				return nil
 			},
 			After: func(c *cli.Context) error {
-				fmt.Printf("After mount...\n")
+				tlog.Debug.Printf("After mount...")
 				return nil
 			},
 			Action: filesystemMountAction,

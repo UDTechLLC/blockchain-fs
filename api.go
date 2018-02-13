@@ -7,29 +7,37 @@ import (
 
 	"github.com/urfave/cli"
 
+	"bitbucket.org/udt/wizefs/internal/config"
 	"bitbucket.org/udt/wizefs/internal/exitcodes"
+	"bitbucket.org/udt/wizefs/internal/tlog"
 )
+
+var configfile *config.FilesystemConfig
 
 func filesystemCreateAction(c *cli.Context) error {
 	if c.NArg() != 1 {
-		fmt.Printf("Wrong number of arguments (have %d, want 1). You passed: %s",
+		tlog.Warn.Printf("Wrong number of arguments (have %d, want 1). You passed: %s",
 			c.NArg(), c.Args())
 		os.Exit(exitcodes.Usage)
 	}
 
 	origindir := c.Args()[0]
-	fmt.Printf("Create new Filesystem: %s\n", origindir)
+	tlog.Debug.Printf("Create new Filesystem: %s\n", origindir)
 
 	// create Directory if it's not exist
 	// TODO: check permissions
 	if _, err := os.Stat(origindir); os.IsNotExist(err) {
-		fmt.Printf("Create new directory: %s\n", origindir)
+		tlog.Debug.Printf("Create new directory: %s", origindir)
 		os.Mkdir(origindir, 0755)
 	} else {
-		fmt.Printf("Directory %s is exist already!\n", origindir)
+		tlog.Warn.Printf("Directory %s is exist already!", origindir)
+		return nil
 	}
 
 	// TODO: initialize Filesystem, its Configuration
+	configfile = config.NewFilesystemConfig("wizefs", origindir, 1)
+	configfile.Save()
+
 	// TODO: do something with Storage Database
 	// TODO: do something else
 
@@ -38,20 +46,20 @@ func filesystemCreateAction(c *cli.Context) error {
 
 func filesystemDeleteAction(c *cli.Context) error {
 	if c.NArg() != 1 {
-		fmt.Printf("Wrong number of arguments (have %d, want 1). You passed: %s",
+		tlog.Warn.Printf("Wrong number of arguments (have %d, want 1). You passed: %s",
 			c.NArg(), c.Args())
 		os.Exit(exitcodes.Usage)
 	}
 
 	origindir := c.Args()[0]
-	fmt.Printf("Delete existing Filesystem: %s\n", origindir)
+	tlog.Debug.Printf("Delete existing Filesystem: %s", origindir)
 
 	// delete Directory if it's exist
 	// TODO: check permissions
 	if _, err := os.Stat(origindir); os.IsNotExist(err) {
-		fmt.Printf("Directory %s is not exist!\n", origindir)
+		tlog.Warn.Printf("Directory %s is not exist!", origindir)
 	} else {
-		fmt.Printf("Delete existing directory: %s\n", origindir)
+		tlog.Debug.Printf("Delete existing directory: %s", origindir)
 		os.Remove(origindir)
 	}
 
@@ -62,7 +70,7 @@ func filesystemMountAction(c *cli.Context) error {
 	var err error
 
 	if c.NArg() != 2 {
-		fmt.Printf("Wrong number of arguments (have %d, want 2). You passed: %s",
+		tlog.Warn.Printf("Wrong number of arguments (have %d, want 2). You passed: %s",
 			c.NArg(), c.Args())
 		os.Exit(exitcodes.Usage)
 	}
@@ -82,18 +90,18 @@ func filesystemMountAction(c *cli.Context) error {
 	args.origindir, _ = filepath.Abs(c.Args()[0])
 	err = checkDir(args.origindir)
 	if err != nil {
-		fmt.Printf("Invalid origindir: %v\n", err)
+		tlog.Warn.Printf("Invalid origindir: %v", err)
 		os.Exit(exitcodes.OriginDir)
 	}
 
 	// TODO: check existing?
 	args.mountpoint, err = filepath.Abs(c.Args()[1])
 	if err != nil {
-		fmt.Printf("Invalid mountpoint: %v\n", err)
+		tlog.Warn.Printf("Invalid mountpoint: %v", err)
 		os.Exit(exitcodes.MountPoint)
 	}
 
-	fmt.Printf("Mount Filesystem %s into %s\n", args.origindir, args.mountpoint)
+	tlog.Debug.Printf("Mount Filesystem %s into %s", args.origindir, args.mountpoint)
 
 	// TODO: do something with Storage Database and/or Configuration
 	// TODO: do something else
@@ -111,7 +119,7 @@ func filesystemMountAction(c *cli.Context) error {
 
 func filesystemUnmountAction(c *cli.Context) error {
 	if c.NArg() != 1 {
-		fmt.Printf("Wrong number of arguments (have %d, want 1). You passed: %s",
+		tlog.Warn.Printf("Wrong number of arguments (have %d, want 1). You passed: %s",
 			c.NArg(), c.Args())
 		os.Exit(exitcodes.Usage)
 	}
@@ -119,10 +127,10 @@ func filesystemUnmountAction(c *cli.Context) error {
 	// TODO: check Directory (Filesystem)
 	mountpoint, err := filepath.Abs(c.Args()[0])
 	if err != nil {
-		fmt.Printf("Invalid mountpoint: %v\n", err)
+		tlog.Warn.Printf("Invalid mountpoint: %v", err)
 		os.Exit(exitcodes.MountPoint)
 	}
-	fmt.Printf("Unmount Filesystem %s\n", mountpoint)
+	tlog.Debug.Printf("Unmount Filesystem %s", mountpoint)
 
 	// TODO: do unmounting with options
 	unmountPanic(mountpoint)
