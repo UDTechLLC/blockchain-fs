@@ -9,5 +9,7 @@
 
 ### Above combination will ignore all files without extension ###
 
+# Work files
 *.log
+*.txt
 *.zip
