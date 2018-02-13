@@ -20,7 +20,8 @@ func filesystemCreateAction(c *cli.Context) error {
 	origindir := c.Args()[0]
 	fmt.Printf("Create new Filesystem: %s\n", origindir)
 
-	// TODO: create Directory if it's not exist
+	// create Directory if it's not exist
+	// TODO: check permissions
 	if _, err := os.Stat(origindir); os.IsNotExist(err) {
 		fmt.Printf("Create new directory: %s\n", origindir)
 		os.Mkdir(origindir, 0755)
@@ -45,7 +46,8 @@ func filesystemDeleteAction(c *cli.Context) error {
 	origindir := c.Args()[0]
 	fmt.Printf("Delete existing Filesystem: %s\n", origindir)
 
-	// TODO: delete Directory if it's exist
+	// delete Directory if it's exist
+	// TODO: check permissions
 	if _, err := os.Stat(origindir); os.IsNotExist(err) {
 		fmt.Printf("Directory %s is not exist!\n", origindir)
 	} else {
@@ -75,6 +77,7 @@ func filesystemMountAction(c *cli.Context) error {
 	args.fg = c.GlobalBool("fg")
 	args.notifypid = c.GlobalInt("notifypid")
 
+	// TODO: check permissions
 	// Check origindir and mountpoint
 	args.origindir, _ = filepath.Abs(c.Args()[0])
 	err = checkDir(args.origindir)
@@ -83,6 +86,7 @@ func filesystemMountAction(c *cli.Context) error {
 		os.Exit(exitcodes.OriginDir)
 	}
 
+	// TODO: check existing?
 	args.mountpoint, err = filepath.Abs(c.Args()[1])
 	if err != nil {
 		fmt.Printf("Invalid mountpoint: %v\n", err)

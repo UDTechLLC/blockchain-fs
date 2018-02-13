@@ -18,7 +18,7 @@ var _ pathfs.FileSystem = &FS{} // Verify that interface is implemented.
 // NewFS returns a new encrypted FUSE overlay filesystem.
 func NewFS(args Args) *FS {
 	return &FS{
-		FileSystem: pathfs.NewLoopbackFileSystem(args.Cipherdir),
+		FileSystem: pathfs.NewLoopbackFileSystem(args.Origindir),
 		args:       args,
 	}
 }

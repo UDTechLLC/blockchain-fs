@@ -117,7 +117,7 @@ func initFuseFrontend(args *argContainer) *fuse.Server {
 	// Reconciliate CLI and config file arguments into a fusefrontend.Args struct
 	// that is passed to the filesystem implementation
 	frontendArgs := fusefrontend.Args{
-		Cipherdir: args.origindir,
+		Origindir: args.origindir,
 	}
 
 	jsonBytes, _ := json.MarshalIndent(frontendArgs, "", "\t")
