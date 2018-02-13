@@ -1,4 +1,4 @@
-package main
+package util
 
 import (
 	"encoding/json"
@@ -21,19 +21,19 @@ import (
 	"bitbucket.org/udt/wizefs/internal/tlog"
 )
 
-// mount mounts an directory.
+// DoMount mounts an directory.
 // Called from main.
-func mount(args *argContainer) int {
+func DoMount(origindir, mountpoint string, notifypid int) int {
 
 	var err error
 
 	// Initialize FUSE server
-	srv := initFuseFrontend(args)
+	srv := initFuseFrontend(origindir, mountpoint)
 	tlog.Debug.Println("Filesystem mounted and ready.")
 
 	// We have been forked into the background, as evidenced by the set
 	// "notifypid".
-	if args.notifypid > 0 {
+	if notifypid > 0 {
 		// Chdir to the root directory so we don't block unmounting the CWD
 		os.Chdir("/")
 
@@ -48,7 +48,7 @@ func mount(args *argContainer) int {
 			tlog.Warn.Printf("Setsid: %v", err)
 		}
 		// Send SIGUSR1 to our parent
-		sendUsr1(args.notifypid)
+		sendUsr1(notifypid)
 	}
 
 	// Increase the open file limit to 4096. This is not essential, so do it after
@@ -58,7 +58,7 @@ func mount(args *argContainer) int {
 	// Wait for SIGINT in the background and unmount ourselves if we get it.
 	// This prevents a dangling "Transport endpoint is not connected"
 	// mountpoint if the user hits CTRL-C.
-	handleSigint(srv, args.mountpoint)
+	handleSigint(srv, mountpoint)
 
 	// Return memory that was allocated for scrypt (64M by default!) and other
 	// stuff that is no longer needed to the OS
@@ -69,8 +69,8 @@ func mount(args *argContainer) int {
 	return 0
 }
 
-// unmount tries to umount "dir" and panics on error.
-func unmountPanic(dir string) {
+// DoUnmount tries to umount "dir" and panics on error.
+func DoUnmount(dir string) {
 	err := unmountErr(dir)
 	if err != nil {
 		tlog.Warn.Println(err)
@@ -114,11 +114,11 @@ func setOpenFileLimit() {
 
 // initFuseFrontend - initialize wizefs/fusefrontend
 // Calls os.Exit on errors
-func initFuseFrontend(args *argContainer) *fuse.Server {
+func initFuseFrontend(origindir, mountpoint string) *fuse.Server {
 	// Reconciliate CLI and config file arguments into a fusefrontend.Args struct
 	// that is passed to the filesystem implementation
 	frontendArgs := fusefrontend.Args{
-		OriginDir: args.origindir,
+		OriginDir: origindir,
 	}
 
 	jsonBytes, _ := json.MarshalIndent(frontendArgs, "", "\t")
@@ -164,10 +164,10 @@ func initFuseFrontend(args *argContainer) *fuse.Server {
 	// Add a volume name if running osxfuse. Otherwise the Finder will show it as
 	// something like "osxfuse Volume 0 (wizefs)".
 	if runtime.GOOS == "darwin" {
-		mOpts.Options = append(mOpts.Options, "volname="+path.Base(args.mountpoint))
+		mOpts.Options = append(mOpts.Options, "volname="+path.Base(mountpoint))
 	}
 
-	srv, err := fuse.NewServer(conn.RawFS(), args.mountpoint, &mOpts)
+	srv, err := fuse.NewServer(conn.RawFS(), mountpoint, &mOpts)
 	if err != nil {
 		tlog.Warn.Printf("fuse.NewServer failed: %v\n", err)
 		if runtime.GOOS == "darwin" {

@@ -1,7 +1,6 @@
-package main
+package command
 
 import (
-	"fmt"
 	"os"
 	"path/filepath"
 
@@ -10,11 +9,12 @@ import (
 	"bitbucket.org/udt/wizefs/internal/config"
 	"bitbucket.org/udt/wizefs/internal/exitcodes"
 	"bitbucket.org/udt/wizefs/internal/tlog"
+	"bitbucket.org/udt/wizefs/internal/util"
 )
 
 var configfile *config.FilesystemConfig
 
-func filesystemCreateAction(c *cli.Context) error {
+func CmdCreateFilesystem(c *cli.Context) error {
 	if c.NArg() != 1 {
 		tlog.Warn.Printf("Wrong number of arguments (have %d, want 1). You passed: %s",
 			c.NArg(), c.Args())
@@ -44,7 +44,7 @@ func filesystemCreateAction(c *cli.Context) error {
 	return nil
 }
 
-func filesystemDeleteAction(c *cli.Context) error {
+func CmdDeleteFilesystem(c *cli.Context) error {
 	if c.NArg() != 1 {
 		tlog.Warn.Printf("Wrong number of arguments (have %d, want 1). You passed: %s",
 			c.NArg(), c.Args())
@@ -66,7 +66,7 @@ func filesystemDeleteAction(c *cli.Context) error {
 	return nil
 }
 
-func filesystemMountAction(c *cli.Context) error {
+func CmdMountFilesystem(c *cli.Context) error {
 	var err error
 
 	if c.NArg() != 2 {
@@ -78,36 +78,36 @@ func filesystemMountAction(c *cli.Context) error {
 	// Fork a child into the background if "-fg" is not set AND we are mounting
 	// a filesystem. The child will do all the work.
 	if !c.GlobalBool("fg") && c.NArg() == 2 {
-		ret := forkChild()
+		ret := util.ForkChild()
 		os.Exit(ret)
 	}
 
-	args.fg = c.GlobalBool("fg")
-	args.notifypid = c.GlobalInt("notifypid")
+	//fg = c.GlobalBool("fg")
+	notifypid := c.GlobalInt("notifypid")
 
 	// TODO: check permissions
 	// Check origindir and mountpoint
-	args.origindir, _ = filepath.Abs(c.Args()[0])
-	err = checkDir(args.origindir)
+	origindir, _ := filepath.Abs(c.Args()[0])
+	err = util.CheckDir(origindir)
 	if err != nil {
 		tlog.Warn.Printf("Invalid origindir: %v", err)
 		os.Exit(exitcodes.OriginDir)
 	}
 
 	// TODO: check existing?
-	args.mountpoint, err = filepath.Abs(c.Args()[1])
+	mountpoint, err := filepath.Abs(c.Args()[1])
 	if err != nil {
 		tlog.Warn.Printf("Invalid mountpoint: %v", err)
 		os.Exit(exitcodes.MountPoint)
 	}
 
-	tlog.Debug.Printf("Mount Filesystem %s into %s", args.origindir, args.mountpoint)
+	tlog.Debug.Printf("Mount Filesystem %s into %s", origindir, mountpoint)
 
 	// TODO: do something with Storage Database and/or Configuration
 	// TODO: do something else
 
 	// Do mounting with options
-	ret := mount(&args)
+	ret := util.DoMount(origindir, mountpoint, notifypid)
 	if ret != 0 {
 		os.Exit(ret)
 	}
@@ -117,7 +117,7 @@ func filesystemMountAction(c *cli.Context) error {
 	return nil
 }
 
-func filesystemUnmountAction(c *cli.Context) error {
+func CmdUnmountFilesystem(c *cli.Context) error {
 	if c.NArg() != 1 {
 		tlog.Warn.Printf("Wrong number of arguments (have %d, want 1). You passed: %s",
 			c.NArg(), c.Args())
@@ -133,22 +133,10 @@ func filesystemUnmountAction(c *cli.Context) error {
 	tlog.Debug.Printf("Unmount Filesystem %s", mountpoint)
 
 	// TODO: do unmounting with options
-	unmountPanic(mountpoint)
+	util.DoUnmount(mountpoint)
 
 	// TODO: do something with Storage Database and/or Configuration
 	// TODO: do something else
 
-	return nil
-}
-
-// checkDir - check if "dir" exists and is a directory
-func checkDir(dir string) error {
-	fi, err := os.Stat(dir)
-	if err != nil {
-		return err
-	}
-	if !fi.IsDir() {
-		return fmt.Errorf("%s is not a directory", dir)
-	}
 	return nil
 }

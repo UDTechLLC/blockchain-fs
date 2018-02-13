@@ -1,10 +1,11 @@
-package main
+package util
 
 import (
 	"fmt"
 	"os"
 	"os/exec"
 	"os/signal"
+	"runtime"
 	"syscall"
 
 	"bitbucket.org/udt/wizefs/internal/exitcodes"
@@ -12,35 +13,18 @@ import (
 	"bitbucket.org/udt/wizefs/internal/tlog"
 )
 
-// The child sends us USR1 if the mount was successful. Exit with error code
-// 0 if we get it.
-func exitOnUsr1() {
-	c := make(chan os.Signal, 1)
-	signal.Notify(c, syscall.SIGUSR1)
-	go func() {
-		<-c
-		os.Exit(0)
-	}()
-}
-
-// Send signal USR1 to "pid" (usually our parent process). This notifies it
-// that the mounting has completed successfully.
-func sendUsr1(pid int) {
-	p, err := os.FindProcess(pid)
-	if err != nil {
-		tlog.Warn.Printf("sendUsr1: FindProcess: %v", err)
-		return
-	}
-	err = p.Signal(syscall.SIGUSR1)
-	if err != nil {
-		tlog.Warn.Printf("sendUsr1: Signal: %v", err)
+func init() {
+	mxp := runtime.GOMAXPROCS(0)
+	if mxp < 4 {
+		// On a 2-core machine, setting maxprocs to 4 gives 10% better performance
+		runtime.GOMAXPROCS(4)
 	}
 }
 
 // forkChild - execute ourselves once again, this time with the "-fg" flag, and
 // wait for SIGUSR1 or child exit.
 // This is a workaround for the missing true fork function in Go.
-func forkChild() int {
+func ForkChild() int {
 	name := os.Args[0]
 	pid := os.Getpid()
 	newArgs := []string{"--fg", fmt.Sprintf("--notifypid=%d", pid)}
@@ -73,6 +57,31 @@ func forkChild() int {
 
 	// The child exited with 0 - let's do the same.
 	return 0
+}
+
+// The child sends us USR1 if the mount was successful. Exit with error code
+// 0 if we get it.
+func exitOnUsr1() {
+	c := make(chan os.Signal, 1)
+	signal.Notify(c, syscall.SIGUSR1)
+	go func() {
+		<-c
+		os.Exit(0)
+	}()
+}
+
+// Send signal USR1 to "pid" (usually our parent process). This notifies it
+// that the mounting has completed successfully.
+func sendUsr1(pid int) {
+	p, err := os.FindProcess(pid)
+	if err != nil {
+		tlog.Warn.Printf("sendUsr1: FindProcess: %v", err)
+		return
+	}
+	err = p.Signal(syscall.SIGUSR1)
+	if err != nil {
+		tlog.Warn.Printf("sendUsr1: Signal: %v", err)
+	}
 }
 
 // redirectStdFds redirects stderr and stdout to syslog; stdin to /dev/null
