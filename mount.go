@@ -20,9 +20,9 @@ import (
 	"github.com/leedark/storage-system/internal/fusefrontend"
 )
 
-// doMount mounts an directory.
+// mount mounts an directory.
 // Called from main.
-func doMount(args *argContainer) int {
+func mount(args *argContainer) int {
 
 	var err error
 
@@ -66,6 +66,29 @@ func doMount(args *argContainer) int {
 	// Jump into server loop. Returns when it gets an umount request from the kernel.
 	srv.Serve()
 	return 0
+}
+
+// unmount tries to umount "dir" and panics on error.
+func unmountPanic(dir string) {
+	err := unmountErr(dir)
+	if err != nil {
+		fmt.Println(err)
+		panic(err)
+	}
+}
+
+// unmountErr tries to unmount "dir" and returns the resulting error.
+func unmountErr(dir string) error {
+	var cmd *exec.Cmd
+	if runtime.GOOS == "linux" {
+		cmd = exec.Command("fusermount", "-u", dir)
+	} else if runtime.GOOS == "darwin" {
+		cmd = exec.Command("umount", dir)
+	}
+
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+	return cmd.Run()
 }
 
 // setOpenFileLimit tries to increase the open file limit to 4096 (the default hard
@@ -145,7 +168,7 @@ func initFuseFrontend(args *argContainer) *fuse.Server {
 
 	srv, err := fuse.NewServer(conn.RawFS(), args.mountpoint, &mOpts)
 	if err != nil {
-		fmt.Println("fuse.NewServer failed: %v", err)
+		fmt.Printf("fuse.NewServer failed: %v\n", err)
 		if runtime.GOOS == "darwin" {
 			fmt.Println("Maybe you should run: /Library/Filesystems/osxfuse.fs/Contents/Resources/load_osxfuse")
 		}
