@@ -19,28 +19,28 @@ type FilesystemConfig struct {
 	// Version is the version this filesystem uses
 	Version uint16 `json:"version"`
 
-	// mountpoint, origindir, type*
+	// mountpoint, origin, type*
 	//MountPoint string `json:"mountpoint"`
-	OriginDir string `json:"origindir"`
-	Type      uint16 `json:"type"`
+	Origin string `json:"origin"`
+	Type   uint16 `json:"type"`
 
 	filename string
 }
 
-func NewFilesystemConfig(origindir string, itype uint16) *FilesystemConfig {
+func NewFilesystemConfig(origin string, itype uint16) *FilesystemConfig {
 
-	originpath, err := filepath.Abs(origindir)
+	originpath, err := filepath.Abs(origin)
 	if err != nil {
-		originpath = origindir
+		originpath = origin
 	}
 
 	return &FilesystemConfig{
 		Creator: ProgramName + " ver. " + ProgramVersion,
 		Version: FilesystemCurrentVersion,
 		//MountPoint: mountpoint,
-		OriginDir: originpath,
-		Type:      itype,
-		filename:  filepath.Join(origindir, FilesystemConfigFilename),
+		Origin:   originpath,
+		Type:     itype,
+		filename: filepath.Join(origin, FilesystemConfigFilename),
 	}
 }
 

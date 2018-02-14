@@ -19,22 +19,22 @@ func CmdCreateFilesystem(c *cli.Context) error {
 		os.Exit(exitcodes.Usage)
 	}
 
-	origindir := c.Args()[0]
-	tlog.Debug.Printf("Create new Filesystem: %s\n", origindir)
+	origin := c.Args()[0]
+	tlog.Debug.Printf("Create new Filesystem: %s\n", origin)
 
 	// create Directory if it's not exist
 	// TODO: check permissions
-	if _, err := os.Stat(origindir); os.IsNotExist(err) {
-		tlog.Debug.Printf("Create new directory: %s", origindir)
-		os.Mkdir(origindir, 0755)
+	if _, err := os.Stat(origin); os.IsNotExist(err) {
+		tlog.Debug.Printf("Create new directory: %s", origin)
+		os.Mkdir(origin, 0755)
 	} else {
-		tlog.Warn.Printf("Directory %s is exist already!", origindir)
+		tlog.Warn.Printf("Directory %s is exist already!", origin)
 		return nil
 	}
 
 	// TODO: initialize Filesystem
 	// TODO: do something with configuration
-	config.NewFilesystemConfig(origindir, 1).Save()
+	config.NewFilesystemConfig(origin, 1).Save()
 
 	// TODO: do something else
 
@@ -48,16 +48,16 @@ func CmdDeleteFilesystem(c *cli.Context) error {
 		os.Exit(exitcodes.Usage)
 	}
 
-	origindir := c.Args()[0]
-	tlog.Debug.Printf("Delete existing Filesystem: %s", origindir)
+	origin := c.Args()[0]
+	tlog.Debug.Printf("Delete existing Filesystem: %s", origin)
 
 	// delete Directory if it's exist
 	// TODO: check permissions
-	if _, err := os.Stat(origindir); os.IsNotExist(err) {
-		tlog.Warn.Printf("Directory %s is not exist!", origindir)
+	if _, err := os.Stat(origin); os.IsNotExist(err) {
+		tlog.Warn.Printf("Directory %s is not exist!", origin)
 	} else {
-		tlog.Debug.Printf("Delete existing directory: %s", origindir)
-		os.RemoveAll(origindir)
+		tlog.Debug.Printf("Delete existing directory: %s", origin)
+		os.RemoveAll(origin)
 	}
 
 	return nil
@@ -65,6 +65,7 @@ func CmdDeleteFilesystem(c *cli.Context) error {
 
 func CmdMountFilesystem(c *cli.Context) error {
 	var err error
+	var itype uint16
 
 	if c.NArg() != 2 {
 		tlog.Warn.Printf("Wrong number of arguments (have %d, want 2). You passed: %s",
@@ -83,13 +84,21 @@ func CmdMountFilesystem(c *cli.Context) error {
 	notifypid := c.GlobalInt("notifypid")
 
 	// TODO: check permissions
-	// Check origindir and mountpoint
-	origindir, _ := filepath.Abs(c.Args()[0])
-	err = util.CheckDir(origindir)
+	// Check origin and mountpoint
+
+	// TODO: check 1 - dir, 2 - zip
+	origin, _ := filepath.Abs(c.Args()[0])
+	itype, err = util.CheckDirOrZip(origin)
 	if err != nil {
-		tlog.Warn.Printf("Invalid origindir: %v", err)
-		os.Exit(exitcodes.OriginDir)
+		tlog.Warn.Printf("Invalid origin: %v", err)
+		os.Exit(exitcodes.Origin)
 	}
+
+	tlog.Debug.Printf("Type: %d", itype)
+	//if itype == 2 {
+	//	tlog.Warn.Printf("Zip files are not support now")
+	//	os.Exit(exitcodes.Origin)
+	//}
 
 	// TODO: check existing?
 	mountpoint, err := filepath.Abs(c.Args()[1])
@@ -98,10 +107,10 @@ func CmdMountFilesystem(c *cli.Context) error {
 		os.Exit(exitcodes.MountPoint)
 	}
 
-	tlog.Debug.Printf("Mount Filesystem %s into %s", origindir, mountpoint)
+	tlog.Debug.Printf("Mount Filesystem %s into %s", origin, mountpoint)
 
 	// Do mounting with options
-	ret := util.DoMount(origindir, mountpoint, notifypid)
+	ret := util.DoMount(itype, origin, mountpoint, notifypid)
 	if ret != 0 {
 		os.Exit(ret)
 	}

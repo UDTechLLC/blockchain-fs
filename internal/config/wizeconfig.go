@@ -16,8 +16,8 @@ const (
 )
 
 type FilesystemInfo struct {
-	// mountpoint, origindir, type*
-	//OriginDir  string `json:"origindir"`
+	// mountpoint, origin, type*
+	//Origin  string `json:"origin"`
 	MountPoint string `json:"mountpoint"`
 	Type       uint16 `json:"type"`
 }
@@ -54,15 +54,15 @@ func NewWizeConfig() *WizeConfig {
 	}
 }
 
-func (wc *WizeConfig) AddFilesystem(origindir, mountpoint string, itype uint16) error {
-	_, ok := wc.Filesystems[origindir]
+func (wc *WizeConfig) AddFilesystem(origin, mountpoint string, itype uint16) error {
+	_, ok := wc.Filesystems[origin]
 	if ok {
 		tlog.Warn.Println("This filesystem is already added!")
 		return errors.New("This filesystem is already added!")
 	}
 
-	wc.Filesystems[origindir] = FilesystemInfo{
-		//OriginDir: origindir,
+	wc.Filesystems[origin] = FilesystemInfo{
+		//Origin: origin,
 		MountPoint: mountpoint,
 		Type:       itype,
 	}
@@ -73,21 +73,21 @@ func (wc *WizeConfig) AddFilesystem(origindir, mountpoint string, itype uint16) 
 }
 
 func (wc *WizeConfig) DeleteFilesystem(mountpoint string) error {
-	// Find origindir by mountpoint
-	var origindir string
+	// Find origin by mountpoint
+	var origin string
 	for key, value := range wc.Filesystems {
 		if value.MountPoint == mountpoint {
-			origindir = key
+			origin = key
 			break
 		}
 	}
-	if origindir == "" {
-		return errors.New("OriginDir was not find in the common configuraion!")
+	if origin == "" {
+		return errors.New("Origin was not find in the common configuraion!")
 	}
 
-	_, ok := wc.Filesystems[origindir]
+	_, ok := wc.Filesystems[origin]
 	if ok {
-		delete(wc.Filesystems, origindir)
+		delete(wc.Filesystems, origin)
 	}
 
 	tlog.Debug.Println("Delete filesystem from the List! ", wc)

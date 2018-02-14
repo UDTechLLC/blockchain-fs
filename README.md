@@ -14,11 +14,11 @@ It used internally for daemonization.
 
 ## API (Commands)
 
-`create ORIGINDIR`
+`create ORIGIN`
 
-`delete ORIGINDIR`
+`delete ORIGIN`
 
-`mount ORIGINDIR MOUNTPOINT`
+`mount ORIGIN MOUNTPOINT`
 
 `unmount MOUNTPOINT`
 

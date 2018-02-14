@@ -15,6 +15,7 @@ import (
 	"github.com/hanwen/go-fuse/fuse"
 	"github.com/hanwen/go-fuse/fuse/nodefs"
 	"github.com/hanwen/go-fuse/fuse/pathfs"
+	"github.com/hanwen/go-fuse/zipfs"
 
 	"bitbucket.org/udt/wizefs/internal/config"
 	"bitbucket.org/udt/wizefs/internal/exitcodes"
@@ -24,11 +25,11 @@ import (
 
 // DoMount mounts an directory.
 // Called from main.
-func DoMount(origindir, mountpoint string, notifypid int) int {
+func DoMount(itype uint16, origin, mountpoint string, notifypid int) int {
 	var err error
 
 	// Initialize FUSE server
-	srv := initFuseFrontend(origindir, mountpoint)
+	srv := initFuseFrontend(itype, origin, mountpoint)
 	tlog.Debug.Println("Filesystem mounted and ready.")
 
 	// We have been forked into the background, as evidenced by the set
@@ -65,7 +66,7 @@ func DoMount(origindir, mountpoint string, notifypid int) int {
 	debug.FreeOSMemory()
 
 	// TODO: do something with configuration
-	err = config.CommonConfig.AddFilesystem(origindir, mountpoint, 1)
+	err = config.CommonConfig.AddFilesystem(origin, mountpoint, 1)
 	if err != nil {
 		tlog.Warn.Printf("Problem with adding Filesystem to Config: %v", err)
 	} else {
@@ -127,35 +128,34 @@ func setOpenFileLimit() {
 
 // initFuseFrontend - initialize wizefs/fusefrontend
 // Calls os.Exit on errors
-func initFuseFrontend(origindir, mountpoint string) *fuse.Server {
+func initFuseFrontend(itype uint16, origin, mountpoint string) *fuse.Server {
 	// Reconciliate CLI and config file arguments into a fusefrontend.Args struct
 	// that is passed to the filesystem implementation
 	frontendArgs := fusefrontend.Args{
-		OriginDir: origindir,
+		Origin: origin,
+		Type:   itype,
 	}
 
 	jsonBytes, _ := json.MarshalIndent(frontendArgs, "", "\t")
 	tlog.Debug.Printf("frontendArgs: %s", string(jsonBytes))
-	var finalFs pathfs.FileSystem
-	// pathFsOpts are passed into go-fuse/pathfs
-	pathFsOpts := &pathfs.PathNodeFsOptions{ClientInodes: true}
 
-	fs := fusefrontend.NewFS(frontendArgs)
-	finalFs = fs
+	// Prepare root
+	root := prepareRoot(frontendArgs)
+	if root == nil {
+		os.Exit(exitcodes.Type)
+	}
 
-	pathFs := pathfs.NewPathNodeFs(finalFs, pathFsOpts)
-	var fuseOpts *nodefs.Options
-
-	fuseOpts = &nodefs.Options{
+	fuseOpts := &nodefs.Options{
 		// These options are to be compatible with libfuse defaults,
 		// making benchmarking easier.
 		NegativeTimeout: time.Second,
 		AttrTimeout:     time.Second,
 		EntryTimeout:    time.Second,
+		Debug:           true,
 	}
 
-	conn := nodefs.NewFileSystemConnector(pathFs.Root(), fuseOpts)
-	mOpts := fuse.MountOptions{
+	conn := nodefs.NewFileSystemConnector(root, fuseOpts)
+	mountOpts := fuse.MountOptions{
 		// Writes and reads are usually capped at 128kiB on Linux through
 		// the FUSE_MAX_PAGES_PER_REQ kernel constant in fuse_i.h. Our
 		// sync.Pool buffer pools are sized acc. to the default. Users may set
@@ -164,23 +164,22 @@ func initFuseFrontend(origindir, mountpoint string) *fuse.Server {
 		// the kernel to limit the size explicitely.
 		MaxWrite: fuse.MAX_KERNEL_WRITE,
 		Options:  []string{fmt.Sprintf("max_read=%d", fuse.MAX_KERNEL_WRITE)},
+		Debug:    fuseOpts.Debug,
 	}
 
 	// Set values shown in "df -T" and friends
 	// First column, "Filesystem"
-	//fsname := args.cipherdir
-	//mOpts.Options = append(mOpts.Options, "fsname="+fsname)
-	mOpts.FsName = tlog.ProgramName
+	mountOpts.FsName = tlog.ProgramName
 	// Second column, "Type", will be shown as "fuse." + Name
-	mOpts.Name = tlog.ProgramName
+	mountOpts.Name = tlog.ProgramName
 
 	// Add a volume name if running osxfuse. Otherwise the Finder will show it as
 	// something like "osxfuse Volume 0 (wizefs)".
 	if runtime.GOOS == "darwin" {
-		mOpts.Options = append(mOpts.Options, "volname="+path.Base(mountpoint))
+		mountOpts.Options = append(mountOpts.Options, "volname="+path.Base(mountpoint))
 	}
 
-	srv, err := fuse.NewServer(conn.RawFS(), mountpoint, &mOpts)
+	srv, err := fuse.NewServer(conn.RawFS(), mountpoint, &mountOpts)
 	if err != nil {
 		tlog.Warn.Printf("fuse.NewServer failed: %v\n", err)
 		if runtime.GOOS == "darwin" {
@@ -188,7 +187,6 @@ func initFuseFrontend(origindir, mountpoint string) *fuse.Server {
 		}
 		os.Exit(exitcodes.FuseNewServer)
 	}
-	srv.SetDebug(true)
 
 	// All FUSE file and directory create calls carry explicit permission
 	// information. We need an unrestricted umask to create the files and
@@ -196,6 +194,41 @@ func initFuseFrontend(origindir, mountpoint string) *fuse.Server {
 	syscall.Umask(0000)
 
 	return srv
+}
+
+// TODO: move to fusefrontend?
+func prepareRoot(args fusefrontend.Args) (root nodefs.Node) {
+	switch args.Type {
+	case 1:
+		var finalFs pathfs.FileSystem
+
+		// pathFsOpts are passed into go-fuse/pathfs
+		pathFsOpts := &pathfs.PathNodeFsOptions{
+			ClientInodes: true,
+		}
+
+		fs := fusefrontend.NewFS(args)
+		finalFs = fs
+
+		pathFs := pathfs.NewPathNodeFs(finalFs, pathFsOpts)
+
+		root = pathFs.Root()
+
+	case 2:
+		// TODO: move to fusefrontend
+		var err error
+		root, err = zipfs.NewArchiveFileSystem(args.Origin)
+		if err != nil {
+			tlog.Warn.Printf("NewArchiveFileSystem failed: %v", err)
+			os.Exit(exitcodes.Origin)
+		}
+
+	default:
+		tlog.Warn.Printf("Strange type of Filesystem: %d", args.Type)
+		root = nil
+	}
+
+	return root
 }
 
 func handleSigint(srv *fuse.Server, mountpoint string) {
