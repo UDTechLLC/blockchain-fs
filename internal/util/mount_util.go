@@ -16,6 +16,7 @@ import (
 	"github.com/hanwen/go-fuse/fuse/nodefs"
 	"github.com/hanwen/go-fuse/fuse/pathfs"
 
+	"bitbucket.org/udt/wizefs/internal/config"
 	"bitbucket.org/udt/wizefs/internal/exitcodes"
 	"bitbucket.org/udt/wizefs/internal/fusefrontend"
 	"bitbucket.org/udt/wizefs/internal/tlog"
@@ -24,7 +25,6 @@ import (
 // DoMount mounts an directory.
 // Called from main.
 func DoMount(origindir, mountpoint string, notifypid int) int {
-
 	var err error
 
 	// Initialize FUSE server
@@ -63,6 +63,19 @@ func DoMount(origindir, mountpoint string, notifypid int) int {
 	// Return memory that was allocated for scrypt (64M by default!) and other
 	// stuff that is no longer needed to the OS
 	debug.FreeOSMemory()
+
+	// TODO: do something with configuration
+	err = config.CommonConfig.AddFilesystem(origindir, mountpoint, 1)
+	if err != nil {
+		tlog.Warn.Printf("Problem with adding Filesystem to Config: %v", err)
+	} else {
+		err = config.CommonConfig.Save()
+		if err != nil {
+			tlog.Warn.Printf("Problem with saving Config: %v", err)
+		}
+	}
+
+	tlog.Debug.Printf("Filesystem added to configuration.")
 
 	// Jump into server loop. Returns when it gets an umount request from the kernel.
 	srv.Serve()

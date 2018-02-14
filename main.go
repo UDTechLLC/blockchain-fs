@@ -5,19 +5,14 @@ import (
 
 	"github.com/urfave/cli"
 
+	"bitbucket.org/udt/wizefs/internal/config"
 	_ "bitbucket.org/udt/wizefs/internal/util"
 )
 
-// Name is program name
-const Name string = "wizefs"
-
-// Version is program version
-var Version string = "0.0.4"
-
 func main() {
 	app := cli.NewApp()
-	app.Name = Name
-	app.Version = Version
+	app.Name = config.ProgramName
+	app.Version = config.ProgramVersion
 	app.Usage = "Internal API for Storage System"
 
 	app.Flags = GlobalFlags

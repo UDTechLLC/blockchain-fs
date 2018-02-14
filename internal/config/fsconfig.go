@@ -7,6 +7,8 @@ import (
 )
 
 const (
+	ProgramName              = "wizefs"
+	ProgramVersion           = "0.0.4"
 	FilesystemCurrentVersion = 1
 	FilesystemConfigFilename = "wizefs.conf"
 )
@@ -25,10 +27,7 @@ type FilesystemConfig struct {
 	filename string
 }
 
-func NewFilesystemConfig(
-	creator string,
-	//mountpoint string,
-	origindir string, itype uint16) *FilesystemConfig {
+func NewFilesystemConfig(origindir string, itype uint16) *FilesystemConfig {
 
 	originpath, err := filepath.Abs(origindir)
 	if err != nil {
@@ -36,7 +35,7 @@ func NewFilesystemConfig(
 	}
 
 	return &FilesystemConfig{
-		Creator: creator,
+		Creator: ProgramName + " ver. " + ProgramVersion,
 		Version: FilesystemCurrentVersion,
 		//MountPoint: mountpoint,
 		OriginDir: originpath,

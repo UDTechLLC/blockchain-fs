@@ -12,8 +12,6 @@ import (
 	"bitbucket.org/udt/wizefs/internal/util"
 )
 
-var configfile *config.FilesystemConfig
-
 func CmdCreateFilesystem(c *cli.Context) error {
 	if c.NArg() != 1 {
 		tlog.Warn.Printf("Wrong number of arguments (have %d, want 1). You passed: %s",
@@ -34,11 +32,10 @@ func CmdCreateFilesystem(c *cli.Context) error {
 		return nil
 	}
 
-	// TODO: initialize Filesystem, its Configuration
-	configfile = config.NewFilesystemConfig("wizefs", origindir, 1)
-	configfile.Save()
+	// TODO: initialize Filesystem
+	// TODO: do something with configuration
+	config.NewFilesystemConfig(origindir, 1).Save()
 
-	// TODO: do something with Storage Database
 	// TODO: do something else
 
 	return nil
@@ -60,7 +57,7 @@ func CmdDeleteFilesystem(c *cli.Context) error {
 		tlog.Warn.Printf("Directory %s is not exist!", origindir)
 	} else {
 		tlog.Debug.Printf("Delete existing directory: %s", origindir)
-		os.Remove(origindir)
+		os.RemoveAll(origindir)
 	}
 
 	return nil
@@ -77,12 +74,12 @@ func CmdMountFilesystem(c *cli.Context) error {
 
 	// Fork a child into the background if "-fg" is not set AND we are mounting
 	// a filesystem. The child will do all the work.
-	if !c.GlobalBool("fg") && c.NArg() == 2 {
+	fg := c.GlobalBool("fg")
+	if !fg && c.NArg() == 2 {
 		ret := util.ForkChild()
 		os.Exit(ret)
 	}
 
-	//fg = c.GlobalBool("fg")
 	notifypid := c.GlobalInt("notifypid")
 
 	// TODO: check permissions
@@ -103,9 +100,6 @@ func CmdMountFilesystem(c *cli.Context) error {
 
 	tlog.Debug.Printf("Mount Filesystem %s into %s", origindir, mountpoint)
 
-	// TODO: do something with Storage Database and/or Configuration
-	// TODO: do something else
-
 	// Do mounting with options
 	ret := util.DoMount(origindir, mountpoint, notifypid)
 	if ret != 0 {
@@ -118,6 +112,8 @@ func CmdMountFilesystem(c *cli.Context) error {
 }
 
 func CmdUnmountFilesystem(c *cli.Context) error {
+	var err error
+
 	if c.NArg() != 1 {
 		tlog.Warn.Printf("Wrong number of arguments (have %d, want 1). You passed: %s",
 			c.NArg(), c.Args())
@@ -135,7 +131,17 @@ func CmdUnmountFilesystem(c *cli.Context) error {
 	// TODO: do unmounting with options
 	util.DoUnmount(mountpoint)
 
-	// TODO: do something with Storage Database and/or Configuration
+	// TODO: do something with configuration
+	err = config.CommonConfig.DeleteFilesystem(mountpoint)
+	if err != nil {
+		tlog.Warn.Printf("Problem with deleteing Filesystem from Config: %v", err)
+	} else {
+		err = config.CommonConfig.Save()
+		if err != nil {
+			tlog.Warn.Printf("Problem with saving Config: %v", err)
+		}
+	}
+
 	// TODO: do something else
 
 	return nil
