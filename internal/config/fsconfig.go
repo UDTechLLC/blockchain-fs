@@ -8,39 +8,40 @@ import (
 
 const (
 	ProgramName              = "wizefs"
-	ProgramVersion           = "0.0.4"
+	ProgramVersion           = "0.0.5"
 	FilesystemCurrentVersion = 1
 	FilesystemConfigFilename = "wizefs.conf"
+)
+
+type FSType int
+
+const (
+	FSHack FSType = iota - 1 // -1
+	FSNone
+	FSLoopback
+	FSZip
 )
 
 type FilesystemConfig struct {
 	// Creator is the WizeFS version string
 	Creator string `json:"creator"`
 	// Version is the version this filesystem uses
-	Version uint16 `json:"version"`
-
-	// mountpoint, origin, type*
-	//MountPoint string `json:"mountpoint"`
-	Origin string `json:"origin"`
-	Type   uint16 `json:"type"`
+	Version    uint16 `json:"version"`
+	Origin     string `json:"origin"`
+	OriginPath string `json:"originpath"`
+	Type       FSType `json:"type"`
 
 	filename string
 }
 
-func NewFilesystemConfig(origin string, itype uint16) *FilesystemConfig {
-
-	originpath, err := filepath.Abs(origin)
-	if err != nil {
-		originpath = origin
-	}
-
+func NewFilesystemConfig(origin, originPath string, itype FSType) *FilesystemConfig {
 	return &FilesystemConfig{
-		Creator: ProgramName + " ver. " + ProgramVersion,
-		Version: FilesystemCurrentVersion,
-		//MountPoint: mountpoint,
-		Origin:   originpath,
-		Type:     itype,
-		filename: filepath.Join(origin, FilesystemConfigFilename),
+		Creator:    ProgramName + " ver. " + ProgramVersion,
+		Version:    FilesystemCurrentVersion,
+		Origin:     origin,
+		OriginPath: originPath,
+		Type:       itype,
+		filename:   filepath.Join(origin, FilesystemConfigFilename),
 	}
 }
 

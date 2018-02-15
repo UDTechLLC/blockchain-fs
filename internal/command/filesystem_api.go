@@ -2,7 +2,6 @@ package command
 
 import (
 	"os"
-	"path/filepath"
 
 	"github.com/urfave/cli"
 
@@ -12,7 +11,13 @@ import (
 	"bitbucket.org/udt/wizefs/internal/util"
 )
 
+var (
+	OriginDir = util.UserHomeDir() + "/code/test/"
+)
+
 func CmdCreateFilesystem(c *cli.Context) error {
+	var err error
+
 	if c.NArg() != 1 {
 		tlog.Warn.Printf("Wrong number of arguments (have %d, want 1). You passed: %s",
 			c.NArg(), c.Args())
@@ -20,21 +25,40 @@ func CmdCreateFilesystem(c *cli.Context) error {
 	}
 
 	origin := c.Args()[0]
-	tlog.Debug.Printf("Create new Filesystem: %s\n", origin)
+	originPath := OriginDir + origin
+
+	fstype := checkOriginType(originPath)
+	// TODO: Create zip files
+	if fstype == 2 {
+		tlog.Warn.Printf("Creating zip files are not support now")
+		os.Exit(exitcodes.Origin)
+	}
+
+	tlog.Debug.Printf("Create new Filesystem %s on path %s\n", origin, originPath)
 
 	// create Directory if it's not exist
 	// TODO: check permissions
-	if _, err := os.Stat(origin); os.IsNotExist(err) {
-		tlog.Debug.Printf("Create new directory: %s", origin)
-		os.Mkdir(origin, 0755)
+	if _, err := os.Stat(originPath); os.IsNotExist(err) {
+		tlog.Debug.Printf("Create new directory: %s", originPath)
+		os.MkdirAll(originPath, 0755)
 	} else {
-		tlog.Warn.Printf("Directory %s is exist already!", origin)
+		tlog.Warn.Printf("Directory %s is exist already!", originPath)
 		return nil
 	}
 
 	// TODO: initialize Filesystem
 	// TODO: do something with configuration
-	config.NewFilesystemConfig(origin, 1).Save()
+	config.NewFilesystemConfig(origin, originPath, config.FSLoopback).Save()
+
+	err = config.CommonConfig.CreateFilesystem(origin, originPath, fstype)
+	if err != nil {
+		tlog.Warn.Printf("Problem with adding Filesystem to Config: %v", err)
+	} else {
+		err = config.CommonConfig.Save()
+		if err != nil {
+			tlog.Warn.Printf("Problem with saving Config: %v", err)
+		}
+	}
 
 	// TODO: do something else
 
@@ -42,6 +66,8 @@ func CmdCreateFilesystem(c *cli.Context) error {
 }
 
 func CmdDeleteFilesystem(c *cli.Context) error {
+	var err error
+
 	if c.NArg() != 1 {
 		tlog.Warn.Printf("Wrong number of arguments (have %d, want 1). You passed: %s",
 			c.NArg(), c.Args())
@@ -49,23 +75,40 @@ func CmdDeleteFilesystem(c *cli.Context) error {
 	}
 
 	origin := c.Args()[0]
+	originPath := OriginDir + origin
+	fstype := checkOriginType(originPath)
+	// TODO: Delete zip files
+	if fstype == 2 {
+		tlog.Warn.Printf("Deleting zip files are not support now")
+		os.Exit(exitcodes.Origin)
+	}
+
 	tlog.Debug.Printf("Delete existing Filesystem: %s", origin)
 
 	// delete Directory if it's exist
 	// TODO: check permissions
-	if _, err := os.Stat(origin); os.IsNotExist(err) {
-		tlog.Warn.Printf("Directory %s is not exist!", origin)
+	if _, err := os.Stat(originPath); os.IsNotExist(err) {
+		tlog.Warn.Printf("Directory %s is not exist!", originPath)
 	} else {
-		tlog.Debug.Printf("Delete existing directory: %s", origin)
-		os.RemoveAll(origin)
+		tlog.Debug.Printf("Delete existing directory: %s", originPath)
+		os.RemoveAll(originPath)
+	}
+
+	err = config.CommonConfig.DeleteFilesystem(origin)
+	if err != nil {
+		tlog.Warn.Printf("Problem with adding Filesystem to Config: %v", err)
+	} else {
+		err = config.CommonConfig.Save()
+		if err != nil {
+			tlog.Warn.Printf("Problem with saving Config: %v", err)
+		}
 	}
 
 	return nil
 }
 
 func CmdMountFilesystem(c *cli.Context) error {
-	var err error
-	var itype uint16
+	//var err error
 
 	if c.NArg() != 2 {
 		tlog.Warn.Printf("Wrong number of arguments (have %d, want 2). You passed: %s",
@@ -84,33 +127,36 @@ func CmdMountFilesystem(c *cli.Context) error {
 	notifypid := c.GlobalInt("notifypid")
 
 	// TODO: check permissions
-	// Check origin and mountpoint
+	//origin, _ := filepath.Abs(c.Args()[0])
+	origin := c.Args()[0]
+	originPath := OriginDir + origin
 
-	// TODO: check 1 - dir, 2 - zip
-	origin, _ := filepath.Abs(c.Args()[0])
-	itype, err = util.CheckDirOrZip(origin)
-	if err != nil {
-		tlog.Warn.Printf("Invalid origin: %v", err)
-		os.Exit(exitcodes.Origin)
-	}
-
-	tlog.Debug.Printf("Type: %d", itype)
-	//if itype == 2 {
+	fstype := checkOriginType(originPath)
+	//if fstype == 2 {
 	//	tlog.Warn.Printf("Zip files are not support now")
 	//	os.Exit(exitcodes.Origin)
 	//}
 
-	// TODO: check existing?
-	mountpoint, err := filepath.Abs(c.Args()[1])
-	if err != nil {
-		tlog.Warn.Printf("Invalid mountpoint: %v", err)
-		os.Exit(exitcodes.MountPoint)
+	// TODO: check mountpoint
+	//mountpoint, err := filepath.Abs(c.Args()[1])
+	//if err != nil {
+	//	tlog.Warn.Printf("Invalid mountpoint: %v", err)
+	//	os.Exit(exitcodes.MountPoint)
+	//}
+	mountpoint := c.Args()[1]
+	mountpointPath := OriginDir + mountpoint
+
+	if _, err := os.Stat(mountpointPath); os.IsNotExist(err) {
+		tlog.Debug.Printf("Create new directory: %s", mountpointPath)
+		os.MkdirAll(mountpointPath, 0755)
+	} else {
+		tlog.Warn.Printf("Directory %s is exist already!", mountpointPath)
 	}
 
-	tlog.Debug.Printf("Mount Filesystem %s into %s", origin, mountpoint)
+	tlog.Debug.Printf("Mount Filesystem %s into %s", originPath, mountpointPath)
 
 	// Do mounting with options
-	ret := util.DoMount(itype, origin, mountpoint, notifypid)
+	ret := util.DoMount(fstype, origin, originPath, mountpoint, mountpointPath, notifypid)
 	if ret != 0 {
 		os.Exit(ret)
 	}
@@ -129,19 +175,21 @@ func CmdUnmountFilesystem(c *cli.Context) error {
 		os.Exit(exitcodes.Usage)
 	}
 
-	// TODO: check Directory (Filesystem)
-	mountpoint, err := filepath.Abs(c.Args()[0])
-	if err != nil {
-		tlog.Warn.Printf("Invalid mountpoint: %v", err)
-		os.Exit(exitcodes.MountPoint)
-	}
-	tlog.Debug.Printf("Unmount Filesystem %s", mountpoint)
+	// TODO: check mountpoint
+	//mountpoint, err := filepath.Abs(c.Args()[0])
+	//if err != nil {
+	//	tlog.Warn.Printf("Invalid mountpoint: %v", err)
+	//	os.Exit(exitcodes.MountPoint)
+	//}
+	mountpoint := c.Args()[0]
+	mountpointPath := OriginDir + mountpoint
 
-	// TODO: do unmounting with options
-	util.DoUnmount(mountpoint)
+	tlog.Debug.Printf("Unmount Filesystem %s", mountpointPath)
+
+	util.DoUnmount(mountpointPath)
 
 	// TODO: do something with configuration
-	err = config.CommonConfig.DeleteFilesystem(mountpoint)
+	err = config.CommonConfig.UnmountFilesystem(mountpoint)
 	if err != nil {
 		tlog.Warn.Printf("Problem with deleteing Filesystem from Config: %v", err)
 	} else {
@@ -154,4 +202,21 @@ func CmdUnmountFilesystem(c *cli.Context) error {
 	// TODO: do something else
 
 	return nil
+}
+
+func checkOriginType(origin string) (fstype config.FSType) {
+	var err error
+
+	fstype, err = util.CheckDirOrZip(origin)
+	if err != nil {
+		// HACK: if fstype = config.FSHack
+		if fstype == config.FSHack {
+			return config.FSLoopback
+		}
+		tlog.Warn.Printf("Invalid origin: %v", err)
+		os.Exit(exitcodes.Origin)
+	}
+
+	tlog.Debug.Printf("Type: %d", fstype)
+	return fstype
 }

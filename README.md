@@ -31,9 +31,7 @@ Now this command only checks if ORIGIN directory exists and create it if it is n
 
 ### create Issues
 
-* Fix it with two types (directory, zip files)
-* Fix creating config file for existing ORIGIN (just check and load it)
-* Check if filesystem is (isn't) mounted. Perhaps should add flag for auto-mounting after creating.
+* Check if filesystem is (isn't) mounted. Perhaps should add flag for auto-mounting after creating
 
 `delete ORIGIN`
 
@@ -42,7 +40,7 @@ Now this command only checks if ORIGIN directory exists and delete it in this ca
 
 ### delete Issues
 
-* Check if filesystem is mounted. Perhaps should add flag for auto-unmounting before deleting.
+* Check if filesystem is mounted. Perhaps should add flag for auto-unmounting before deleting
 
 `mount ORIGIN MOUNTPOINT`
 

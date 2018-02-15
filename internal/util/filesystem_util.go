@@ -5,8 +5,22 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
+
+	"bitbucket.org/udt/wizefs/internal/config"
 )
+
+func UserHomeDir() string {
+	if runtime.GOOS == "windows" {
+		home := os.Getenv("HOMEDRIVE") + os.Getenv("HOMEPATH")
+		if home == "" {
+			home = os.Getenv("USERPROFILE")
+		}
+		return home
+	}
+	return os.Getenv("HOME")
+}
 
 // CheckDir - check if "dir" exists and is a directory
 func CheckDir(dir string) error {
@@ -28,11 +42,13 @@ func getExt(file string) string {
 // CheckDirOrZip
 // - check if "dir" exists and is a directory
 // - check if it's not directory but is a zip file
-func CheckDirOrZip(dirOrZip string) (uint16, error) {
+func CheckDirOrZip(dirOrZip string) (config.FSType, error) {
+	// HACK
 	fi, err := os.Stat(dirOrZip)
 	if err != nil {
-		return 0, err
+		return config.FSHack, err
 	}
+
 	if !fi.IsDir() {
 		zips := map[string]int{
 			".zip":     0,
@@ -45,11 +61,11 @@ func CheckDirOrZip(dirOrZip string) (uint16, error) {
 
 		_, ok := zips[ext]
 		if ok {
-			return 2, nil
+			return config.FSZip, nil
 		}
 
-		return 0, errors.New(
+		return config.FSNone, errors.New(
 			fmt.Sprintf("%s isn't a directory and isn't a zip file", dirOrZip))
 	}
-	return 1, nil
+	return config.FSLoopback, nil
 }

@@ -16,17 +16,22 @@ const (
 )
 
 type FilesystemInfo struct {
-	// mountpoint, origin, type*
-	//Origin  string `json:"origin"`
-	MountPoint string `json:"mountpoint"`
-	Type       uint16 `json:"type"`
+	OriginPath    string `json:"originpath"`
+	Type          FSType `json:"type"`
+	MountpointKey string `json:"mountpoint"`
+}
+
+type MountpointInfo struct {
+	MountpointPath string `json:"mountpointpath"`
+	OriginKey      string `json:"origin"`
 }
 
 type WizeConfig struct {
 	// header
 
 	// filesystems
-	Filesystems map[string]FilesystemInfo `json:"filesystems"`
+	Filesystems map[string]FilesystemInfo `json:"created"`
+	Mountpoints map[string]MountpointInfo `json:"mounted"`
 
 	filename string
 }
@@ -50,11 +55,12 @@ func NewWizeConfig() *WizeConfig {
 
 	return &WizeConfig{
 		Filesystems: make(map[string]FilesystemInfo),
+		Mountpoints: make(map[string]MountpointInfo),
 		filename:    filepath.Join(exePath, WizeConfigFilename),
 	}
 }
 
-func (wc *WizeConfig) AddFilesystem(origin, mountpoint string, itype uint16) error {
+func (wc *WizeConfig) CreateFilesystem(origin, originPath string, itype FSType) error {
 	_, ok := wc.Filesystems[origin]
 	if ok {
 		tlog.Warn.Println("This filesystem is already added!")
@@ -62,9 +68,9 @@ func (wc *WizeConfig) AddFilesystem(origin, mountpoint string, itype uint16) err
 	}
 
 	wc.Filesystems[origin] = FilesystemInfo{
-		//Origin: origin,
-		MountPoint: mountpoint,
-		Type:       itype,
+		OriginPath:    originPath,
+		Type:          itype,
+		MountpointKey: "",
 	}
 
 	tlog.Debug.Println("Add filesystem to the List! ", wc)
@@ -72,22 +78,53 @@ func (wc *WizeConfig) AddFilesystem(origin, mountpoint string, itype uint16) err
 	return nil
 }
 
-func (wc *WizeConfig) DeleteFilesystem(mountpoint string) error {
-	// Find origin by mountpoint
-	var origin string
-	for key, value := range wc.Filesystems {
-		if value.MountPoint == mountpoint {
-			origin = key
-			break
-		}
-	}
-	if origin == "" {
-		return errors.New("Origin was not find in the common configuraion!")
-	}
-
+func (wc *WizeConfig) DeleteFilesystem(origin string) error {
 	_, ok := wc.Filesystems[origin]
 	if ok {
 		delete(wc.Filesystems, origin)
+	}
+
+	tlog.Debug.Println("Delete filesystem from the List! ", wc)
+
+	return nil
+}
+
+func (wc *WizeConfig) MountFilesystem(origin, mountpoint, mountpointpath string) error {
+	_, ok := wc.Mountpoints[mountpoint]
+	if ok {
+		tlog.Warn.Println("This filesystem is already added!")
+		return errors.New("This filesystem is already added!")
+	}
+
+	wc.Mountpoints[mountpoint] = MountpointInfo{
+		MountpointPath: mountpointpath,
+		OriginKey:      origin,
+	}
+
+	fsi := wc.Filesystems[origin]
+	wc.Filesystems[origin] = FilesystemInfo{
+		OriginPath:    fsi.OriginPath,
+		Type:          fsi.Type,
+		MountpointKey: mountpoint,
+	}
+
+	tlog.Debug.Println("Add filesystem to the List! ", wc)
+
+	return nil
+}
+
+func (wc *WizeConfig) UnmountFilesystem(mountpoint string) error {
+	mpi, ok := wc.Mountpoints[mountpoint]
+	if ok {
+		origin := mpi.OriginKey
+		delete(wc.Mountpoints, mountpoint)
+
+		fsi := wc.Filesystems[origin]
+		wc.Filesystems[origin] = FilesystemInfo{
+			OriginPath:    fsi.OriginPath,
+			Type:          fsi.Type,
+			MountpointKey: "",
+		}
 	}
 
 	tlog.Debug.Println("Delete filesystem from the List! ", wc)
