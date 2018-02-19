@@ -15,6 +15,7 @@ var (
 	OriginDir = util.UserHomeDir() + "/code/test/"
 )
 
+// USECASE: wizefs create ORIGIN
 func CmdCreateFilesystem(c *cli.Context) error {
 	var err error
 
@@ -65,6 +66,7 @@ func CmdCreateFilesystem(c *cli.Context) error {
 	return nil
 }
 
+// USECASE: wizefs delete ORIGIN
 func CmdDeleteFilesystem(c *cli.Context) error {
 	var err error
 
@@ -107,10 +109,11 @@ func CmdDeleteFilesystem(c *cli.Context) error {
 	return nil
 }
 
+// USECASE: wizefs mount ORIGIN
 func CmdMountFilesystem(c *cli.Context) error {
 	//var err error
 
-	if c.NArg() != 2 {
+	if c.NArg() != 1 {
 		tlog.Warn.Printf("Wrong number of arguments (have %d, want 2). You passed: %s",
 			c.NArg(), c.Args())
 		os.Exit(exitcodes.Usage)
@@ -119,7 +122,7 @@ func CmdMountFilesystem(c *cli.Context) error {
 	// Fork a child into the background if "-fg" is not set AND we are mounting
 	// a filesystem. The child will do all the work.
 	fg := c.GlobalBool("fg")
-	if !fg && c.NArg() == 2 {
+	if !fg && c.NArg() == 1 {
 		ret := util.ForkChild()
 		os.Exit(ret)
 	}
@@ -143,7 +146,10 @@ func CmdMountFilesystem(c *cli.Context) error {
 	//	tlog.Warn.Printf("Invalid mountpoint: %v", err)
 	//	os.Exit(exitcodes.MountPoint)
 	//}
-	mountpoint := c.Args()[1]
+
+	//mountpoint := c.Args()[1]
+	// TODO: HACK - create/get mountpoint internally
+	mountpoint := getMountpoint(origin)
 	mountpointPath := OriginDir + mountpoint
 
 	if _, err := os.Stat(mountpointPath); os.IsNotExist(err) {
@@ -166,6 +172,7 @@ func CmdMountFilesystem(c *cli.Context) error {
 	return nil
 }
 
+// USECASE: wizefs unmount ORIGIN
 func CmdUnmountFilesystem(c *cli.Context) error {
 	var err error
 
@@ -175,13 +182,17 @@ func CmdUnmountFilesystem(c *cli.Context) error {
 		os.Exit(exitcodes.Usage)
 	}
 
+	origin := c.Args()[0]
+
 	// TODO: check mountpoint
 	//mountpoint, err := filepath.Abs(c.Args()[0])
 	//if err != nil {
 	//	tlog.Warn.Printf("Invalid mountpoint: %v", err)
 	//	os.Exit(exitcodes.MountPoint)
 	//}
-	mountpoint := c.Args()[0]
+	//mountpoint := c.Args()[0]
+	// TODO: HACK - create/get mountpoint internally
+	mountpoint := getMountpoint(origin)
 	mountpointPath := OriginDir + mountpoint
 
 	tlog.Debug.Printf("Unmount Filesystem %s", mountpointPath)
@@ -219,4 +230,8 @@ func checkOriginType(origin string) (fstype config.FSType) {
 
 	tlog.Debug.Printf("Type: %d", fstype)
 	return fstype
+}
+
+func getMountpoint(origin string) string {
+	return "_mount" + origin
 }
