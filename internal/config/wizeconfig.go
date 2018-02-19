@@ -39,24 +39,34 @@ type WizeConfig struct {
 var CommonConfig *WizeConfig
 
 func init() {
-	CommonConfig = NewWizeConfig()
+	//
+}
+
+func InitWizeConfig() {
+	InitWizeConfigWithPath("")
+}
+
+func InitWizeConfigWithPath(path string) {
+	CommonConfig = NewWizeConfig(path)
 	err := CommonConfig.Load()
 	if err != nil {
 		CommonConfig.Save()
 	}
 }
 
-func NewWizeConfig() *WizeConfig {
-	exe, err := os.Executable()
-	if err != nil {
-		panic(err)
+func NewWizeConfig(path string) *WizeConfig {
+	if path == "" {
+		exe, err := os.Executable()
+		if err != nil {
+			panic(err)
+		}
+		path = filepath.Dir(exe)
 	}
-	exePath := filepath.Dir(exe)
 
 	return &WizeConfig{
 		Filesystems: make(map[string]FilesystemInfo),
 		Mountpoints: make(map[string]MountpointInfo),
-		filename:    filepath.Join(exePath, WizeConfigFilename),
+		filename:    filepath.Join(path, WizeConfigFilename),
 	}
 }
 

@@ -10,6 +10,8 @@ import (
 )
 
 func main() {
+	config.InitWizeConfig()
+
 	app := cli.NewApp()
 	app.Name = config.ProgramName
 	app.Version = config.ProgramVersion
