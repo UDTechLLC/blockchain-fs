@@ -2,6 +2,7 @@ package command
 
 import (
 	"os"
+	"strings"
 
 	"github.com/urfave/cli"
 
@@ -11,6 +12,8 @@ import (
 	"bitbucket.org/udt/wizefs/internal/util"
 )
 
+// TODO: HACK - temporary solution is:
+// to store all ORIGINs and MOUNTPOINTs in one place
 var (
 	OriginDir = util.UserHomeDir() + "/code/test/"
 )
@@ -135,7 +138,7 @@ func CmdMountFilesystem(c *cli.Context) error {
 	originPath := OriginDir + origin
 
 	fstype := checkOriginType(originPath)
-	//if fstype == 2 {
+	//if fstype == config.FSZip {
 	//	tlog.Warn.Printf("Zip files are not support now")
 	//	os.Exit(exitcodes.Origin)
 	//}
@@ -149,7 +152,7 @@ func CmdMountFilesystem(c *cli.Context) error {
 
 	//mountpoint := c.Args()[1]
 	// TODO: HACK - create/get mountpoint internally
-	mountpoint := getMountpoint(origin)
+	mountpoint := getMountpoint(origin, fstype)
 	mountpointPath := OriginDir + mountpoint
 
 	if _, err := os.Stat(mountpointPath); os.IsNotExist(err) {
@@ -183,6 +186,8 @@ func CmdUnmountFilesystem(c *cli.Context) error {
 	}
 
 	origin := c.Args()[0]
+	originPath := OriginDir + origin
+	fstype := checkOriginType(originPath)
 
 	// TODO: check mountpoint
 	//mountpoint, err := filepath.Abs(c.Args()[0])
@@ -192,7 +197,7 @@ func CmdUnmountFilesystem(c *cli.Context) error {
 	//}
 	//mountpoint := c.Args()[0]
 	// TODO: HACK - create/get mountpoint internally
-	mountpoint := getMountpoint(origin)
+	mountpoint := getMountpoint(origin, fstype)
 	mountpointPath := OriginDir + mountpoint
 
 	tlog.Debug.Printf("Unmount Filesystem %s", mountpointPath)
@@ -228,10 +233,17 @@ func checkOriginType(origin string) (fstype config.FSType) {
 		os.Exit(exitcodes.Origin)
 	}
 
-	tlog.Debug.Printf("Type: %d", fstype)
+	tlog.Debug.Printf("Origin Type: %d", fstype)
 	return fstype
 }
 
-func getMountpoint(origin string) string {
-	return "_mount" + origin
+func getMountpoint(origin string, fstype config.FSType) string {
+	mountpoint := origin
+	if fstype == config.FSZip {
+		mountpoint = strings.Replace(mountpoint, ".", "_", -1)
+	}
+	mountpoint = "_mount" + mountpoint
+
+	tlog.Debug.Printf("Mountpoint: %s", mountpoint)
+	return mountpoint
 }

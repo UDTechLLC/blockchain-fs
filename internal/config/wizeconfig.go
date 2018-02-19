@@ -145,7 +145,9 @@ func (wc *WizeConfig) UnmountFilesystem(mountpoint string) error {
 func (wc *WizeConfig) Save() error {
 	tmp := wc.filename + ".tmp"
 	// 0400 permissions: wizefs.conf should be kept secret and never be written to.
-	fd, err := os.OpenFile(tmp, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0400)
+	//fd, err := os.OpenFile(tmp, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0400)
+	// temporary solution
+	fd, err := os.OpenFile(tmp, os.O_RDWR|os.O_CREATE|os.O_EXCL, 0644)
 	if err != nil {
 		return err
 	}
