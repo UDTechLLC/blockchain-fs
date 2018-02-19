@@ -4,6 +4,8 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+
+	"bitbucket.org/udt/wizefs/internal/tlog"
 )
 
 const (
@@ -41,7 +43,7 @@ func NewFilesystemConfig(origin, originPath string, itype FSType) *FilesystemCon
 		Origin:     origin,
 		OriginPath: originPath,
 		Type:       itype,
-		filename:   filepath.Join(origin, FilesystemConfigFilename),
+		filename:   filepath.Join(originPath, FilesystemConfigFilename),
 	}
 }
 
@@ -71,6 +73,7 @@ func (c *FilesystemConfig) Save() error {
 		return err
 	}
 	err = os.Rename(tmp, c.filename)
+	tlog.Debug.Printf("Save config file %s", c.filename)
 	return err
 }
 
