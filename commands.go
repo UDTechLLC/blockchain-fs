@@ -74,6 +74,12 @@ var Commands = []cli.Command{
 		Usage:   "",
 		Action:  command.CmdPutFile,
 	},
+	{
+		Name:    "get",
+		Aliases: []string{"g"},
+		Usage:   "",
+		Action:  command.CmdGetFile,
+	},
 }
 
 // CommandNotFound implements action when subcommand not found
