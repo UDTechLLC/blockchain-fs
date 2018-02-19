@@ -9,7 +9,7 @@ import (
 	"github.com/urfave/cli"
 
 	"bitbucket.org/udt/wizefs/internal/config"
-	"bitbucket.org/udt/wizefs/internal/exitcodes"
+	"bitbucket.org/udt/wizefs/internal/globals"
 	"bitbucket.org/udt/wizefs/internal/tlog"
 	//"bitbucket.org/udt/wizefs/internal/util"
 )
@@ -32,7 +32,7 @@ func CmdPutFile(c *cli.Context) (err error) {
 		return cli.NewExitError(
 			fmt.Sprintf("Wrong number of arguments (have %d, want 2)."+
 				" You passed: %s.", c.NArg(), c.Args()),
-			exitcodes.Usage)
+			globals.Usage)
 	}
 
 	origin := c.Args()[1]
@@ -45,7 +45,7 @@ func CmdPutFile(c *cli.Context) (err error) {
 	if err != nil {
 		return cli.NewExitError(
 			"Did not find MOUNTPOINT in common config.",
-			exitcodes.MountPoint)
+			globals.MountPoint)
 	}
 
 	// TODO: check MD5?
@@ -55,7 +55,7 @@ func CmdPutFile(c *cli.Context) (err error) {
 		// TODO: HACK - for temporary testing
 		//return cli.NewExitError(
 		//	"FILE argument is not absolute path to file.",
-		//	exitcodes.Other)
+		//	globals.Other)
 
 		tlog.Debug.Println("HACK: FILE argument is not absolute path to file.")
 		originalFile, _ = filepath.Abs(originalFile)
@@ -65,7 +65,7 @@ func CmdPutFile(c *cli.Context) (err error) {
 	if _, err = os.Stat(originalFile); os.IsNotExist(err) {
 		return cli.NewExitError(
 			fmt.Sprintf("Original FILE (%s) does not exist.", originalFile),
-			exitcodes.Other)
+			globals.Other)
 	}
 	originalFileBase := filepath.Base(originalFile)
 	// TODO: check file, SIZE, TYPE, etc
@@ -75,7 +75,7 @@ func CmdPutFile(c *cli.Context) (err error) {
 	if _, err = os.Stat(destinationFile); err == nil {
 		return cli.NewExitError(
 			fmt.Sprintf("Destination FILE (%s) is exist.", destinationFile),
-			exitcodes.Other)
+			globals.Other)
 	}
 
 	// copy (replace?) file to mountpointPath
@@ -83,7 +83,7 @@ func CmdPutFile(c *cli.Context) (err error) {
 	if err != nil {
 		return cli.NewExitError(
 			fmt.Sprintf("We have a problem with copy file: %v", err),
-			exitcodes.Other)
+			globals.Other)
 	}
 
 	return nil
@@ -99,7 +99,7 @@ func CmdGetFile(c *cli.Context) (err error) {
 		return cli.NewExitError(
 			fmt.Sprintf("Wrong number of arguments (have %d, want 2)."+
 				" You passed: %s.", c.NArg(), c.Args()),
-			exitcodes.Usage)
+			globals.Usage)
 	}
 
 	origin := c.Args()[1]
@@ -112,7 +112,7 @@ func CmdGetFile(c *cli.Context) (err error) {
 	if err != nil {
 		return cli.NewExitError(
 			"Did not find MOUNTPOINT in common config.",
-			exitcodes.MountPoint)
+			globals.MountPoint)
 	}
 
 	// TODO: check MD5?
@@ -121,7 +121,7 @@ func CmdGetFile(c *cli.Context) (err error) {
 	if filepath.IsAbs(originalFile) {
 		return cli.NewExitError(
 			fmt.Sprintf("FILE argument (%s) is absolute path to file.", originalFile),
-			exitcodes.Other)
+			globals.Other)
 	}
 
 	originalFileBase := filepath.Base(originalFile)
@@ -131,7 +131,7 @@ func CmdGetFile(c *cli.Context) (err error) {
 	if _, err = os.Stat(originalFile); os.IsNotExist(err) {
 		return cli.NewExitError(
 			fmt.Sprintf("Original FILE (%s) does not exist.", originalFile),
-			exitcodes.Other)
+			globals.Other)
 	}
 	// TODO: check file, SIZE, TYPE, etc
 
@@ -141,7 +141,7 @@ func CmdGetFile(c *cli.Context) (err error) {
 	if _, err = os.Stat(destinationFile); os.IsExist(err) {
 		return cli.NewExitError(
 			fmt.Sprintf("Destination FILE (%s) is exist.", destinationFile),
-			exitcodes.Other)
+			globals.Other)
 	}
 
 	// copy (replace?) file to mountpointPath
@@ -149,7 +149,7 @@ func CmdGetFile(c *cli.Context) (err error) {
 	if err != nil {
 		return cli.NewExitError(
 			fmt.Sprintf("We have a problem with copy file: %v", err),
-			exitcodes.Other)
+			globals.Other)
 	}
 
 	return nil

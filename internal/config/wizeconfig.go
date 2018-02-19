@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 
+	"bitbucket.org/udt/wizefs/internal/globals"
 	"bitbucket.org/udt/wizefs/internal/tlog"
 )
 
@@ -43,7 +44,7 @@ func init() {
 }
 
 func InitWizeConfig() {
-	InitWizeConfigWithPath("")
+	InitWizeConfigWithPath(globals.OriginDirPath)
 }
 
 func InitWizeConfigWithPath(path string) {

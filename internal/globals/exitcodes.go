@@ -1,6 +1,6 @@
 // Package exitcodes contains all well-defined exit codes that storage-system
 // can return.
-package exitcodes
+package globals
 
 const (
 	// Usage - usage error like wrong cli syntax, wrong number of parameters.
