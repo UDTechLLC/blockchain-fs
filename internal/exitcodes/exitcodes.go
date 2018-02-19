@@ -2,11 +2,6 @@
 // can return.
 package exitcodes
 
-import (
-	"fmt"
-	"os"
-)
-
 const (
 	// Usage - usage error like wrong cli syntax, wrong number of parameters.
 	Usage = 1
@@ -46,27 +41,3 @@ const (
 	// Other error - please inspect the message
 	Other = 50
 )
-
-// Err wraps an error with an associated numeric exit code
-type Err struct {
-	error
-	code int
-}
-
-// NewErr returns an error containing "msg" and the exit code "code".
-func NewErr(msg string, code int) Err {
-	return Err{
-		error: fmt.Errorf(msg),
-		code:  code,
-	}
-}
-
-// Exit extracts the numeric exit code from "err" (if available) and exits the
-// application.
-func Exit(err error) {
-	err2, ok := err.(Err)
-	if !ok {
-		os.Exit(Other)
-	}
-	os.Exit(err2.code)
-}

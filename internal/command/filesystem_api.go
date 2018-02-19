@@ -1,6 +1,7 @@
 package command
 
 import (
+	"fmt"
 	"os"
 	"strings"
 
@@ -19,23 +20,28 @@ var (
 )
 
 // USECASE: wizefs create ORIGIN
-func CmdCreateFilesystem(c *cli.Context) error {
-	var err error
-
+func CmdCreateFilesystem(c *cli.Context) (err error) {
 	if c.NArg() != 1 {
-		tlog.Warn.Printf("Wrong number of arguments (have %d, want 1). You passed: %s",
-			c.NArg(), c.Args())
-		os.Exit(exitcodes.Usage)
+		return cli.NewExitError(
+			fmt.Sprintf("Wrong number of arguments (have %d, want 1)."+
+				" You passed: %s.", c.NArg(), c.Args()),
+			exitcodes.Usage)
 	}
 
 	origin := c.Args()[0]
 	originPath := OriginDir + origin
 
-	fstype := checkOriginType(originPath)
+	fstype, err := checkOriginType(originPath)
+	if err != nil {
+		return cli.NewExitError(
+			fmt.Sprintf("Invalid origin: %v", err),
+			exitcodes.Origin)
+	}
 	// TODO: Create zip files
-	if fstype == 2 {
-		tlog.Warn.Printf("Creating zip files are not support now")
-		os.Exit(exitcodes.Origin)
+	if fstype == config.FSZip {
+		return cli.NewExitError(
+			"Creating zip files are not support now",
+			exitcodes.Origin)
 	}
 
 	tlog.Debug.Printf("Create new Filesystem %s on path %s\n", origin, originPath)
@@ -70,22 +76,27 @@ func CmdCreateFilesystem(c *cli.Context) error {
 }
 
 // USECASE: wizefs delete ORIGIN
-func CmdDeleteFilesystem(c *cli.Context) error {
-	var err error
-
+func CmdDeleteFilesystem(c *cli.Context) (err error) {
 	if c.NArg() != 1 {
-		tlog.Warn.Printf("Wrong number of arguments (have %d, want 1). You passed: %s",
-			c.NArg(), c.Args())
-		os.Exit(exitcodes.Usage)
+		return cli.NewExitError(
+			fmt.Sprintf("Wrong number of arguments (have %d, want 1)."+
+				" You passed: %s.", c.NArg(), c.Args()),
+			exitcodes.Usage)
 	}
 
 	origin := c.Args()[0]
 	originPath := OriginDir + origin
-	fstype := checkOriginType(originPath)
+	fstype, err := checkOriginType(originPath)
+	if err != nil {
+		return cli.NewExitError(
+			fmt.Sprintf("Invalid origin: %v", err),
+			exitcodes.Origin)
+	}
 	// TODO: Delete zip files
-	if fstype == 2 {
-		tlog.Warn.Printf("Deleting zip files are not support now")
-		os.Exit(exitcodes.Origin)
+	if fstype == config.FSZip {
+		return cli.NewExitError(
+			"Deleting zip files are not support now",
+			exitcodes.Origin)
 	}
 
 	tlog.Debug.Printf("Delete existing Filesystem: %s", origin)
@@ -113,17 +124,17 @@ func CmdDeleteFilesystem(c *cli.Context) error {
 }
 
 // USECASE: wizefs mount ORIGIN
-func CmdMountFilesystem(c *cli.Context) error {
-	//var err error
-
+func CmdMountFilesystem(c *cli.Context) (err error) {
 	if c.NArg() != 1 {
-		tlog.Warn.Printf("Wrong number of arguments (have %d, want 2). You passed: %s",
-			c.NArg(), c.Args())
-		os.Exit(exitcodes.Usage)
+		return cli.NewExitError(
+			fmt.Sprintf("Wrong number of arguments (have %d, want 1)."+
+				" You passed: %s.", c.NArg(), c.Args()),
+			exitcodes.Usage)
 	}
 
 	// Fork a child into the background if "-fg" is not set AND we are mounting
 	// a filesystem. The child will do all the work.
+	// TODO: think about ForkChild function
 	fg := c.GlobalBool("fg")
 	if !fg && c.NArg() == 1 {
 		ret := util.ForkChild()
@@ -137,7 +148,12 @@ func CmdMountFilesystem(c *cli.Context) error {
 	origin := c.Args()[0]
 	originPath := OriginDir + origin
 
-	fstype := checkOriginType(originPath)
+	fstype, err := checkOriginType(originPath)
+	if err != nil {
+		return cli.NewExitError(
+			fmt.Sprintf("Invalid origin: %v", err),
+			exitcodes.Origin)
+	}
 	//if fstype == config.FSZip {
 	//	tlog.Warn.Printf("Zip files are not support now")
 	//	os.Exit(exitcodes.Origin)
@@ -176,18 +192,23 @@ func CmdMountFilesystem(c *cli.Context) error {
 }
 
 // USECASE: wizefs unmount ORIGIN
-func CmdUnmountFilesystem(c *cli.Context) error {
-	var err error
-
+func CmdUnmountFilesystem(c *cli.Context) (err error) {
 	if c.NArg() != 1 {
-		tlog.Warn.Printf("Wrong number of arguments (have %d, want 1). You passed: %s",
-			c.NArg(), c.Args())
-		os.Exit(exitcodes.Usage)
+		return cli.NewExitError(
+			fmt.Sprintf("Wrong number of arguments (have %d, want 1)."+
+				" You passed: %s.", c.NArg(), c.Args()),
+			exitcodes.Usage)
 	}
 
 	origin := c.Args()[0]
 	originPath := OriginDir + origin
-	fstype := checkOriginType(originPath)
+
+	fstype, err := checkOriginType(originPath)
+	if err != nil {
+		return cli.NewExitError(
+			fmt.Sprintf("Invalid origin: %v", err),
+			exitcodes.Origin)
+	}
 
 	// TODO: check mountpoint
 	//mountpoint, err := filepath.Abs(c.Args()[0])
@@ -220,21 +241,18 @@ func CmdUnmountFilesystem(c *cli.Context) error {
 	return nil
 }
 
-func checkOriginType(origin string) (fstype config.FSType) {
-	var err error
-
+func checkOriginType(origin string) (fstype config.FSType, err error) {
 	fstype, err = util.CheckDirOrZip(origin)
 	if err != nil {
 		// HACK: if fstype = config.FSHack
 		if fstype == config.FSHack {
-			return config.FSLoopback
+			return config.FSLoopback, nil
 		}
-		tlog.Warn.Printf("Invalid origin: %v", err)
-		os.Exit(exitcodes.Origin)
+		return fstype, err
 	}
 
 	tlog.Debug.Printf("Origin Type: %d", fstype)
-	return fstype
+	return fstype, nil
 }
 
 func getMountpoint(origin string, fstype config.FSType) string {

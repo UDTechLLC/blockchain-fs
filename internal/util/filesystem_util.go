@@ -1,7 +1,6 @@
 package util
 
 import (
-	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -64,8 +63,9 @@ func CheckDirOrZip(dirOrZip string) (config.FSType, error) {
 			return config.FSZip, nil
 		}
 
-		return config.FSNone, errors.New(
-			fmt.Sprintf("%s isn't a directory and isn't a zip file", dirOrZip))
+		return config.FSNone,
+			fmt.Errorf("%s isn't a directory and isn't a zip file",
+				dirOrZip)
 	}
 	return config.FSLoopback, nil
 }
