@@ -188,3 +188,30 @@ func (wc *WizeConfig) Load() error {
 
 	return nil
 }
+
+func (wc *WizeConfig) CheckOriginGetMountpoint(origin string) (mountpointPath string, err error) {
+	var ok bool
+	var fsinfo FilesystemInfo
+	fsinfo, ok = wc.Filesystems[origin]
+	if !ok {
+		tlog.Warn.Printf("Filesystem %s is not exist!", origin)
+		return "", errors.New("Filesystem is not exist!")
+	}
+
+	if fsinfo.MountpointKey == "" {
+		tlog.Warn.Printf("Filesystem %s is not mounted!", origin)
+		return "", errors.New("Filesystem is not mounted!")
+	}
+
+	var mpinfo MountpointInfo
+	mpinfo, ok = wc.Mountpoints[fsinfo.MountpointKey]
+	if !ok {
+		tlog.Warn.Printf("Mounted filesystem %s is not exist!", fsinfo.MountpointKey)
+		return "", errors.New("Mounted filesystem is not exist!")
+	}
+
+	mountpointPath = mpinfo.MountpointPath
+	// TODO: check mountpointPath?
+
+	return mountpointPath, nil
+}

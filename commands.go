@@ -68,6 +68,12 @@ var Commands = []cli.Command{
 		Usage:   "Unmount Filesystem from directory",
 		Action:  command.CmdUnmountFilesystem,
 	},
+	{
+		Name:    "put",
+		Aliases: []string{"p"},
+		Usage:   "",
+		Action:  command.CmdPutFile,
+	},
 }
 
 // CommandNotFound implements action when subcommand not found
