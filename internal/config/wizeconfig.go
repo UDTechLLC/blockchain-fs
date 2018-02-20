@@ -84,7 +84,7 @@ func (wc *WizeConfig) CreateFilesystem(origin, originPath string, itype FSType) 
 		MountpointKey: "",
 	}
 
-	tlog.Debug.Println("Add filesystem to the List! ", wc)
+	tlog.Debug.Println("Add filesystem to the created map! ", wc)
 
 	return nil
 }
@@ -95,7 +95,7 @@ func (wc *WizeConfig) DeleteFilesystem(origin string) error {
 		delete(wc.Filesystems, origin)
 	}
 
-	tlog.Debug.Println("Delete filesystem from the List! ", wc)
+	tlog.Debug.Println("Delete filesystem from the created map! ", wc)
 
 	return nil
 }
@@ -119,7 +119,7 @@ func (wc *WizeConfig) MountFilesystem(origin, mountpoint, mountpointpath string)
 		MountpointKey: mountpoint,
 	}
 
-	tlog.Debug.Println("Add filesystem to the List! ", wc)
+	tlog.Debug.Println("Add filesystem to the mounted map! ", wc)
 
 	return nil
 }
@@ -138,7 +138,7 @@ func (wc *WizeConfig) UnmountFilesystem(mountpoint string) error {
 		}
 	}
 
-	tlog.Debug.Println("Delete filesystem from the List! ", wc)
+	tlog.Debug.Println("Delete filesystem from the mounted map! ", wc)
 
 	return nil
 }

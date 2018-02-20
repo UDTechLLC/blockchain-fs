@@ -3,7 +3,6 @@ package main
 import (
 	"flag"
 	"fmt"
-	"log"
 	"net"
 	"os/exec"
 	"syscall"
@@ -13,6 +12,7 @@ import (
 
 	pb "bitbucket.org/udt/wizefs/grpc/wizefsservice"
 	api "bitbucket.org/udt/wizefs/internal/command"
+	"bitbucket.org/udt/wizefs/internal/tlog"
 )
 
 var (
@@ -23,6 +23,7 @@ type wizefsServer struct {
 }
 
 func (s *wizefsServer) Create(ctx context.Context, request *pb.FilesystemRequest) (response *pb.FilesystemResponse, err error) {
+	tlog.Info.Printf("Create method...")
 	origin := request.GetOrigin()
 
 	response = &pb.FilesystemResponse{
@@ -37,6 +38,7 @@ func (s *wizefsServer) Create(ctx context.Context, request *pb.FilesystemRequest
 }
 
 func (s *wizefsServer) Delete(ctx context.Context, request *pb.FilesystemRequest) (response *pb.FilesystemResponse, err error) {
+	tlog.Info.Printf("Delete method...")
 	origin := request.GetOrigin()
 
 	response = &pb.FilesystemResponse{
@@ -51,15 +53,16 @@ func (s *wizefsServer) Delete(ctx context.Context, request *pb.FilesystemRequest
 }
 
 func (s *wizefsServer) Mount(ctx context.Context, request *pb.FilesystemRequest) (response *pb.FilesystemResponse, err error) {
+	tlog.Info.Printf("Mount method...")
 	origin := request.GetOrigin()
-	var message string = "initial message"
+	var message string = "OK"
 
 	c := exec.Command("../mount/mount", origin)
 	cerr := c.Start()
 	if cerr != nil {
 		message = fmt.Sprintf("starting command failed: %v", cerr)
 	}
-	log.Printf("starting command...")
+	tlog.Info.Printf("starting command...")
 	cerr = c.Wait()
 	if cerr != nil {
 		if exiterr, ok := cerr.(*exec.ExitError); ok {
@@ -69,7 +72,7 @@ func (s *wizefsServer) Mount(ctx context.Context, request *pb.FilesystemRequest)
 		}
 		message = fmt.Sprintf("wait returned an unknown error: %v", cerr)
 	}
-	log.Printf("ending command...")
+	tlog.Info.Printf("ending command...")
 
 	return &pb.FilesystemResponse{
 		Executed: true,
@@ -78,6 +81,7 @@ func (s *wizefsServer) Mount(ctx context.Context, request *pb.FilesystemRequest)
 }
 
 func (s *wizefsServer) Unmount(ctx context.Context, request *pb.FilesystemRequest) (response *pb.FilesystemResponse, err error) {
+	tlog.Info.Printf("Unmount method...")
 	origin := request.GetOrigin()
 
 	response = &pb.FilesystemResponse{
@@ -91,8 +95,23 @@ func (s *wizefsServer) Unmount(ctx context.Context, request *pb.FilesystemReques
 	return
 }
 
-func (s *wizefsServer) Put(ctx context.Context, request *pb.PutRequest) (*pb.PutResponse, error) {
-	return nil, nil
+func (s *wizefsServer) Put(ctx context.Context, request *pb.PutRequest) (response *pb.PutResponse, err error) {
+	tlog.Info.Printf("Put method...")
+	filename := request.GetFilename()
+	content := request.GetContent()
+	origin := request.GetOrigin()
+
+	// TODO: check all request's data
+
+	response = &pb.PutResponse{
+		Executed: true,
+		Message:  "OK",
+	}
+	if err = api.ApiPut(filename, origin, content); err != nil {
+		response.Executed = false
+		response.Message = err.Error()
+	}
+	return
 }
 
 func (s *wizefsServer) Get(ctx context.Context, request *pb.GetRequest) (*pb.GetResponse, error) {
@@ -108,7 +127,7 @@ func main() {
 	flag.Parse()
 	lis, err := net.Listen("tcp", fmt.Sprintf("localhost:%d", *port))
 	if err != nil {
-		log.Fatalf("failed to listen: %v", err)
+		tlog.Fatal.Printf("failed to listen: %v", err)
 	}
 
 	grpcServer := grpc.NewServer()

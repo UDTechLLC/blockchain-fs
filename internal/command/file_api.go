@@ -26,8 +26,6 @@ import (
 // TODO: Output? JSON? result
 // TODO: check permissions
 func CmdPutFile(c *cli.Context) (err error) {
-	var mountpointPath string
-
 	if c.NArg() != 2 {
 		return cli.NewExitError(
 			fmt.Sprintf("Wrong number of arguments (have %d, want 2)."+
@@ -35,12 +33,27 @@ func CmdPutFile(c *cli.Context) (err error) {
 			globals.Usage)
 	}
 
+	originalFile := c.Args()[0]
 	origin := c.Args()[1]
+
+	return ApiPut(originalFile, origin, nil)
+}
+
+func ApiPut(originalFile, origin string, content []byte) (err error) {
+	var mountpointPath string
 	//originPath := OriginDir + origin
 
 	// check origin via config file (database) and get mountpoint if it exists
 	// TODO: add more information about errors
 	// TODO: auto-mount if (Filesystem is not mounted!)?
+
+	// TODO: HACK for gRPC methods
+	if config.CommonConfig == nil {
+		config.InitWizeConfig()
+	} else {
+		config.CommonConfig.Load()
+	}
+
 	mountpointPath, err = config.CommonConfig.CheckOriginGetMountpoint(origin)
 	if err != nil {
 		return cli.NewExitError(
@@ -49,23 +62,25 @@ func CmdPutFile(c *cli.Context) (err error) {
 	}
 
 	// TODO: check MD5?
-	originalFile := c.Args()[0]
-	// check PATH
-	if !filepath.IsAbs(originalFile) {
-		// TODO: HACK - for temporary testing
-		//return cli.NewExitError(
-		//	"FILE argument is not absolute path to file.",
-		//	globals.Other)
 
-		tlog.Debug.Println("HACK: FILE argument is not absolute path to file.")
-		originalFile, _ = filepath.Abs(originalFile)
-	}
+	if content == nil {
+		// check PATH
+		if !filepath.IsAbs(originalFile) {
+			// TODO: HACK - for temporary testing
+			//return cli.NewExitError(
+			//	"FILE argument is not absolute path to file.",
+			//	globals.Other)
 
-	// check original file existing
-	if _, err = os.Stat(originalFile); os.IsNotExist(err) {
-		return cli.NewExitError(
-			fmt.Sprintf("Original FILE (%s) does not exist.", originalFile),
-			globals.Other)
+			tlog.Debug.Println("HACK: FILE argument is not absolute path to file.")
+			originalFile, _ = filepath.Abs(originalFile)
+		}
+
+		// check original file existing
+		if _, err = os.Stat(originalFile); os.IsNotExist(err) {
+			return cli.NewExitError(
+				fmt.Sprintf("Original FILE (%s) does not exist.", originalFile),
+				globals.Other)
+		}
 	}
 	originalFileBase := filepath.Base(originalFile)
 	// TODO: check file, SIZE, TYPE, etc
@@ -79,7 +94,7 @@ func CmdPutFile(c *cli.Context) (err error) {
 	}
 
 	// copy (replace?) file to mountpointPath
-	err = copyFile(originalFile, destinationFile)
+	err = copyFile(originalFile, destinationFile, content)
 	if err != nil {
 		return cli.NewExitError(
 			fmt.Sprintf("We have a problem with copy file: %v", err),
@@ -145,7 +160,7 @@ func CmdGetFile(c *cli.Context) (err error) {
 	}
 
 	// copy (replace?) file to mountpointPath
-	err = copyFile(originalFile, destinationFile)
+	err = copyFile(originalFile, destinationFile, nil)
 	if err != nil {
 		return cli.NewExitError(
 			fmt.Sprintf("We have a problem with copy file: %v", err),
@@ -165,13 +180,19 @@ func CmdSearchFile(c *cli.Context) {
 
 // TODO: optimize coping
 // TODO: add replace
-func copyFile(origFile, destFile string) error {
-	// Open original file
-	originalFile, err := os.Open(origFile)
-	defer originalFile.Close()
-	if err != nil {
-		tlog.Warn.Println(err)
-		return err
+func copyFile(origFile, destFile string, content []byte) (err error) {
+	var originalFile *os.File
+	var bytes64 int64
+	var bytesWritten int
+
+	if content == nil {
+		// Open original file
+		originalFile, err := os.Open(origFile)
+		defer originalFile.Close()
+		if err != nil {
+			tlog.Warn.Println(err)
+			return err
+		}
 	}
 
 	// Create new file
@@ -183,7 +204,12 @@ func copyFile(origFile, destFile string) error {
 	}
 
 	// Copy the bytes to destination from source
-	bytesWritten, err := io.Copy(newFile, originalFile)
+	if content == nil {
+		bytes64, err = io.Copy(newFile, originalFile)
+		bytesWritten = int(bytes64)
+	} else {
+		bytesWritten, err = newFile.Write(content)
+	}
 	if err != nil {
 		tlog.Warn.Println(err)
 		return err

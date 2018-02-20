@@ -59,9 +59,13 @@ func ApiCreate(origin string) (err error) {
 	// TODO: do something with configuration
 	config.NewFilesystemConfig(origin, originPath, config.FSLoopback).Save()
 
+	// TODO: HACK for gRPC methods
 	if config.CommonConfig == nil {
 		config.InitWizeConfig()
+	} else {
+		config.CommonConfig.Load()
 	}
+
 	err = config.CommonConfig.CreateFilesystem(origin, originPath, fstype)
 	if err != nil {
 		tlog.Warn.Printf("Problem with adding Filesystem to Config: %v", err)
@@ -117,9 +121,13 @@ func ApiDelete(origin string) (err error) {
 		os.RemoveAll(originPath)
 	}
 
+	// TODO: HACK for gRPC methods
 	if config.CommonConfig == nil {
 		config.InitWizeConfig()
+	} else {
+		config.CommonConfig.Load()
 	}
+
 	err = config.CommonConfig.DeleteFilesystem(origin)
 	if err != nil {
 		tlog.Warn.Printf("Problem with adding Filesystem to Config: %v", err)
@@ -246,9 +254,13 @@ func ApiUnmount(origin string) (err error) {
 	util.DoUnmount(mountpointPath)
 
 	// TODO: do something with configuration
+	// TODO: HACK for gRPC methods
 	if config.CommonConfig == nil {
 		config.InitWizeConfig()
+	} else {
+		config.CommonConfig.Load()
 	}
+
 	err = config.CommonConfig.UnmountFilesystem(mountpoint)
 	if err != nil {
 		tlog.Warn.Printf("Problem with deleteing Filesystem from Config: %v", err)
@@ -274,7 +286,7 @@ func checkOriginType(origin string) (fstype config.FSType, err error) {
 		return fstype, err
 	}
 
-	tlog.Debug.Printf("Origin Type: %d", fstype)
+	//tlog.Debug.Printf("Origin Type: %d", fstype)
 	return fstype, nil
 }
 
@@ -285,6 +297,6 @@ func getMountpoint(origin string, fstype config.FSType) string {
 	}
 	mountpoint = "_mount" + mountpoint
 
-	tlog.Debug.Printf("Mountpoint: %s", mountpoint)
+	//tlog.Debug.Printf("Mountpoint: %s", mountpoint)
 	return mountpoint
 }
