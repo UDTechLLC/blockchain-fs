@@ -71,6 +71,9 @@ func DoMount(fstype config.FSType,
 	debug.FreeOSMemory()
 
 	// TODO: do something with configuration
+	if config.CommonConfig == nil {
+		config.InitWizeConfig()
+	}
 	err = config.CommonConfig.MountFilesystem(origin, mountpoint, mountpointPath)
 	if err != nil {
 		tlog.Warn.Printf("Problem with adding Filesystem to Config: %v", err)

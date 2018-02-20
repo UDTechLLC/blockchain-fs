@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"log"
 	"net"
+	"os/exec"
+	"syscall"
 
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
@@ -49,7 +51,30 @@ func (s *wizefsServer) Delete(ctx context.Context, request *pb.FilesystemRequest
 }
 
 func (s *wizefsServer) Mount(ctx context.Context, request *pb.FilesystemRequest) (response *pb.FilesystemResponse, err error) {
-	return nil, nil
+	origin := request.GetOrigin()
+	var message string = "initial message"
+
+	c := exec.Command("../mount/mount", origin)
+	cerr := c.Start()
+	if cerr != nil {
+		message = fmt.Sprintf("starting command failed: %v", cerr)
+	}
+	log.Printf("starting command...")
+	cerr = c.Wait()
+	if cerr != nil {
+		if exiterr, ok := cerr.(*exec.ExitError); ok {
+			if waitstat, ok := exiterr.Sys().(syscall.WaitStatus); ok {
+				message = fmt.Sprintf("wait returned an exit status: %d", waitstat.ExitStatus())
+			}
+		}
+		message = fmt.Sprintf("wait returned an unknown error: %v", cerr)
+	}
+	log.Printf("ending command...")
+
+	return &pb.FilesystemResponse{
+		Executed: true,
+		Message:  message,
+	}, nil
 }
 
 func (s *wizefsServer) Unmount(ctx context.Context, request *pb.FilesystemRequest) (response *pb.FilesystemResponse, err error) {

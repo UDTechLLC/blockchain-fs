@@ -156,6 +156,11 @@ func CmdMountFilesystem(c *cli.Context) (err error) {
 	// TODO: check permissions
 	//origin, _ := filepath.Abs(c.Args()[0])
 	origin := c.Args()[0]
+
+	return ApiMount(origin, notifypid)
+}
+
+func ApiMount(origin string, notifypid int) (err error) {
 	originPath := globals.OriginDirPath + origin
 
 	fstype, err := checkOriginType(originPath)
