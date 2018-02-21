@@ -10,6 +10,7 @@ import (
 	"google.golang.org/grpc"
 
 	pb "bitbucket.org/udt/wizefs/grpc/wizefsservice"
+	"bitbucket.org/udt/wizefs/internal/globals"
 	"bitbucket.org/udt/wizefs/internal/tlog"
 )
 
@@ -65,17 +66,34 @@ func main() {
 
 	// Put
 	// TODO: HACK - just for local testing
-	filepath := "/home/sergey/code/test/TESTDIR2/test.txt"
+	filepath := globals.OriginDirPath + "TESTDIR1/test.txt"
 	content, err := readFile(filepath)
 	if err == nil {
+		tlog.Info.Printf("Request content: \n%s\n", content)
+
 		tlog.Info.Printf("Request: Put. Origin: %s", origin)
-		resp, err := client.Put(context.Background(),
+		respPut, err := client.Put(context.Background(),
 			&pb.PutRequest{
 				Filename: "test.txt",
 				Content:  content,
 				Origin:   origin,
 			})
-		tlog.Info.Printf("Response: %v. Error: %v", resp, err)
+		tlog.Info.Printf("Response: %v. Error: %v", respPut, err)
+	}
+
+	time.Sleep(3 * time.Second)
+
+	// Get
+	if err == nil {
+		tlog.Info.Printf("Request: Get. Origin: %s", origin)
+		respGet, err := client.Get(context.Background(),
+			&pb.GetRequest{
+				Filename: "test.txt",
+				Origin:   origin,
+			})
+		tlog.Info.Printf("Error: %v", err)
+		tlog.Info.Printf("Response message: %s.", respGet.Message)
+		tlog.Info.Printf("Response contentb: \n%s\n", respGet.Content)
 	}
 
 	time.Sleep(3 * time.Second)
