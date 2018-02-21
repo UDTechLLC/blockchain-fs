@@ -29,7 +29,6 @@ func CmdCreateFilesystem(c *cli.Context) (err error) {
 
 func ApiCreate(origin string) (err error) {
 	originPath := globals.OriginDirPath + origin
-
 	fstype, err := checkOriginType(originPath)
 	if err != nil {
 		return cli.NewExitError(
@@ -184,7 +183,6 @@ func CmdMountFilesystem(c *cli.Context) (err error) {
 
 func ApiMount(origin string, notifypid int) (err error) {
 	originPath := globals.OriginDirPath + origin
-
 	fstype, err := checkOriginType(originPath)
 	if err != nil {
 		return cli.NewExitError(
@@ -196,14 +194,14 @@ func ApiMount(origin string, notifypid int) (err error) {
 	//	os.Exit(globals.Origin)
 	//}
 
-	// TODO: check mountpoint
+	// FUTURE: check mountpoint
+	//mountpoint := c.Args()[1]
 	//mountpoint, err := filepath.Abs(c.Args()[1])
 	//if err != nil {
 	//	tlog.Warn.Printf("Invalid mountpoint: %v", err)
 	//	os.Exit(globals.MountPoint)
 	//}
 
-	//mountpoint := c.Args()[1]
 	// TODO: HACK - create/get mountpoint internally
 	mountpoint := getMountpoint(origin, fstype)
 	mountpointPath := globals.OriginDirPath + mountpoint
@@ -244,7 +242,6 @@ func CmdUnmountFilesystem(c *cli.Context) (err error) {
 
 func ApiUnmount(origin string) (err error) {
 	originPath := globals.OriginDirPath + origin
-
 	fstype, err := checkOriginType(originPath)
 	if err != nil {
 		return cli.NewExitError(
@@ -252,13 +249,14 @@ func ApiUnmount(origin string) (err error) {
 			globals.Origin)
 	}
 
-	// TODO: check mountpoint
+	// FUTURE: check mountpoint
+	//mountpoint := c.Args()[0]
 	//mountpoint, err := filepath.Abs(c.Args()[0])
 	//if err != nil {
 	//	tlog.Warn.Printf("Invalid mountpoint: %v", err)
 	//	os.Exit(globals.MountPoint)
 	//}
-	//mountpoint := c.Args()[0]
+
 	// TODO: HACK - create/get mountpoint internally
 	mountpoint := getMountpoint(origin, fstype)
 	mountpointPath := globals.OriginDirPath + mountpoint
@@ -267,7 +265,6 @@ func ApiUnmount(origin string) (err error) {
 
 	util.DoUnmount(mountpointPath)
 
-	// TODO: do something with configuration
 	// TODO: HACK for gRPC methods
 	if config.CommonConfig == nil {
 		config.InitWizeConfig()
@@ -285,8 +282,6 @@ func ApiUnmount(origin string) (err error) {
 		}
 	}
 
-	// TODO: do something else
-
 	return nil
 }
 
@@ -300,7 +295,6 @@ func checkOriginType(origin string) (fstype config.FSType, err error) {
 		return fstype, err
 	}
 
-	//tlog.Debug.Printf("Origin Type: %d", fstype)
 	return fstype, nil
 }
 
@@ -311,6 +305,5 @@ func getMountpoint(origin string, fstype config.FSType) string {
 	}
 	mountpoint = "_mount" + mountpoint
 
-	//tlog.Debug.Printf("Mountpoint: %s", mountpoint)
 	return mountpoint
 }

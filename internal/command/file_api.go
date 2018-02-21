@@ -16,15 +16,7 @@ import (
 )
 
 // wizefs load FILE ORIGIN -> load FILE [ORIGIN]
-// FILE?
-// 1. existing file with full path?
-// 2. MD5? SIZE? TYPE? other parameters
-// Use Case:
-// 0. wizefs list (JSON list)
-// 1. wizefs create ORIGIN or wizefs find ORIGIN
-// 2. wizefs mount ORIGIN {MOUNTPOINT}
-// 3. wizefs load FILE ORIGIN
-// TODO: Output? JSON? result
+// TODO: output result: stdout, JSON
 // TODO: check permissions
 func CmdPutFile(c *cli.Context) (err error) {
 	if c.NArg() != 2 {
@@ -40,12 +32,12 @@ func CmdPutFile(c *cli.Context) (err error) {
 	return ApiPut(originalFile, origin, nil)
 }
 
+// TODO: check MD5, size, type, etc
 func ApiPut(originalFile, origin string, content []byte) (err error) {
 	var mountpointPath string
 	//originPath := OriginDir + origin
 
 	// check origin via config file (database) and get mountpoint if it exists
-	// TODO: add more information about errors
 	// TODO: auto-mount if (Filesystem is not mounted!)?
 
 	// TODO: HACK for gRPC methods
@@ -62,17 +54,16 @@ func ApiPut(originalFile, origin string, content []byte) (err error) {
 			globals.MountPoint)
 	}
 
-	// TODO: check MD5?
-
 	if content == nil {
 		// check PATH
 		if !filepath.IsAbs(originalFile) {
-			// TODO: HACK - for temporary testing
 			//return cli.NewExitError(
 			//	"FILE argument is not absolute path to file.",
 			//	globals.Other)
 
 			tlog.Debug.Println("HACK: FILE argument is not absolute path to file.")
+
+			// HACK: for temporary testing
 			originalFile, _ = filepath.Abs(originalFile)
 		}
 
@@ -84,7 +75,6 @@ func ApiPut(originalFile, origin string, content []byte) (err error) {
 		}
 	}
 	originalFileBase := filepath.Base(originalFile)
-	// TODO: check file, SIZE, TYPE, etc
 
 	// check destination file existing
 	destinationFile := mountpointPath + "/" + originalFileBase
@@ -106,7 +96,7 @@ func ApiPut(originalFile, origin string, content []byte) (err error) {
 }
 
 // wizefs get FILE ORIGIN
-// TODO: Output? JSON? result + file data/buffer (binary data in JSON?)
+// TODO: output result: stdout, JSON + file content []byte, size
 // TODO: check permissions
 func CmdGetFile(c *cli.Context) (err error) {
 	if c.NArg() != 2 {
@@ -123,13 +113,13 @@ func CmdGetFile(c *cli.Context) (err error) {
 	return err
 }
 
+// TODO: check MD5, size, type, etc
 func ApiGet(originalFile, origin string, getContentOnly bool) (content []byte, err error) {
 	var mountpointPath string
 
 	//originPath := OriginDir + origin
 
 	// check origin via config file (database) and get mountpoint if it exists
-	// TODO: add more information about errors
 	// TODO: auto-mount if (Filesystem is not mounted!)?
 
 	// TODO: HACK for gRPC methods
@@ -145,8 +135,6 @@ func ApiGet(originalFile, origin string, getContentOnly bool) (content []byte, e
 			"Did not find MOUNTPOINT in common config.",
 			globals.MountPoint)
 	}
-
-	// TODO: check MD5?
 
 	// FIXME: check PATH
 	if filepath.IsAbs(originalFile) {
@@ -165,13 +153,12 @@ func ApiGet(originalFile, origin string, getContentOnly bool) (content []byte, e
 			fmt.Sprintf("Original FILE (%s) does not exist.", originalFile),
 			globals.Other)
 	}
-	// TODO: check file, SIZE, TYPE, etc
 
 	// check destination file existing
 	var destinationFile string = ""
 	if !getContentOnly {
 		// TODO: HACK - we just copy file into application directory
-		destinationFile, _ := filepath.Abs(originalFileBase)
+		destinationFile, _ = filepath.Abs(originalFileBase)
 		if _, err = os.Stat(destinationFile); os.IsExist(err) {
 			return nil, cli.NewExitError(
 				fmt.Sprintf("Destination FILE (%s) is exist.", destinationFile),
@@ -191,14 +178,10 @@ func ApiGet(originalFile, origin string, getContentOnly bool) (content []byte, e
 }
 
 // wizefs search FILE
-// Use Case:
-// . wizefs search FILE
-// Output? JSON? result + ??? file data/buffer (binary data in JSON?)
 func CmdSearchFile(c *cli.Context) {
 
 }
 
-// TODO: optimize coping
 // TODO: add replace
 func copyFile(origFile, destFile string, origContent []byte) (destContent []byte, err error) {
 	var oldFile, newFile *os.File
@@ -207,79 +190,67 @@ func copyFile(origFile, destFile string, origContent []byte) (destContent []byte
 
 	destContent = nil
 
-	// TODO: to refactor this code
-	switch {
-	case origContent == nil && destFile != "":
+	// CLI & gRPC/Get
+	if origContent == nil {
 		// Open original file
 		oldFile, err = os.Open(origFile)
 		defer oldFile.Close()
 		if err != nil {
 			tlog.Warn.Printf("Open: %v", err)
-			return nil, err
+			return
 		}
+	}
+
+	// CLI & gRPC/Put
+	if destFile != "" {
 		// Create new file
 		newFile, err = os.Create(destFile)
 		defer newFile.Close()
 		if err != nil {
 			tlog.Warn.Printf("Create: %v", err)
-			return nil, err
+			return
 		}
+	}
 
+	switch {
+	// CLI
+	case origContent == nil && destFile != "":
 		bytes64, err = io.Copy(newFile, oldFile)
 		bytesWritten = int(bytes64)
 		if err != nil {
 			tlog.Warn.Printf("Copy: %v", err)
-			return nil, err
+			return
 		}
 
-		// Commit the file contents
-		// Flushes memory to disk
-		err = newFile.Sync()
-		if err != nil {
-			tlog.Warn.Printf("Sync: %v", err)
-			return nil, err
-		}
-
+	// gRPC/Put
 	case origContent != nil && destFile != "":
-		// Create new file
-		newFile, err = os.Create(destFile)
-		defer newFile.Close()
-		if err != nil {
-			tlog.Warn.Printf("Create: %v", err)
-			return nil, err
-		}
-
 		bytesWritten, err = newFile.Write(origContent)
 		if err != nil {
 			tlog.Warn.Printf("Copy: %v", err)
-			return nil, err
+			return
 		}
 
-		// Commit the file contents
-		// Flushes memory to disk
-		err = newFile.Sync()
-		if err != nil {
-			tlog.Warn.Printf("Sync: %v", err)
-			return nil, err
-		}
-
+	// gRPC/Get
 	case destFile == "":
-		// Open original file
-		oldFile, err = os.Open(origFile)
-		defer oldFile.Close()
-		if err != nil {
-			tlog.Warn.Printf("Open: %v", err)
-			return nil, err
-		}
-
 		destContent, err = ioutil.ReadAll(oldFile)
 		if err != nil {
 			tlog.Warn.Printf("Copy: %v", err)
-			return nil, err
+			return
 		}
 		bytesWritten = len(destContent)
 
 	default:
+	}
+
+	// CLI & gRPC/Put
+	if destFile != "" {
+		// Commit the file contents
+		// Flushes memory to disk
+		err = newFile.Sync()
+		if err != nil {
+			tlog.Warn.Printf("Sync: %v", err)
+			return
+		}
 	}
 
 	tlog.Debug.Printf("Copied %d bytes.", bytesWritten)
