@@ -36,47 +36,50 @@ func ApiCreate(origin string) (err error) {
 			fmt.Sprintf("Invalid origin: %v", err),
 			globals.Origin)
 	}
-	// TODO: Create zip files
+	// TODO: create zip files
 	if fstype == config.FSZip {
 		return cli.NewExitError(
-			"Creating zip files are not support now",
+			"Creating zip files are not supported now",
 			globals.Origin)
 	}
 
 	tlog.Debug.Printf("Create new Filesystem %s on path %s\n", origin, originPath)
 
 	// create Directory if it's not exist
-	// TODO: check permissions
 	if _, err := os.Stat(originPath); os.IsNotExist(err) {
 		tlog.Debug.Printf("Create new directory: %s", originPath)
 		os.MkdirAll(originPath, 0755)
 	} else {
-		tlog.Warn.Printf("Directory %s is exist already!", originPath)
-		return nil
+		// TODO: check permissions
+		return cli.NewExitError(
+			fmt.Sprintf("Directory %s is exist already!", originPath),
+			globals.Origin)
 	}
 
-	// TODO: initialize Filesystem
-	// TODO: do something with configuration
+	// initialize Filesystem
+	// do something with configuration
 	config.NewFilesystemConfig(origin, originPath, config.FSLoopback).Save()
 
 	// TODO: HACK for gRPC methods
 	if config.CommonConfig == nil {
 		config.InitWizeConfig()
-	} else {
-		config.CommonConfig.Load()
+		//} else {
+		//	config.CommonConfig.Load()
 	}
 
 	err = config.CommonConfig.CreateFilesystem(origin, originPath, fstype)
 	if err != nil {
-		tlog.Warn.Printf("Problem with adding Filesystem to Config: %v", err)
+		return cli.NewExitError(
+			fmt.Sprintf("Problem with adding Filesystem to Config: %v", err),
+			globals.Origin)
 	} else {
 		err = config.CommonConfig.Save()
 		if err != nil {
-			tlog.Warn.Printf("Problem with saving Config: %v", err)
+			return cli.NewExitError(
+				fmt.Sprintf("Problem with saving Config: %v", err),
+				globals.Origin)
 		}
 	}
-
-	// TODO: do something else
 
 	return nil
 }
@@ -135,8 +138,8 @@ func ApiDelete(origin string) (err error) {
 	// TODO: HACK for gRPC methods
 	if config.CommonConfig == nil {
 		config.InitWizeConfig()
-	} else {
-		config.CommonConfig.Load()
+		//} else {
+		//	config.CommonConfig.Load()
 	}
 
 	err = config.CommonConfig.DeleteFilesystem(origin)
@@ -268,8 +271,8 @@ func ApiUnmount(origin string) (err error) {
 	// TODO: HACK for gRPC methods
 	if config.CommonConfig == nil {
 		config.InitWizeConfig()
-	} else {
-		config.CommonConfig.Load()
+		//} else {
+		//	config.CommonConfig.Load()
 	}
 
 	err = config.CommonConfig.UnmountFilesystem(mountpoint)

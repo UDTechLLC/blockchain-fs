@@ -72,6 +72,9 @@ func NewWizeConfig(path string) *WizeConfig {
 }
 
 func (wc *WizeConfig) CreateFilesystem(origin, originPath string, itype FSType) error {
+	// HACK: this fixed problems with gRPC methods
+	wc.Load()
+
 	_, ok := wc.Filesystems[origin]
 	if ok {
 		tlog.Warn.Println("This filesystem is already added!")
@@ -90,6 +93,9 @@ func (wc *WizeConfig) CreateFilesystem(origin, originPath string, itype FSType) 
 }
 
 func (wc *WizeConfig) DeleteFilesystem(origin string) error {
+	// HACK: this fixed problems with gRPC methods
+	wc.Load()
+
 	_, ok := wc.Filesystems[origin]
 	if ok {
 		delete(wc.Filesystems, origin)
@@ -101,6 +107,10 @@ func (wc *WizeConfig) DeleteFilesystem(origin string) error {
 }
 
 func (wc *WizeConfig) MountFilesystem(origin, mountpoint, mountpointpath string) error {
+	// HACK: this fixed problems with gRPC methods
+	// HACK2: for gRPC/Mount we don't need to Load() config, because it works via mount CLI app
+	//wc.Load()
+
 	_, ok := wc.Mountpoints[mountpoint]
 	if ok {
 		tlog.Warn.Println("This filesystem is already added!")
@@ -125,6 +135,9 @@ func (wc *WizeConfig) MountFilesystem(origin, mountpoint, mountpointpath string)
 }
 
 func (wc *WizeConfig) UnmountFilesystem(mountpoint string) error {
+	// HACK: this fixed problems with gRPC methods
+	wc.Load()
+
 	mpi, ok := wc.Mountpoints[mountpoint]
 	if ok {
 		origin := mpi.OriginKey
@@ -193,6 +206,9 @@ func (wc *WizeConfig) Load() error {
 }
 
 func (wc *WizeConfig) CheckOriginGetMountpoint(origin string) (mountpointPath string, err error) {
+	// HACK: this fixed problems with gRPC methods
+	wc.Load()
+
 	var ok bool
 	var fsinfo FilesystemInfo
 	fsinfo, ok = wc.Filesystems[origin]

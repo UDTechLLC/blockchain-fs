@@ -73,6 +73,8 @@ func DoMount(fstype config.FSType,
 	// TODO: do something with configuration
 	if config.CommonConfig == nil {
 		config.InitWizeConfig()
+		//} else {
+		//	config.CommonConfig.Load()
 	}
 	err = config.CommonConfig.MountFilesystem(origin, mountpoint, mountpointPath)
 	if err != nil {

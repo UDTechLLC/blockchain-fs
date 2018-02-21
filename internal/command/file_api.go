@@ -51,8 +51,8 @@ func ApiPut(originalFile, origin string, content []byte) (err error) {
 	// TODO: HACK for gRPC methods
 	if config.CommonConfig == nil {
 		config.InitWizeConfig()
-	} else {
-		config.CommonConfig.Load()
+		//} else {
+		//	config.CommonConfig.Load()
 	}
 
 	mountpointPath, err = config.CommonConfig.CheckOriginGetMountpoint(origin)
@@ -135,8 +135,8 @@ func ApiGet(originalFile, origin string, getContentOnly bool) (content []byte, e
 	// TODO: HACK for gRPC methods
 	if config.CommonConfig == nil {
 		config.InitWizeConfig()
-	} else {
-		config.CommonConfig.Load()
+		//} else {
+		//	config.CommonConfig.Load()
 	}
 
 	mountpointPath, err = config.CommonConfig.CheckOriginGetMountpoint(origin)
