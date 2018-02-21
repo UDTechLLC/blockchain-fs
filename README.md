@@ -8,7 +8,7 @@ go version go1.9.2
 
 
 CLI application is located at the root project directory:
-$GOPATH/src/bitbucket.org/udt/wizefs
+[$GOPATH/src/bitbucket.org/udt/wizefs]
 
 You should go to this directory and run `go build`
 
@@ -17,7 +17,7 @@ You should go to this directory and run `go build`
 
 
 gRPC applications are located at the grpc directory:
-$GOPATH/src/bitbucket.org/udt/wizefs/grpc
+[$GOPATH/src/bitbucket.org/udt/wizefs/grpc]
 
 You should build 3 commands: grpc/server, grpc/client and grpc/mount.
 
@@ -79,6 +79,13 @@ Unmount an existing MOUNTPOINT (application can search it self by ORIGIN).
 Also this command delete filesystem from common config.
 
 `put FILE ORIGIN`
+
+Upload FILE (you can use full path to the file here) to existing and mounted filesystem with name (label) ORIGIN. Now it work only with directory-based filesystem.
+
+`get FILE ORIGIN`
+
+Download FILE (you should use only filename now) from existing and mounted filesystem with name (label) ORIGIN to the current directory. Now it work only with directory-based filesystem.
+
 
 ### API Commands Issues
 
