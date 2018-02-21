@@ -121,6 +121,17 @@ func ApiDelete(origin string) (err error) {
 		os.RemoveAll(originPath)
 	}
 
+	// TODO: HACK - get mountpoint internally
+	mountpoint := getMountpoint(origin, fstype)
+	mountpointPath := globals.OriginDirPath + mountpoint
+
+	if _, err := os.Stat(mountpointPath); os.IsNotExist(err) {
+		tlog.Warn.Printf("Directory %s is not exist!", mountpointPath)
+	} else {
+		tlog.Debug.Printf("Delete existing directory: %s", mountpointPath)
+		os.RemoveAll(mountpointPath)
+	}
+
 	// TODO: HACK for gRPC methods
 	if config.CommonConfig == nil {
 		config.InitWizeConfig()
