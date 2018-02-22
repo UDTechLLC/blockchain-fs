@@ -42,6 +42,11 @@ func getExt(file string) string {
 	return base[idx:]
 }
 
+func isLZFS(file string) bool {
+	base := filepath.Base(file)
+	return base[0] == '_'
+}
+
 // CheckDirOrZip
 // - check if "dir" exists and is a directory
 // - check if it's not directory but is a zip file
@@ -57,6 +62,9 @@ func CheckDirOrZip(dirOrZip string) (config.FSType, error) {
 
 	_, ok := zips[ext]
 	if ok {
+		if isLZFS(dirOrZip) {
+			return config.LZFS, nil
+		}
 		return config.FSZip, nil
 	}
 

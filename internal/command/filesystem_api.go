@@ -49,17 +49,19 @@ func ApiCreate(origin string) (err error) {
 		tlog.Debug.Printf("Create new directory: %s", originPath)
 		os.MkdirAll(originPath, 0755)
 	} else {
-		// TODO: check permissions
-		return cli.NewExitError(
-			fmt.Sprintf("Directory %s is exist already!", originPath),
-			globals.Origin)
+		// TODO: to decide what is it: no error, error, error & Extt
+		return nil
+		//return fmt.Errorf("Directory %s is exist already!", originPath)
+		//return cli.NewExitError(
+		//	fmt.Sprintf("Directory %s is exist already!", originPath),
+		//	globals.Origin)
 	}
 
 	// initialize Filesystem
 	// do something with configuration
 	config.NewFilesystemConfig(origin, originPath, config.FSLoopback).Save()
 
-	// TODO: HACK for gRPC methods
+	// HACK for gRPC methods
 	if config.CommonConfig == nil {
 		config.InitWizeConfig()
 		//} else {
@@ -98,6 +100,21 @@ func CmdDeleteFilesystem(c *cli.Context) (err error) {
 }
 
 func ApiDelete(origin string) (err error) {
+	// check if origin is located in the common config
+	// if not then we just saying about this
+	// TODO: hide this into WizeConfig struct method
+	fsinfo, ok := config.CommonConfig.Filesystems[origin]
+	if !ok {
+		return cli.NewExitError(
+			fmt.Sprintf("Did not find ORIGIN: %s in common config.", origin),
+			globals.Origin)
+	}
+	if fsinfo.MountpointKey != "" {
+		return cli.NewExitError(
+			fmt.Sprintf("This ORIGIN: %s is already mounted under MOUNTPOINT %s", origin, fsinfo.MountpointKey),
+			globals.Origin)
+	}
+
 	originPath := globals.OriginDirPath + origin
 	fstype, err := checkOriginType(originPath)
 	if err != nil {
@@ -106,7 +123,7 @@ func ApiDelete(origin string) (err error) {
 			globals.Origin)
 	}
 	// TODO: Delete zip files
-	if fstype == config.FSZip {
+	if fstype == config.FSZip || fstype == config.LZFS {
 		return cli.NewExitError(
 			"Deleting zip files are not support now",
 			globals.Origin)
@@ -163,6 +180,44 @@ func CmdMountFilesystem(c *cli.Context) (err error) {
 			globals.Usage)
 	}
 
+	// TODO: check permissions
+	//origin, _ := filepath.Abs(c.Args()[0])
+	origin := c.Args()[0]
+
+	// check if origin is located in the common config
+	// if not then we just saying about this
+	// TODO: hide this into WizeConfig struct method
+	fsinfo, ok := config.CommonConfig.Filesystems[origin]
+	if !ok {
+		return cli.NewExitError(
+			fmt.Sprintf("Did not find ORIGIN: %s in common config.", origin),
+			globals.Origin)
+	}
+	if fsinfo.MountpointKey != "" {
+		return cli.NewExitError(
+			fmt.Sprintf("This ORIGIN: %s is already mounted under MOUNTPOINT %s", origin, fsinfo.MountpointKey),
+			globals.Origin)
+	}
+
+	originPath := globals.OriginDirPath + origin
+	fstype, err := checkOriginType(originPath)
+	tlog.Warn.Printf("FS type: %d", fstype)
+	if err != nil {
+		return cli.NewExitError(
+			fmt.Sprintf("Invalid origin: %v", err),
+			globals.Origin)
+	}
+	if fstype == config.FSZip {
+		return cli.NewExitError(
+			fmt.Sprintf("Zip files are not support now"),
+			globals.Origin)
+	}
+	//if fstype == config.LZFS {
+	//	return cli.NewExitError(
+	//		fmt.Sprintf("LZFS files are not support now"),
+	//		globals.Origin)
+	//}
+
 	// Fork a child into the background if "-fg" is not set AND we are mounting
 	// a filesystem. The child will do all the work.
 	// TODO: think about ForkChild function
@@ -173,10 +228,6 @@ func CmdMountFilesystem(c *cli.Context) (err error) {
 	}
 
 	notifypid := c.GlobalInt("notifypid")
-
-	// TODO: check permissions
-	//origin, _ := filepath.Abs(c.Args()[0])
-	origin := c.Args()[0]
 
 	return ApiMount(origin, notifypid)
 }
@@ -189,10 +240,21 @@ func ApiMount(origin string, notifypid int) (err error) {
 			fmt.Sprintf("Invalid origin: %v", err),
 			globals.Origin)
 	}
-	//if fstype == config.FSZip {
-	//	tlog.Warn.Printf("Zip files are not support now")
-	//	os.Exit(globals.Origin)
-	//}
+
+	if fstype == config.LZFS {
+		// unzip to temp directory - OriginDirPath + "temp/" + filename (. -> _)
+		tempPath := globals.OriginDirPath +
+			"temp/" + strings.Replace(origin, ".", "_", -1)
+
+		err = util.UnzipFile(originPath, tempPath)
+		if err != nil {
+			return cli.NewExitError(
+				fmt.Sprintf("LZFS file unzipping failed: %v", err),
+				globals.Origin)
+		}
+
+		originPath = tempPath
+	}
 
 	// FUTURE: check mountpoint
 	//mountpoint := c.Args()[1]
@@ -241,6 +303,21 @@ func CmdUnmountFilesystem(c *cli.Context) (err error) {
 }
 
 func ApiUnmount(origin string) (err error) {
+	// check if origin is located in the common config
+	// if not then we just saying about this
+	// TODO: hide this into WizeConfig struct method
+	fsinfo, ok := config.CommonConfig.Filesystems[origin]
+	if !ok {
+		return cli.NewExitError(
+			fmt.Sprintf("Did not find ORIGIN: %s in common config.", origin),
+			globals.Origin)
+	}
+	if fsinfo.MountpointKey == "" {
+		return cli.NewExitError(
+			fmt.Sprintf("This ORIGIN: %s is not mounted under yet", origin),
+			globals.Origin)
+	}
+
 	originPath := globals.OriginDirPath + origin
 	fstype, err := checkOriginType(originPath)
 	if err != nil {
@@ -264,6 +341,19 @@ func ApiUnmount(origin string) (err error) {
 	tlog.Debug.Printf("Unmount Filesystem %s", mountpointPath)
 
 	util.DoUnmount(mountpointPath)
+
+	if fstype == config.LZFS {
+		// zip temp directory
+		tempPath := globals.OriginDirPath +
+			"temp/" + strings.Replace(origin, ".", "_", -1)
+
+		os.Remove(originPath)
+
+		util.ZipFile(tempPath, originPath)
+
+		// remove temp directory
+		os.RemoveAll(tempPath)
+	}
 
 	// TODO: HACK for gRPC methods
 	if config.CommonConfig == nil {
@@ -300,7 +390,7 @@ func checkOriginType(origin string) (fstype config.FSType, err error) {
 
 func getMountpoint(origin string, fstype config.FSType) string {
 	mountpoint := origin
-	if fstype == config.FSZip {
+	if fstype == config.FSZip || fstype == config.LZFS {
 		mountpoint = strings.Replace(mountpoint, ".", "_", -1)
 	}
 	mountpoint = "_mount" + mountpoint

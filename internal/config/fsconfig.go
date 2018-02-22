@@ -22,6 +22,7 @@ const (
 	FSNone
 	FSLoopback
 	FSZip
+	LZFS
 )
 
 type FilesystemConfig struct {
