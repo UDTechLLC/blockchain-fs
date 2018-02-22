@@ -8,15 +8,9 @@ import (
 	"github.com/urfave/cli"
 
 	"bitbucket.org/udt/wizefs/internal/config"
-	"bitbucket.org/udt/wizefs/internal/exitcodes"
+	"bitbucket.org/udt/wizefs/internal/globals"
 	"bitbucket.org/udt/wizefs/internal/tlog"
 	"bitbucket.org/udt/wizefs/internal/util"
-)
-
-// TODO: HACK - temporary solution is:
-// to store all ORIGINs and MOUNTPOINTs in one place
-var (
-	OriginDir = util.UserHomeDir() + "/code/test/"
 )
 
 // USECASE: wizefs create ORIGIN
@@ -25,52 +19,66 @@ func CmdCreateFilesystem(c *cli.Context) (err error) {
 		return cli.NewExitError(
 			fmt.Sprintf("Wrong number of arguments (have %d, want 1)."+
 				" You passed: %s.", c.NArg(), c.Args()),
-			exitcodes.Usage)
+			globals.Usage)
 	}
 
 	origin := c.Args()[0]
-	originPath := OriginDir + origin
 
+	return ApiCreate(origin)
+}
+
+func ApiCreate(origin string) (err error) {
+	originPath := globals.OriginDirPath + origin
 	fstype, err := checkOriginType(originPath)
 	if err != nil {
 		return cli.NewExitError(
 			fmt.Sprintf("Invalid origin: %v", err),
-			exitcodes.Origin)
+			globals.Origin)
 	}
-	// TODO: Create zip files
+	// TODO: create zip files
 	if fstype == config.FSZip {
 		return cli.NewExitError(
-			"Creating zip files are not support now",
-			exitcodes.Origin)
+			"Creating zip files are not supported now",
+			globals.Origin)
 	}
 
 	tlog.Debug.Printf("Create new Filesystem %s on path %s\n", origin, originPath)
 
 	// create Directory if it's not exist
-	// TODO: check permissions
 	if _, err := os.Stat(originPath); os.IsNotExist(err) {
 		tlog.Debug.Printf("Create new directory: %s", originPath)
 		os.MkdirAll(originPath, 0755)
 	} else {
-		tlog.Warn.Printf("Directory %s is exist already!", originPath)
-		return nil
+		// TODO: check permissions
+		return cli.NewExitError(
+			fmt.Sprintf("Directory %s is exist already!", originPath),
+			globals.Origin)
 	}
 
-	// TODO: initialize Filesystem
-	// TODO: do something with configuration
+	// initialize Filesystem
+	// do something with configuration
 	config.NewFilesystemConfig(origin, originPath, config.FSLoopback).Save()
+
+	// TODO: HACK for gRPC methods
+	if config.CommonConfig == nil {
+		config.InitWizeConfig()
+		//} else {
+		//	config.CommonConfig.Load()
+	}
 
 	err = config.CommonConfig.CreateFilesystem(origin, originPath, fstype)
 	if err != nil {
-		tlog.Warn.Printf("Problem with adding Filesystem to Config: %v", err)
+		return cli.NewExitError(
+			fmt.Sprintf("Problem with adding Filesystem to Config: %v", err),
+			globals.Origin)
 	} else {
 		err = config.CommonConfig.Save()
 		if err != nil {
-			tlog.Warn.Printf("Problem with saving Config: %v", err)
+			return cli.NewExitError(
+				fmt.Sprintf("Problem with saving Config: %v", err),
+				globals.Origin)
 		}
 	}
-
-	// TODO: do something else
 
 	return nil
 }
@@ -81,22 +89,27 @@ func CmdDeleteFilesystem(c *cli.Context) (err error) {
 		return cli.NewExitError(
 			fmt.Sprintf("Wrong number of arguments (have %d, want 1)."+
 				" You passed: %s.", c.NArg(), c.Args()),
-			exitcodes.Usage)
+			globals.Usage)
 	}
 
 	origin := c.Args()[0]
-	originPath := OriginDir + origin
+
+	return ApiDelete(origin)
+}
+
+func ApiDelete(origin string) (err error) {
+	originPath := globals.OriginDirPath + origin
 	fstype, err := checkOriginType(originPath)
 	if err != nil {
 		return cli.NewExitError(
 			fmt.Sprintf("Invalid origin: %v", err),
-			exitcodes.Origin)
+			globals.Origin)
 	}
 	// TODO: Delete zip files
 	if fstype == config.FSZip {
 		return cli.NewExitError(
 			"Deleting zip files are not support now",
-			exitcodes.Origin)
+			globals.Origin)
 	}
 
 	tlog.Debug.Printf("Delete existing Filesystem: %s", origin)
@@ -108,6 +121,24 @@ func CmdDeleteFilesystem(c *cli.Context) (err error) {
 	} else {
 		tlog.Debug.Printf("Delete existing directory: %s", originPath)
 		os.RemoveAll(originPath)
+	}
+
+	// TODO: HACK - get mountpoint internally
+	mountpoint := getMountpoint(origin, fstype)
+	mountpointPath := globals.OriginDirPath + mountpoint
+
+	if _, err := os.Stat(mountpointPath); os.IsNotExist(err) {
+		tlog.Warn.Printf("Directory %s is not exist!", mountpointPath)
+	} else {
+		tlog.Debug.Printf("Delete existing directory: %s", mountpointPath)
+		os.RemoveAll(mountpointPath)
+	}
+
+	// TODO: HACK for gRPC methods
+	if config.CommonConfig == nil {
+		config.InitWizeConfig()
+		//} else {
+		//	config.CommonConfig.Load()
 	}
 
 	err = config.CommonConfig.DeleteFilesystem(origin)
@@ -129,7 +160,7 @@ func CmdMountFilesystem(c *cli.Context) (err error) {
 		return cli.NewExitError(
 			fmt.Sprintf("Wrong number of arguments (have %d, want 1)."+
 				" You passed: %s.", c.NArg(), c.Args()),
-			exitcodes.Usage)
+			globals.Usage)
 	}
 
 	// Fork a child into the background if "-fg" is not set AND we are mounting
@@ -146,30 +177,34 @@ func CmdMountFilesystem(c *cli.Context) (err error) {
 	// TODO: check permissions
 	//origin, _ := filepath.Abs(c.Args()[0])
 	origin := c.Args()[0]
-	originPath := OriginDir + origin
 
+	return ApiMount(origin, notifypid)
+}
+
+func ApiMount(origin string, notifypid int) (err error) {
+	originPath := globals.OriginDirPath + origin
 	fstype, err := checkOriginType(originPath)
 	if err != nil {
 		return cli.NewExitError(
 			fmt.Sprintf("Invalid origin: %v", err),
-			exitcodes.Origin)
+			globals.Origin)
 	}
 	//if fstype == config.FSZip {
 	//	tlog.Warn.Printf("Zip files are not support now")
-	//	os.Exit(exitcodes.Origin)
+	//	os.Exit(globals.Origin)
 	//}
 
-	// TODO: check mountpoint
+	// FUTURE: check mountpoint
+	//mountpoint := c.Args()[1]
 	//mountpoint, err := filepath.Abs(c.Args()[1])
 	//if err != nil {
 	//	tlog.Warn.Printf("Invalid mountpoint: %v", err)
-	//	os.Exit(exitcodes.MountPoint)
+	//	os.Exit(globals.MountPoint)
 	//}
 
-	//mountpoint := c.Args()[1]
 	// TODO: HACK - create/get mountpoint internally
 	mountpoint := getMountpoint(origin, fstype)
-	mountpointPath := OriginDir + mountpoint
+	mountpointPath := globals.OriginDirPath + mountpoint
 
 	if _, err := os.Stat(mountpointPath); os.IsNotExist(err) {
 		tlog.Debug.Printf("Create new directory: %s", mountpointPath)
@@ -197,35 +232,46 @@ func CmdUnmountFilesystem(c *cli.Context) (err error) {
 		return cli.NewExitError(
 			fmt.Sprintf("Wrong number of arguments (have %d, want 1)."+
 				" You passed: %s.", c.NArg(), c.Args()),
-			exitcodes.Usage)
+			globals.Usage)
 	}
 
 	origin := c.Args()[0]
-	originPath := OriginDir + origin
 
+	return ApiUnmount(origin)
+}
+
+func ApiUnmount(origin string) (err error) {
+	originPath := globals.OriginDirPath + origin
 	fstype, err := checkOriginType(originPath)
 	if err != nil {
 		return cli.NewExitError(
 			fmt.Sprintf("Invalid origin: %v", err),
-			exitcodes.Origin)
+			globals.Origin)
 	}
 
-	// TODO: check mountpoint
+	// FUTURE: check mountpoint
+	//mountpoint := c.Args()[0]
 	//mountpoint, err := filepath.Abs(c.Args()[0])
 	//if err != nil {
 	//	tlog.Warn.Printf("Invalid mountpoint: %v", err)
-	//	os.Exit(exitcodes.MountPoint)
+	//	os.Exit(globals.MountPoint)
 	//}
-	//mountpoint := c.Args()[0]
+
 	// TODO: HACK - create/get mountpoint internally
 	mountpoint := getMountpoint(origin, fstype)
-	mountpointPath := OriginDir + mountpoint
+	mountpointPath := globals.OriginDirPath + mountpoint
 
 	tlog.Debug.Printf("Unmount Filesystem %s", mountpointPath)
 
 	util.DoUnmount(mountpointPath)
 
-	// TODO: do something with configuration
+	// TODO: HACK for gRPC methods
+	if config.CommonConfig == nil {
+		config.InitWizeConfig()
+		//} else {
+		//	config.CommonConfig.Load()
+	}
+
 	err = config.CommonConfig.UnmountFilesystem(mountpoint)
 	if err != nil {
 		tlog.Warn.Printf("Problem with deleteing Filesystem from Config: %v", err)
@@ -235,8 +281,6 @@ func CmdUnmountFilesystem(c *cli.Context) (err error) {
 			tlog.Warn.Printf("Problem with saving Config: %v", err)
 		}
 	}
-
-	// TODO: do something else
 
 	return nil
 }
@@ -251,7 +295,6 @@ func checkOriginType(origin string) (fstype config.FSType, err error) {
 		return fstype, err
 	}
 
-	tlog.Debug.Printf("Origin Type: %d", fstype)
 	return fstype, nil
 }
 
@@ -262,6 +305,5 @@ func getMountpoint(origin string, fstype config.FSType) string {
 	}
 	mountpoint = "_mount" + mountpoint
 
-	tlog.Debug.Printf("Mountpoint: %s", mountpoint)
 	return mountpoint
 }

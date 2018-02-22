@@ -18,8 +18,8 @@ import (
 	"github.com/hanwen/go-fuse/zipfs"
 
 	"bitbucket.org/udt/wizefs/internal/config"
-	"bitbucket.org/udt/wizefs/internal/exitcodes"
 	"bitbucket.org/udt/wizefs/internal/fusefrontend"
+	"bitbucket.org/udt/wizefs/internal/globals"
 	"bitbucket.org/udt/wizefs/internal/tlog"
 )
 
@@ -71,6 +71,11 @@ func DoMount(fstype config.FSType,
 	debug.FreeOSMemory()
 
 	// TODO: do something with configuration
+	if config.CommonConfig == nil {
+		config.InitWizeConfig()
+		//} else {
+		//	config.CommonConfig.Load()
+	}
 	err = config.CommonConfig.MountFilesystem(origin, mountpoint, mountpointPath)
 	if err != nil {
 		tlog.Warn.Printf("Problem with adding Filesystem to Config: %v", err)
@@ -147,7 +152,7 @@ func initFuseFrontend(fstype config.FSType, originPath, mountpointPath string) *
 	// Prepare root
 	root := prepareRoot(frontendArgs)
 	if root == nil {
-		os.Exit(exitcodes.Type)
+		os.Exit(globals.Type)
 	}
 
 	fuseOpts := &nodefs.Options{
@@ -190,7 +195,7 @@ func initFuseFrontend(fstype config.FSType, originPath, mountpointPath string) *
 		if runtime.GOOS == "darwin" {
 			tlog.Warn.Println("Maybe you should run: /Library/Filesystems/osxfuse.fs/Contents/Resources/load_osxfuse")
 		}
-		os.Exit(exitcodes.FuseNewServer)
+		os.Exit(globals.FuseNewServer)
 	}
 
 	// All FUSE file and directory create calls carry explicit permission
@@ -225,7 +230,7 @@ func prepareRoot(args fusefrontend.Args) (root nodefs.Node) {
 		root, err = zipfs.NewArchiveFileSystem(args.OriginDir)
 		if err != nil {
 			tlog.Warn.Printf("NewArchiveFileSystem failed: %v", err)
-			os.Exit(exitcodes.Origin)
+			os.Exit(globals.Origin)
 		}
 
 	default:
@@ -254,6 +259,6 @@ func handleSigint(srv *fuse.Server, mountpoint string) {
 				cmd.Run()
 			}
 		}
-		os.Exit(exitcodes.SigInt)
+		os.Exit(globals.SigInt)
 	}()
 }

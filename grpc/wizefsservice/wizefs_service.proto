@@ -1,0 +1,51 @@
+syntax = "proto3";
+
+package wizefsservice;
+
+service WizeFsService {
+	rpc Create(FilesystemRequest) returns (FilesystemResponse) {}
+	rpc Delete(FilesystemRequest) returns (FilesystemResponse) {}
+	rpc Mount(FilesystemRequest) returns (FilesystemResponse) {}
+	rpc Unmount(FilesystemRequest) returns (FilesystemResponse) {}
+	
+	// potential client-side streaming RPC:
+	// client sends a sequence of messages using a provided stream
+	// server read them and return its response
+	rpc Put(PutRequest) returns (PutResponse) {}
+	
+	// potential server-side streaming RPC:
+	// client sends a request and gets a stream to read a sequence of messages
+	// server sends a sequence of messages
+	rpc Get(GetRequest) returns (GetResponse) {}
+}
+
+message FilesystemRequest {
+	string origin = 1;
+}
+
+message FilesystemResponse {
+	bool executed = 1;		// true - without error, false - with error
+	string message = 2;		// info if was executed, error if was not
+}
+
+message PutRequest {
+	string filename = 1;
+	bytes content = 2;
+	string origin = 3;
+}
+
+message PutResponse {
+	bool executed = 1;		// true - without error, false - with error
+	string message = 2;		// info if was executed, error if was not
+}
+
+message GetRequest {
+	string filename = 1;
+	string origin = 2;
+}
+
+message GetResponse {
+	bool executed = 1;		// true - without error, false - with error
+	string message = 2;		// info if was executed, error if was not
+	bytes content = 3;
+}

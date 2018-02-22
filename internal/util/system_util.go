@@ -8,7 +8,7 @@ import (
 	"runtime"
 	"syscall"
 
-	"bitbucket.org/udt/wizefs/internal/exitcodes"
+	"bitbucket.org/udt/wizefs/internal/globals"
 	"bitbucket.org/udt/wizefs/internal/syscallcompat"
 	"bitbucket.org/udt/wizefs/internal/tlog"
 )
@@ -39,7 +39,7 @@ func ForkChild() int {
 
 	if err != nil {
 		tlog.Warn.Printf("forkChild: starting %s failed: %v", name, err)
-		return exitcodes.ForkChild
+		return globals.ForkChild
 	}
 
 	tlog.Debug.Printf("forkChild: starting %s with PID = %d", name, pid)
@@ -52,7 +52,7 @@ func ForkChild() int {
 			}
 		}
 		tlog.Warn.Printf("forkChild: wait returned an unknown error: %v", err)
-		return exitcodes.ForkChild
+		return globals.ForkChild
 	}
 
 	// The child exited with 0 - let's do the same.

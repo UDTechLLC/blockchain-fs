@@ -10,7 +10,7 @@ import (
 
 const (
 	ProgramName              = "wizefs"
-	ProgramVersion           = "0.0.5"
+	ProgramVersion           = "0.0.6"
 	FilesystemCurrentVersion = 1
 	FilesystemConfigFilename = "wizefs.conf"
 )
