@@ -6,6 +6,7 @@ import (
 	"runtime"
 
 	api "bitbucket.org/udt/wizefs/internal/command"
+	"bitbucket.org/udt/wizefs/internal/config"
 	"bitbucket.org/udt/wizefs/internal/tlog"
 	"bitbucket.org/udt/wizefs/internal/util"
 )
@@ -54,6 +55,22 @@ func main() {
 	// into "args". Path arguments are parsed below.
 	args := parseCliOpts()
 
+	origin := flagSet.Arg(0)
+
+	// HACK for gRPC methods
+	if config.CommonConfig == nil {
+		config.InitWizeConfig()
+	}
+
+	// Check that ORIGIN exists
+	fsinfo, ok := config.CommonConfig.Filesystems[origin]
+	if !ok {
+		tlog.Warn.Printf("Did not find ORIGIN: %s in common config.", origin)
+	}
+	if fsinfo.MountpointKey != "" {
+		tlog.Warn.Printf("This ORIGIN: %s is already mounted under MOUNTPOINT %s", origin, fsinfo.MountpointKey)
+	}
+
 	// Fork a child into the background if "-fg" is not set AND we are mounting
 	// a filesystem. The child will do all the work.
 	if !args.fg && flagSet.NArg() == 1 {
@@ -74,8 +91,6 @@ func main() {
 		os.Exit(1)
 	}
 
-	// Check that ORIGIN exists
-	origin := flagSet.Arg(0)
 	err := api.ApiMount(origin, args.notifypid)
 	if err != nil {
 		tlog.Warn.Println("Error with ApiMount: %v", err)

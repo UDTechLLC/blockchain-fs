@@ -48,6 +48,10 @@ func (s *wizefsServer) Mount(ctx context.Context, request *FilesystemRequest) (r
 	//tlog.Info.Printf("Mount method...")
 	origin := request.GetOrigin()
 	var message string = "OK"
+	response = &FilesystemResponse{
+		Executed: true,
+		Message:  message,
+	}
 
 	c := exec.Command("../mount/mount", origin)
 	cerr := c.Start()
@@ -59,17 +63,17 @@ func (s *wizefsServer) Mount(ctx context.Context, request *FilesystemRequest) (r
 	if cerr != nil {
 		if exiterr, ok := cerr.(*exec.ExitError); ok {
 			if waitstat, ok := exiterr.Sys().(syscall.WaitStatus); ok {
-				message = fmt.Sprintf("wait returned an exit status: %d", waitstat.ExitStatus())
+				response.Executed = true
+				response.Message = fmt.Sprintf("wait returned an exit status: %d", waitstat.ExitStatus())
 			}
+		} else {
+			response.Executed = false
+			response.Message = fmt.Sprintf("wait returned an unknown error: %v", cerr)
 		}
-		message = fmt.Sprintf("wait returned an unknown error: %v", cerr)
 	}
 	//tlog.Info.Printf("ending command...")
 
-	return &FilesystemResponse{
-		Executed: true,
-		Message:  message,
-	}, nil
+	return
 }
 
 func (s *wizefsServer) Unmount(ctx context.Context, request *FilesystemRequest) (response *FilesystemResponse, err error) {

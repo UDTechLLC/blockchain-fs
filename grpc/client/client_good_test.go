@@ -65,6 +65,8 @@ func TestFullCircle(t *testing.T) {
 
 	// TODO: check if origin dir was created
 
+	//origin = "GRPCFail"
+
 	// Mount
 	t.Logf("Request: Mount. Origin: %s", origin)
 	resp, err = client.Mount(context.Background(), &pb.FilesystemRequest{Origin: origin})
@@ -82,7 +84,7 @@ func TestFullCircle(t *testing.T) {
 	// TODO: add Put/Get tests
 	// Put
 	// TODO: HACK - just for local testing
-	filepath := globals + "TESTDIR1/test.txt"
+	filepath := globals.OriginDirPath + "TESTDIR1/test.txt"
 	content, err := readFile(filepath)
 	if err == nil {
 		t.Logf("Request content: \n%s\n", content)
