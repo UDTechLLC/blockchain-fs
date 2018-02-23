@@ -27,15 +27,12 @@
     6. Решить вопрос с проверкой permissions для CLI/API, возможно актуально и для gRPC/API
     7. Параметр autoMount/autoUnmount для create/delete, нужен ли, если да, то реализовать поддержку
 2. Уточнить API, удобный для использования, связь с Minio/Amazon S3 API
-
     1. Текущий API, новые API и Minio/Amazon S3 API
     2. Что реально нужно для всего мега-проекта...
 3. Разработать новые API
-
     1. Filesystem API: **check**, info, list
     2. File API: **remove**, search
     3. Internal API: **clean**, **verify**, integrity (чем он будет отличаться от verify?)
 4. Разработать нормальную версию метода Mount
-
     1. Основная проблема в необходимости порождать процессы для смонтированной файловой системы
     2. Направление поиска решения: Concurrency with Go, Go and Processes, gRPC and forking processes
