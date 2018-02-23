@@ -36,7 +36,7 @@ func ApiCreate(origin string) (err error) {
 			globals.Origin)
 	}
 	// TODO: create zip files
-	if fstype == config.FSZip {
+	if fstype == config.ZipFS {
 		return cli.NewExitError(
 			"Creating zip files are not supported now",
 			globals.Origin)
@@ -63,7 +63,7 @@ func ApiCreate(origin string) (err error) {
 
 	// initialize Filesystem
 	// do something with configuration
-	config.NewFilesystemConfig(origin, originPath, config.FSLoopback).Save()
+	config.NewFilesystemConfig(origin, originPath, config.LoopbackFS).Save()
 
 	if fstype == config.LZFS {
 		util.ZipFile(originPath, globals.OriginDirPath+origin)
@@ -133,7 +133,7 @@ func ApiDelete(origin string) (err error) {
 			globals.Origin)
 	}
 	// TODO: Delete zip files
-	if fstype == config.FSZip {
+	if fstype == config.ZipFS {
 		return cli.NewExitError(
 			"Deleting zip files are not support now",
 			globals.Origin)
@@ -217,11 +217,11 @@ func CmdMountFilesystem(c *cli.Context) (err error) {
 			fmt.Sprintf("Invalid origin: %v", err),
 			globals.Origin)
 	}
-	if fstype == config.FSZip {
-		return cli.NewExitError(
-			fmt.Sprintf("Zip files are not support now"),
-			globals.Origin)
-	}
+	//if fstype == config.FSZip {
+	//	return cli.NewExitError(
+	//		fmt.Sprintf("Zip files are not support now"),
+	//		globals.Origin)
+	//}
 	//if fstype == config.LZFS {
 	//	return cli.NewExitError(
 	//		fmt.Sprintf("LZFS files are not support now"),
@@ -365,6 +365,13 @@ func ApiUnmount(origin string) (err error) {
 		os.RemoveAll(tempPath)
 	}
 
+	if _, err := os.Stat(mountpointPath); os.IsNotExist(err) {
+		tlog.Warn.Printf("Directory %s is not exist!", mountpointPath)
+	} else {
+		tlog.Debug.Printf("Delete existing directory: %s", mountpointPath)
+		os.RemoveAll(mountpointPath)
+	}
+
 	// TODO: HACK for gRPC methods
 	if config.CommonConfig == nil {
 		config.InitWizeConfig()
@@ -388,9 +395,9 @@ func ApiUnmount(origin string) (err error) {
 func checkOriginType(origin string) (fstype config.FSType, err error) {
 	fstype, err = util.CheckDirOrZip(origin)
 	if err != nil {
-		// HACK: if fstype = config.FSHack
-		if fstype == config.FSHack {
-			return config.FSLoopback, nil
+		// HACK: if fstype = config.HackFS
+		if fstype == config.HackFS {
+			return config.LoopbackFS, nil
 		}
 		return fstype, err
 	}
@@ -400,7 +407,7 @@ func checkOriginType(origin string) (fstype config.FSType, err error) {
 
 func getMountpoint(origin string, fstype config.FSType) string {
 	mountpoint := origin
-	if fstype == config.FSZip || fstype == config.LZFS {
+	if fstype == config.ZipFS || fstype == config.LZFS {
 		mountpoint = strings.Replace(mountpoint, ".", "_", -1)
 	}
 	mountpoint = "_mount" + mountpoint

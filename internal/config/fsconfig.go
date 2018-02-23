@@ -18,10 +18,10 @@ const (
 type FSType int
 
 const (
-	FSHack FSType = iota - 1 // -1
-	FSNone
-	FSLoopback
-	FSZip
+	HackFS FSType = iota - 1 // -1
+	NoneFS
+	LoopbackFS
+	ZipFS
 	LZFS
 )
 

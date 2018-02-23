@@ -209,7 +209,7 @@ func initFuseFrontend(fstype config.FSType, originPath, mountpointPath string) *
 // TODO: move to fusefrontend?
 func prepareRoot(args fusefrontend.Args) (root nodefs.Node) {
 	switch args.Type {
-	case config.FSLoopback, config.LZFS:
+	case config.LoopbackFS, config.LZFS:
 		var finalFs pathfs.FileSystem
 
 		// pathFsOpts are passed into go-fuse/pathfs
@@ -224,7 +224,7 @@ func prepareRoot(args fusefrontend.Args) (root nodefs.Node) {
 
 		root = pathFs.Root()
 
-	case config.FSZip:
+	case config.ZipFS:
 		// TODO: move to fusefrontend
 		var err error
 		root, err = zipfs.NewArchiveFileSystem(args.OriginDir)
