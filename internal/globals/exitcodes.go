@@ -3,41 +3,43 @@
 package globals
 
 const (
-	// Usage - usage error like wrong cli syntax, wrong number of parameters.
-	Usage = 1
+	// ExitUsage - usage error like wrong cli syntax, wrong number of parameters.
+	ExitUsage = 1
 	// 2 is reserved because it is used by Go panic
 	// 3 is reserved because it was used by earlier storage-system version as a generic
 	// "mount" error.
 
-	// Origin means that the ORIGIN does not exist, is not empty, or is not
+	// ExitOrigin means that the ORIGIN does not exist, is not empty, or is not
 	// a directory.
-	Origin = 6
-	// MountPoint error means that the mountpoint is invalid (not empty etc).
-	MountPoint = 7
-	// Init is an error on filesystem init
-	Init = 8
-	// Type is Filesystem type (1, 2)
-	Type = 9
+	ExitOrigin = 6
+	// ExitMountPoint error means that the mountpoint is invalid (not empty etc).
+	ExitMountPoint = 7
+	// ExitInit is an error on filesystem init
+	ExitInit = 8
+	// ExitType is Filesystem type (1, 2)
+	ExitType = 9
 
-	// LoadConf is an error while loading .conf
-	LoadConf = 20
-	// OpenConf - the was an error opening the .conf file for reading
-	OpenConf = 21
-	// WriteConf - could not write the .conf
-	WriteConf = 22
+	ExitZip = 10
+
+	// ExitOpenConf - the was an error opening the .conf file for reading
+	ExitOpenConf = 20
+	// ExitLoadConf is an error while loading .conf
+	ExitLoadConf = 21
+	// ExitSaveConf - could not save the .conf
+	ExitSaveConf = 22
+	// ExitChangeConf - the was an error changing .conf
+	ExitChangeConf = 23
 
 	// SigInt means we got SIGINT
-	SigInt = 30
-	// PanicLogNotEmpty means the panic log was not empty when we were unmounted
-	PanicLogNotEmpty = 31
+	ExitSigInt = 30
 	// ForkChild means forking the worker child failed
-	ForkChild = 32
+	ExitForkChild = 31
 
 	// FuseNewServer - this exit code means that the call to fuse.NewServer failed.
 	// This usually means that there was a problem executing fusermount, or
 	// fusermount could not attach the mountpoint to the kernel.
-	FuseNewServer = 33
+	ExitFuseNewServer = 40
 
 	// Other error - please inspect the message
-	Other = 50
+	ExitOther = 50
 )

@@ -2,6 +2,7 @@ package command
 
 import (
 	"flag"
+	"os"
 	"os/exec"
 	"reflect"
 	"syscall"
@@ -10,42 +11,80 @@ import (
 	"github.com/urfave/cli"
 
 	"bitbucket.org/udt/wizefs/internal/config"
+	"bitbucket.org/udt/wizefs/internal/globals"
 )
 
 const (
 	projectPath = "/home/sergey/code/go/src/bitbucket.org/udt/wizefs/"
 )
 
-func testCommand(t *testing.T, command string, origin string) {
+func runCommand(t *testing.T, command string, origin string) (cerr error) {
 	appPath := projectPath + "wizefs"
 	c := exec.Command(appPath, command, origin)
 	t.Logf("starting command %s...", command)
-	cerr := c.Start()
+	cerr = c.Start()
 	if cerr != nil {
 		t.Errorf("starting command failed: %v", cerr)
 	}
 
 	t.Logf("waiting command %s...", command)
 	cerr = c.Wait()
+
+	t.Logf("finishing command %s...", command)
+	return cerr
+}
+
+func assertExitCode(t *testing.T, cerr error, exitCode int) {
 	if cerr != nil {
 		if exiterr, ok := cerr.(*exec.ExitError); ok {
 			if waitstat, ok := exiterr.Sys().(syscall.WaitStatus); ok {
-				t.Logf("wait returned an exit status: %d", waitstat.ExitStatus())
+				if waitstat.ExitStatus() == exitCode {
+					t.Logf("GREEN: Got expected exit status: %d.", exitCode)
+				} else {
+					t.Errorf("RED: Expected exit status: %d, Got: %d", exitCode, waitstat.ExitStatus())
+				}
 			}
 		} else {
-			t.Errorf("wait returned an unknown error: %v", cerr)
+			t.Errorf("RED: Wait returned an unknown error: %v", cerr)
 		}
 	}
-	t.Logf("finishing command %s...", command)
 }
 
-func TestCommandCreate(t *testing.T) {
-	testCommand(t, "create", "UNITTEST")
+func TestCreateNormal(t *testing.T) {
+	assertExitCode(t,
+		runCommand(t, "create", "UNITTEST"),
+		0)
 }
 
-func TestCommandDelete(t *testing.T) {
-	testCommand(t, "delete", "UNITTEST")
+func TestCreateInvalidOrigin(t *testing.T) {
+	// TODO: create invalid origin before
+
+	assertExitCode(t,
+		runCommand(t, "create", "image.jpg"),
+		globals.ExitOrigin)
+
+	// TODO: remove invalid origin after
 }
+
+func TestCreateDirectoryExist(t *testing.T) {
+	// create directory before
+	os.MkdirAll(globals.OriginDirPath+"EXISTDIR", 0755)
+
+	assertExitCode(t,
+		runCommand(t, "create", "EXISTDIR"),
+		globals.ExitOrigin)
+
+	// remove directory after
+	os.RemoveAll(globals.OriginDirPath + "EXISTDIR")
+}
+
+func TestDeleteNormal(t *testing.T) {
+	assertExitCode(t,
+		runCommand(t, "delete", "UNITTEST"),
+		0)
+}
+
+//
 
 // another approach for testing
 func createMockContext(t *testing.T, mockArgs []string) *cli.Context {

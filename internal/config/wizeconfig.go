@@ -234,3 +234,14 @@ func (wc *WizeConfig) CheckOriginGetMountpoint(origin string) (mountpointPath st
 
 	return mountpointPath, nil
 }
+
+func (wc *WizeConfig) CheckFilesystem(origin string) (existOrigin bool, existMountpoint bool) {
+	existMountpoint = false
+	fsinfo, existOrigin := wc.Filesystems[origin]
+	if !existOrigin {
+		if fsinfo.MountpointKey != "" {
+			existMountpoint = true
+		}
+	}
+	return
+}
