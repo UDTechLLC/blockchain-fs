@@ -41,6 +41,10 @@ func ApiCreate(origin string) (err error) {
 			"Creating zip files are not supported now",
 			globals.Origin)
 	}
+	if fstype == config.LZFS {
+		originPath = globals.OriginDirPath +
+			"temp/" + strings.Replace(origin, ".", "_", -1)
+	}
 
 	tlog.Debug.Printf("Create new Filesystem %s on path %s\n", origin, originPath)
 
@@ -60,6 +64,12 @@ func ApiCreate(origin string) (err error) {
 	// initialize Filesystem
 	// do something with configuration
 	config.NewFilesystemConfig(origin, originPath, config.FSLoopback).Save()
+
+	if fstype == config.LZFS {
+		util.ZipFile(originPath, globals.OriginDirPath+origin)
+		// remove temp directory
+		os.RemoveAll(originPath)
+	}
 
 	// HACK for gRPC methods
 	if config.CommonConfig == nil {
@@ -123,7 +133,7 @@ func ApiDelete(origin string) (err error) {
 			globals.Origin)
 	}
 	// TODO: Delete zip files
-	if fstype == config.FSZip || fstype == config.LZFS {
+	if fstype == config.FSZip {
 		return cli.NewExitError(
 			"Deleting zip files are not support now",
 			globals.Origin)
