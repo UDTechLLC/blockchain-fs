@@ -152,7 +152,7 @@ func initFuseFrontend(fstype config.FSType, originPath, mountpointPath string) *
 	// Prepare root
 	root := prepareRoot(frontendArgs)
 	if root == nil {
-		os.Exit(globals.Type)
+		os.Exit(globals.ExitType)
 	}
 
 	fuseOpts := &nodefs.Options{
@@ -195,7 +195,7 @@ func initFuseFrontend(fstype config.FSType, originPath, mountpointPath string) *
 		if runtime.GOOS == "darwin" {
 			tlog.Warn.Println("Maybe you should run: /Library/Filesystems/osxfuse.fs/Contents/Resources/load_osxfuse")
 		}
-		os.Exit(globals.FuseNewServer)
+		os.Exit(globals.ExitFuseNewServer)
 	}
 
 	// All FUSE file and directory create calls carry explicit permission
@@ -209,7 +209,7 @@ func initFuseFrontend(fstype config.FSType, originPath, mountpointPath string) *
 // TODO: move to fusefrontend?
 func prepareRoot(args fusefrontend.Args) (root nodefs.Node) {
 	switch args.Type {
-	case config.FSLoopback:
+	case config.LoopbackFS:
 		var finalFs pathfs.FileSystem
 
 		// pathFsOpts are passed into go-fuse/pathfs
@@ -224,13 +224,13 @@ func prepareRoot(args fusefrontend.Args) (root nodefs.Node) {
 
 		root = pathFs.Root()
 
-	case config.FSZip:
+	case config.ZipFS:
 		// TODO: move to fusefrontend
 		var err error
 		root, err = zipfs.NewArchiveFileSystem(args.OriginDir)
 		if err != nil {
 			tlog.Warn.Printf("NewArchiveFileSystem failed: %v", err)
-			os.Exit(globals.Origin)
+			os.Exit(globals.ExitOrigin)
 		}
 
 	default:
@@ -259,6 +259,6 @@ func handleSigint(srv *fuse.Server, mountpoint string) {
 				cmd.Run()
 			}
 		}
-		os.Exit(globals.SigInt)
+		os.Exit(globals.ExitSigInt)
 	}()
 }

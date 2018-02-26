@@ -42,6 +42,11 @@ func getExt(file string) string {
 	return base[idx:]
 }
 
+func isZipFS(file string) bool {
+	base := filepath.Base(file)
+	return base[0] == '_'
+}
+
 // CheckDirOrZip
 // - check if "dir" exists and is a directory
 // - check if it's not directory but is a zip file
@@ -57,20 +62,23 @@ func CheckDirOrZip(dirOrZip string) (config.FSType, error) {
 
 	_, ok := zips[ext]
 	if ok {
-		return config.FSZip, nil
+		if isZipFS(dirOrZip) {
+			return config.ZipFS, nil
+		}
+		return config.ZipFS, nil
 	}
 
 	fi, err := os.Stat(dirOrZip)
 	if err != nil {
 		// HACK
-		return config.FSHack, err
+		return config.HackFS, err
 	}
 
 	if !fi.IsDir() {
-		return config.FSNone,
+		return config.NoneFS,
 			fmt.Errorf("%s isn't a directory and isn't a zip file",
 				dirOrZip)
 	}
 
-	return config.FSLoopback, nil
+	return config.LoopbackFS, nil
 }
