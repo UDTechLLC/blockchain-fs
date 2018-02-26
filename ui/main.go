@@ -14,20 +14,23 @@ func main() {
 		window.SetMargined(true)
 		window.Center()
 
-		input := ui.NewEntry()
-		button := ui.NewButton("Greet")
-		greeting := ui.NewLabel("")
+		box := ui.NewHorizontalBox()
 
-		box := ui.NewVerticalBox()
-		box.Append(ui.NewLabel("Enter your name:"), false)
-		box.Append(input, false)
-		box.Append(button, false)
-		box.Append(greeting, false)
+		listbox := ui.NewVerticalBox()
+		listview := ui.NewMultilineEntry()
+		listbox.Append(listview, true)
+
+		buttonbox := ui.NewVerticalBox()
+		button := ui.NewButton("Create")
+		buttonbox.Append(button, false)
+
+		box.Append(listbox, true)
+		box.Append(buttonbox, false)
 
 		window.SetChild(box)
 
 		button.OnClicked(func(*ui.Button) {
-			greeting.SetText("Hello, " + input.Text() + "!")
+			ui.MsgBox(window, "Title", "Hello")
 		})
 
 		window.OnClosing(func(*ui.Window) bool {
