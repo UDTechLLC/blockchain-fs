@@ -44,6 +44,12 @@ func init() {
 }
 
 func InitWizeConfig() {
+	// create Directory if it's not exist
+	if _, err := os.Stat(globals.OriginDirPath); os.IsNotExist(err) {
+		tlog.Warn.Printf("Create ORIGIN DIR directory: %s", globals.OriginDirPath)
+		os.MkdirAll(globals.OriginDirPath, 0755)
+	}
+
 	InitWizeConfigWithPath(globals.OriginDirPath)
 }
 
