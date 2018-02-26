@@ -26,7 +26,7 @@ func CmdCreateFilesystem(c *cli.Context) (err error) {
 
 	exitCode, err := ApiCreate(origin)
 	if err != nil {
-		tlog.Warn.Println(err)
+		//tlog.Warn.Println(err)
 		return cli.NewExitError(err, exitCode)
 	}
 	return nil
@@ -50,7 +50,7 @@ func ApiCreate(origin string) (exitCode int, err error) {
 			"temp/" + strings.Replace(origin, ".", "_", -1)
 	}
 
-	tlog.Debug.Printf("Create new Filesystem %s on path %s\n", origin, originPath)
+	tlog.Debug.Printf("Creating new Filesystem %s on path %s...\n", origin, originPath)
 
 	// create Directory if it's not exist
 	if _, err := os.Stat(originPath); os.IsNotExist(err) {
@@ -108,7 +108,7 @@ func CmdDeleteFilesystem(c *cli.Context) (err error) {
 
 	exitCode, err := ApiDelete(origin)
 	if err != nil {
-		tlog.Warn.Println(err)
+		//tlog.Warn.Println(err)
 		return cli.NewExitError(err, exitCode)
 	}
 	return nil
@@ -193,10 +193,14 @@ func CmdMountFilesystem(c *cli.Context) (err error) {
 
 	existOrigin, existMountpoint := config.CommonConfig.CheckFilesystem(origin)
 	if !existOrigin {
-		return fmt.Errorf("Did not find ORIGIN: %s in common config.", origin)
+		err = fmt.Errorf("Did not find ORIGIN: %s in common config.", origin)
+		tlog.Warn.Println(err)
+		return
 	}
 	if existMountpoint {
-		return fmt.Errorf("This ORIGIN: %s is already mounted", origin)
+		err = fmt.Errorf("This ORIGIN: %s is already mounted", origin)
+		tlog.Warn.Println(err)
+		return
 	}
 
 	// Fork a child into the background if "-fg" is not set AND we are mounting
@@ -212,7 +216,7 @@ func CmdMountFilesystem(c *cli.Context) (err error) {
 
 	exitCode, err := ApiMount(origin, notifypid)
 	if err != nil {
-		tlog.Warn.Println(err)
+		//tlog.Warn.Println(err)
 		return cli.NewExitError(err, exitCode)
 	}
 	return nil
@@ -279,7 +283,7 @@ func CmdUnmountFilesystem(c *cli.Context) (err error) {
 
 	exitCode, err := ApiUnmount(origin)
 	if err != nil {
-		tlog.Warn.Println(err)
+		//tlog.Warn.Println(err)
 		return cli.NewExitError(err, exitCode)
 	}
 	return nil
