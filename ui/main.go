@@ -1,7 +1,7 @@
 package main
 
 import (
-	"github.com/andlabs/ui"
+	"github.com/leedark/ui"
 )
 
 var window *ui.Window
@@ -12,6 +12,7 @@ func main() {
 
 		window = ui.NewWindow("Hello", 500, 500, false)
 		window.SetMargined(true)
+		window.Center()
 
 		input := ui.NewEntry()
 		button := ui.NewButton("Greet")
