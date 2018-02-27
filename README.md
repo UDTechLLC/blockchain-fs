@@ -10,7 +10,7 @@ go version go1.9.2
 CLI application is located at the root project directory:
 [$GOPATH/src/bitbucket.org/udt/wizefs]
 
-You should go to this directory and run `go build`
+You should go to this directory and run `go build`.
 
 
 ### gRPC Server and Client
@@ -19,7 +19,11 @@ You should go to this directory and run `go build`
 gRPC applications are located at the grpc directory:
 [$GOPATH/src/bitbucket.org/udt/wizefs/grpc]
 
-You should build 3 commands: grpc/server, grpc/client and grpc/mount.
+You should build 3 commands independently by going to the appropriate folder in advance: grpc/mount, grpc/server and grpc/client.
+
+### GUI application
+
+See [GUI README](ui/README.md)
 
 
 ## Flags
