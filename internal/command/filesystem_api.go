@@ -43,7 +43,11 @@ func ApiCreate(origin string) (exitCode int, err error) {
 	// TODO: create zip files
 	if fstype == config.ZipFS {
 		return globals.ExitOrigin,
-			fmt.Errorf("T-Creating zip files are not supported now")
+			fmt.Errorf("Creating zip files are not supported now")
+	}
+	if fstype == config.LZFS {
+		originPath = globals.OriginDirPath +
+			"temp/" + strings.Replace(origin, ".", "_", -1)
 	}
 
 	tlog.Debug.Printf("Creating new Filesystem %s on path %s...\n", origin, originPath)
@@ -59,6 +63,18 @@ func ApiCreate(origin string) (exitCode int, err error) {
 
 	// do something with Filesystem configuration
 	config.NewFilesystemConfig(origin, originPath, config.LoopbackFS).Save()
+
+	// create LZFS archive
+	if fstype == config.LZFS {
+		targetFile := globals.OriginDirPath + origin
+		err = util.ZipFile(originPath, targetFile)
+		if err != nil {
+			return globals.ExitZip,
+				fmt.Errorf("LZFS file zipping failed: %v", err)
+		}
+		// remove temp directory
+		os.RemoveAll(originPath)
+	}
 
 	// HACK for gRPC methods
 	if config.CommonConfig == nil {
@@ -114,6 +130,12 @@ func ApiDelete(origin string) (exitCode int, err error) {
 	if err != nil {
 		return globals.ExitOrigin,
 			fmt.Errorf("Invalid origin: %v", err)
+	}
+
+	// TODO: Delete zip files
+	if fstype == config.ZipFS {
+		return globals.ExitOrigin,
+			fmt.Errorf("Deleting zip files are not support now")
 	}
 
 	tlog.Debug.Printf("Delete existing Filesystem: %s", origin)
@@ -206,6 +228,20 @@ func ApiMount(origin string, notifypid int) (exitCode int, err error) {
 			fmt.Errorf("Invalid origin: %v", err)
 	}
 
+	if fstype == config.LZFS {
+		// unzip to temp directory - OriginDirPath + "temp/" + filename (. -> _)
+		tempPath := globals.OriginDirPath +
+			"temp/" + strings.Replace(origin, ".", "_", -1)
+
+		err = util.UnzipFile(originPath, tempPath)
+		if err != nil {
+			return globals.ExitZip,
+				fmt.Errorf("LZFS file unzipping failed: %v", err)
+		}
+
+		originPath = tempPath
+	}
+
 	// TODO: check mountpoint
 	// TODO: HACK - create/get mountpoint internally
 	mountpoint := getMountpoint(origin, fstype)
@@ -278,6 +314,23 @@ func ApiUnmount(origin string) (exitCode int, err error) {
 
 	util.DoUnmount(mountpointPath)
 
+	if fstype == config.LZFS {
+		// zip temp directory
+		tempPath := globals.OriginDirPath +
+			"temp/" + strings.Replace(origin, ".", "_", -1)
+
+		os.Remove(originPath)
+
+		err = util.ZipFile(tempPath, originPath)
+		if err != nil {
+			return globals.ExitZip,
+				fmt.Errorf("LZFS file zipping failed: %v", err)
+		}
+
+		// remove temp directory
+		os.RemoveAll(tempPath)
+	}
+
 	if _, err := os.Stat(mountpointPath); os.IsNotExist(err) {
 		tlog.Warn.Printf("Directory %s is not exist!", mountpointPath)
 	} else {
@@ -319,7 +372,7 @@ func checkOriginType(origin string) (fstype config.FSType, err error) {
 
 func getMountpoint(origin string, fstype config.FSType) string {
 	mountpoint := origin
-	if fstype == config.ZipFS {
+	if fstype == config.ZipFS || fstype == config.LZFS {
 		mountpoint = strings.Replace(mountpoint, ".", "_", -1)
 	}
 	mountpoint = "_mount" + mountpoint

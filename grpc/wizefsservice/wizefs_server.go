@@ -3,6 +3,7 @@ package wizefsservice
 import (
 	"fmt"
 	"os/exec"
+	"strconv"
 	"syscall"
 
 	"golang.org/x/net/context"
@@ -15,16 +16,16 @@ type wizefsServer struct {
 }
 
 func (s *wizefsServer) Create(ctx context.Context, request *FilesystemRequest) (response *FilesystemResponse, err error) {
-	//tlog.Info.Printf("Create method...")
 	origin := request.GetOrigin()
-
 	response = &FilesystemResponse{
 		Executed: true,
 		Message:  "OK",
 	}
-	if err = api.ApiCreate(origin); err != nil {
+
+	if exitCode, err := api.ApiCreate(origin); err != nil {
 		response.Executed = false
 		response.Message = err.Error()
+		response.Message += " ExitCode: " + strconv.Itoa(exitCode)
 	}
 	return
 }

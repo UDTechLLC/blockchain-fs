@@ -22,6 +22,7 @@ const (
 	NoneFS
 	LoopbackFS
 	ZipFS
+	LZFS
 )
 
 type FilesystemConfig struct {

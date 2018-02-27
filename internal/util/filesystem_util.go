@@ -65,7 +65,7 @@ func CheckDirOrZip(dirOrZip string) (config.FSType, error) {
 		if isZipFS(dirOrZip) {
 			return config.ZipFS, nil
 		}
-		return config.ZipFS, nil
+		return config.LZFS, nil
 	}
 
 	fi, err := os.Stat(dirOrZip)
