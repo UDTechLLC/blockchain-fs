@@ -8,9 +8,9 @@ const (
 	projectPath = "/home/sergey/code/go/src/bitbucket.org/udt/wizefs/"
 )
 
-func RunCommand(command string, origin string) (cerr error) {
+func RunCommand(arg ...string) (cerr error) {
 	appPath := projectPath + "wizefs"
-	c := exec.Command(appPath, command, origin)
+	c := exec.Command(appPath, arg...)
 	//t.Logf("starting command %s...", command)
 	cerr = c.Start()
 	if cerr != nil {
