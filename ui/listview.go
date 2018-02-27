@@ -1,18 +1,18 @@
 package main
 
 import (
-	"math/rand"
 	"strconv"
 
-	"github.com/icrowley/fake"
 	"github.com/leedark/ui"
 )
 
 // ListView Model
 type Filesystem struct {
-	Index int
-	Name  string
-	Path  string
+	Index      int
+	Origin     string
+	OriginPath string
+	Type       int
+	Mountpoint string
 }
 
 type FilesystemDB struct {
@@ -22,7 +22,7 @@ type FilesystemDB struct {
 // implement the TableModelHandler interface
 
 func (db *FilesystemDB) NumColumns(m *ui.TableModel) int {
-	return 3
+	return 5
 }
 
 func (db *FilesystemDB) ColumnType(m *ui.TableModel, col int) ui.TableModelColumnType {
@@ -34,14 +34,18 @@ func (db *FilesystemDB) NumRows(m *ui.TableModel) int {
 }
 
 func (db *FilesystemDB) CellValue(m *ui.TableModel, row int, col int) interface{} {
-	prod := &db.Filesystems[row]
+	value := &db.Filesystems[row]
 	switch col {
 	case 0:
-		return strconv.Itoa(prod.Index)
+		return strconv.Itoa(value.Index)
 	case 1:
-		return prod.Name
+		return value.Origin
 	case 2:
-		return prod.Path
+		return value.OriginPath
+	case 3:
+		return strconv.Itoa(value.Type)
+	case 4:
+		return value.Mountpoint
 	}
 	return nil
 }
@@ -50,10 +54,11 @@ func (db *FilesystemDB) SetCellValue(*ui.TableModel, int, int, interface{}) {
 	// TODO
 }
 
-func RandomFilesystem() Filesystem {
-	fs := Filesystem{}
-	fs.Index = 0 + rand.Intn(10)
-	fs.Name = fake.FirstName()
-	fs.Path = fake.LastName()
-	return fs
+func (db *FilesystemDB) FindByOrigin(origin string) bool {
+	for _, value := range db.Filesystems {
+		if value.Origin == origin {
+			return true
+		}
+	}
+	return false
 }

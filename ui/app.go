@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"sort"
 
+	"bitbucket.org/udt/wizefs/internal/config"
 	"github.com/leedark/ui"
 )
 
@@ -17,7 +18,36 @@ type App struct {
 }
 
 func (app *App) Init() {
+	if config.CommonConfig == nil {
+		config.InitWizeConfig()
+	}
+	for origin, filesystem := range config.CommonConfig.Filesystems {
+		fs := Filesystem{
+			Index:      len(app.db.Filesystems) + 1,
+			Origin:     origin,
+			OriginPath: filesystem.OriginPath,
+			Type:       int(filesystem.Type),
+			Mountpoint: filesystem.MountpointKey,
+		}
+		app.db.Filesystems = append(app.db.Filesystems, fs)
+	}
+}
 
+func (app *App) updateModel() {
+	config.CommonConfig.Load()
+	for origin, filesystem := range config.CommonConfig.Filesystems {
+		if !app.db.FindByOrigin(origin) {
+			fs := Filesystem{
+				Index:      len(app.db.Filesystems) + 1,
+				Origin:     origin,
+				OriginPath: filesystem.OriginPath,
+				Type:       int(filesystem.Type),
+				Mountpoint: filesystem.MountpointKey,
+			}
+			app.db.Filesystems = append(app.db.Filesystems, fs)
+			app.listViewModel.RowInserted(len(app.db.Filesystems) - 1)
+		}
+	}
 }
 
 func (app *App) buildGUI() ui.Control {
@@ -28,8 +58,10 @@ func (app *App) buildGUI() ui.Control {
 	app.listViewModel = ui.NewTableModel(&app.db)
 	listView := ui.NewTable(app.listViewModel, ui.TableStyleMultiSelect)
 	listView.AppendTextColumn("Index", 0)
-	listView.AppendTextColumn("Filesystem", 1)
+	listView.AppendTextColumn("Origin", 1)
 	listView.AppendTextColumn("Path", 2)
+	listView.AppendTextColumn("Type", 3)
+	listView.AppendTextColumn("Mount", 4)
 
 	listView.OnSelectionChanged(func(t *ui.Table) {
 		app.HandleSelectionChanged()
@@ -50,14 +82,8 @@ func (app *App) buildGUI() ui.Control {
 	mainBox.SetPadded(true)
 
 	app.createButton.OnClicked(func(*ui.Button) {
-		fs := Filesystem{
-			Index: len(app.db.Filesystems) + 1,
-			Name:  "filesystem Name",
-			Path:  "filesystem Path",
-		}
-		app.db.Filesystems = append(app.db.Filesystems, fs)
-		app.listViewModel.RowInserted(len(app.db.Filesystems) - 1)
-		app.rethink()
+		createDlg := app.buildCreateDialog()
+		createDlg.Show()
 	})
 
 	app.deleteButton.OnClicked(func(*ui.Button) {
@@ -72,6 +98,12 @@ func (app *App) buildGUI() ui.Control {
 func (app *App) rethink() {
 	sel := app.listView.GetSelection()
 	fmt.Printf("selected: %v\n", sel)
+
+	//if len(sel) == 1 {
+	//	dbitem := app.db.Filesystems[sel[0]]
+	//	fmt.Println("dbitem: ", dbitem)
+	//}
+
 	invalid := len(sel) > 0
 
 	if invalid {
@@ -92,6 +124,18 @@ func (app *App) DeleteSelected() {
 	// remove highest-first so we don't screw up our indices
 	sort.Sort(sort.Reverse(sort.IntSlice(sel)))
 	for _, idx := range sel {
+		if len(sel) == 1 {
+			dbitem := app.db.Filesystems[sel[0]]
+			cerr := RunCommand("delete", dbitem.Origin)
+			if cerr != nil {
+				fmt.Println(cerr)
+				ui.MsgBoxError(window, "Error", fmt.Sprintf("Error: %v", cerr))
+			} else {
+				//app.rethink()
+				//app.updateModel()
+			}
+		}
+
 		app.db.Filesystems = append(app.db.Filesystems[:idx], app.db.Filesystems[idx+1:]...)
 		app.listViewModel.RowDeleted(idx)
 	}
