@@ -23,7 +23,7 @@ func CmdPutFile(c *cli.Context) (err error) {
 		return cli.NewExitError(
 			fmt.Sprintf("Wrong number of arguments (have %d, want 2)."+
 				" You passed: %s.", c.NArg(), c.Args()),
-			globals.Usage)
+			globals.ExitUsage)
 	}
 
 	originalFile := c.Args()[0]
@@ -51,7 +51,7 @@ func ApiPut(originalFile, origin string, content []byte) (err error) {
 	if err != nil {
 		return cli.NewExitError(
 			"Did not find MOUNTPOINT in common config.",
-			globals.MountPoint)
+			globals.ExitMountPoint)
 	}
 
 	if content == nil {
@@ -71,7 +71,7 @@ func ApiPut(originalFile, origin string, content []byte) (err error) {
 		if _, err = os.Stat(originalFile); os.IsNotExist(err) {
 			return cli.NewExitError(
 				fmt.Sprintf("Original FILE (%s) does not exist.", originalFile),
-				globals.Other)
+				globals.ExitOther)
 		}
 	}
 	originalFileBase := filepath.Base(originalFile)
@@ -81,7 +81,7 @@ func ApiPut(originalFile, origin string, content []byte) (err error) {
 	if _, err = os.Stat(destinationFile); err == nil {
 		return cli.NewExitError(
 			fmt.Sprintf("Destination FILE (%s) is exist.", destinationFile),
-			globals.Other)
+			globals.ExitOther)
 	}
 
 	// copy (replace?) file to mountpointPath
@@ -89,7 +89,7 @@ func ApiPut(originalFile, origin string, content []byte) (err error) {
 	if err != nil {
 		return cli.NewExitError(
 			fmt.Sprintf("We have a problem with copy file: %v", err),
-			globals.Other)
+			globals.ExitOther)
 	}
 
 	return nil
@@ -103,7 +103,7 @@ func CmdGetFile(c *cli.Context) (err error) {
 		return cli.NewExitError(
 			fmt.Sprintf("Wrong number of arguments (have %d, want 2)."+
 				" You passed: %s.", c.NArg(), c.Args()),
-			globals.Usage)
+			globals.ExitUsage)
 	}
 
 	originalFile := c.Args()[0]
@@ -133,14 +133,14 @@ func ApiGet(originalFile, origin string, getContentOnly bool) (content []byte, e
 	if err != nil {
 		return nil, cli.NewExitError(
 			"Did not find MOUNTPOINT in common config.",
-			globals.MountPoint)
+			globals.ExitMountPoint)
 	}
 
 	// FIXME: check PATH
 	if filepath.IsAbs(originalFile) {
 		return nil, cli.NewExitError(
 			fmt.Sprintf("FILE argument (%s) is absolute path to file.", originalFile),
-			globals.Other)
+			globals.ExitOther)
 	}
 
 	// FIXME: get Base?
@@ -151,7 +151,7 @@ func ApiGet(originalFile, origin string, getContentOnly bool) (content []byte, e
 	if _, err = os.Stat(originalFile); os.IsNotExist(err) {
 		return nil, cli.NewExitError(
 			fmt.Sprintf("Original FILE (%s) does not exist.", originalFile),
-			globals.Other)
+			globals.ExitOther)
 	}
 
 	// check destination file existing
@@ -162,7 +162,7 @@ func ApiGet(originalFile, origin string, getContentOnly bool) (content []byte, e
 		if _, err = os.Stat(destinationFile); os.IsExist(err) {
 			return nil, cli.NewExitError(
 				fmt.Sprintf("Destination FILE (%s) is exist.", destinationFile),
-				globals.Other)
+				globals.ExitOther)
 		}
 	}
 
@@ -171,7 +171,7 @@ func ApiGet(originalFile, origin string, getContentOnly bool) (content []byte, e
 	if err != nil {
 		return nil, cli.NewExitError(
 			fmt.Sprintf("We have a problem with copy file: %v", err),
-			globals.Other)
+			globals.ExitOther)
 	}
 
 	return

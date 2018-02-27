@@ -8,7 +8,7 @@ import (
 // TODO: HACK - temporary solution is:
 // to store all ORIGINs and MOUNTPOINTs in one place
 var (
-	OriginDirPath = userHomeDir() + "/code/test/"
+	OriginDirPath = userHomeDir() + "/.local/share/wize/fs/"
 )
 
 func userHomeDir() string {

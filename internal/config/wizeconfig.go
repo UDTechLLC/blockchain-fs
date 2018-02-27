@@ -44,6 +44,12 @@ func init() {
 }
 
 func InitWizeConfig() {
+	// create Directory if it's not exist
+	if _, err := os.Stat(globals.OriginDirPath); os.IsNotExist(err) {
+		tlog.Warn.Printf("Create ORIGIN DIR directory: %s", globals.OriginDirPath)
+		os.MkdirAll(globals.OriginDirPath, 0755)
+	}
+
 	InitWizeConfigWithPath(globals.OriginDirPath)
 }
 
@@ -195,6 +201,14 @@ func (wc *WizeConfig) Load() error {
 		return err
 	}
 
+	// Just clear wc maps
+	for k := range wc.Filesystems {
+		delete(wc.Filesystems, k)
+	}
+	for k := range wc.Mountpoints {
+		delete(wc.Mountpoints, k)
+	}
+
 	// Unmarshal
 	err = json.Unmarshal(js, &wc)
 	if err != nil {
@@ -233,4 +247,33 @@ func (wc *WizeConfig) CheckOriginGetMountpoint(origin string) (mountpointPath st
 	// TODO: check mountpointPath?
 
 	return mountpointPath, nil
+}
+
+func (wc *WizeConfig) CheckFilesystem(origin string) (existOrigin bool, existMountpoint bool) {
+	existMountpoint = false
+	fsinfo, existOrigin := wc.Filesystems[origin]
+	if existOrigin {
+		if fsinfo.MountpointKey != "" {
+			existMountpoint = true
+		}
+	}
+	return
+}
+
+func (wc *WizeConfig) GetMountpointInfoByOrigin(origin string) (fsinfo FilesystemInfo, mpinfo MountpointInfo, err error) {
+	wc.Load()
+
+	fsinfo, ok := wc.Filesystems[origin]
+	if !ok {
+		tlog.Warn.Printf("Filesystem %s is not exist!", origin)
+		return FilesystemInfo{}, MountpointInfo{}, errors.New("Filesystem is not exist!")
+	}
+
+	mpinfo, ok = wc.Mountpoints[fsinfo.MountpointKey]
+	if !ok {
+		tlog.Warn.Printf("Mounted filesystem %s is not exist!", fsinfo.MountpointKey)
+		return fsinfo, MountpointInfo{}, errors.New("Mounted filesystem is not exist!")
+	}
+
+	return fsinfo, mpinfo, nil
 }
