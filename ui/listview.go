@@ -37,7 +37,7 @@ func (db *FilesystemDB) CellValue(m *ui.TableModel, row int, col int) interface{
 	value := &db.Filesystems[row]
 	switch col {
 	case 0:
-		return strconv.Itoa(value.Index)
+		return strconv.Itoa(row + 1)
 	case 1:
 		return value.Origin
 	case 2:
@@ -54,7 +54,7 @@ func (db *FilesystemDB) SetCellValue(*ui.TableModel, int, int, interface{}) {
 	// TODO
 }
 
-func (db *FilesystemDB) FindByOrigin(origin string) bool {
+func (db *FilesystemDB) HasOrigin(origin string) bool {
 	for _, value := range db.Filesystems {
 		if value.Origin == origin {
 			return true

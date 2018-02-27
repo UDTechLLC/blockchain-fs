@@ -6,62 +6,75 @@ import (
 	"github.com/leedark/ui"
 )
 
-func (app *App) buildCreateDialog() ui.Control {
-	createwindow := ui.NewWindow("Dialog", 300, 120, false)
-	createwindow.SetMargined(true)
-	createwindow.Center()
+type CreateDialog struct {
+	window       *ui.Window
+	originLabel  *ui.Label
+	originEdit   *ui.Entry
+	okButton     *ui.Button
+	cancelButton *ui.Button
+}
+
+func (app *App) buildCreateDialog() {
+	app.createDialog = &CreateDialog{}
+
+	app.createDialog.window = ui.NewWindow("Dialog", 300, 120, false)
+	app.createDialog.window.SetMargined(true)
+	app.createDialog.window.Center()
 
 	mainBox := ui.NewVerticalBox()
 
 	topBox := ui.NewVerticalBox()
 
-	originLabel := ui.NewLabel("Input filesystem label:")
-	originEdit := ui.NewEntry()
-	topBox.Append(originLabel, false)
-	topBox.Append(originEdit, false)
+	app.createDialog.originLabel = ui.NewLabel("Input filesystem label:")
+	app.createDialog.originEdit = ui.NewEntry()
+	topBox.Append(app.createDialog.originLabel, false)
+	topBox.Append(app.createDialog.originEdit, false)
 	topBox.SetPadded(true)
 
 	mainBox.Append(topBox, false)
 	mainBox.Append(ui.NewHorizontalSeparator(), false)
 
 	buttonBox := ui.NewHorizontalBox()
-	okButton := ui.NewButton("Ok")
-	cancelButton := ui.NewButton("Cancel")
+	app.createDialog.okButton = ui.NewButton("Ok")
+	app.createDialog.cancelButton = ui.NewButton("Cancel")
 
-	buttonBox.Append(okButton, true)
-	buttonBox.Append(cancelButton, true)
+	buttonBox.Append(app.createDialog.okButton, true)
+	buttonBox.Append(app.createDialog.cancelButton, true)
 	buttonBox.SetPadded(true)
 
 	mainBox.Append(buttonBox, false)
-
 	mainBox.SetPadded(true)
 
-	createwindow.SetChild(mainBox)
+	app.createDialog.window.SetChild(mainBox)
 
-	createwindow.OnClosing(func(*ui.Window) bool {
-		createwindow.Destroy()
-		return false
-	})
+	app.createDialog.window.OnClosing(app.OnCreateDialogClosing)
+	app.createDialog.okButton.OnClicked(app.OnCreadeOkClicked)
+	app.createDialog.cancelButton.OnClicked(app.OnCreateCancelClicked)
 
-	okButton.OnClicked(func(*ui.Button) {
-		origin := originEdit.Text()
-		fmt.Println("OK Origin: ", origin)
+	//return app.createDialog
+}
 
-		createwindow.Destroy()
+func (app *App) OnCreateDialogClosing(window *ui.Window) bool {
+	app.createDialog.window.Destroy()
+	return false
+}
 
-		cerr := RunCommand("create", origin)
-		if cerr != nil {
-			fmt.Println(cerr)
-			ui.MsgBoxError(window, "Error", fmt.Sprintf("Error: %v", cerr))
-		} else {
-			app.rethink()
-			app.updateModel()
-		}
-	})
+func (app *App) OnCreadeOkClicked(button *ui.Button) {
+	origin := app.createDialog.originEdit.Text()
+	fmt.Println("OK Origin: ", origin)
 
-	cancelButton.OnClicked(func(*ui.Button) {
-		createwindow.Destroy()
-	})
+	app.createDialog.window.Destroy()
 
-	return createwindow
+	cerr := RunCommand("create", origin)
+	if cerr != nil {
+		fmt.Println(cerr)
+		ui.MsgBoxError(window, "Error", fmt.Sprintf("Error: %v", cerr))
+	} else {
+		app.rethink()
+		app.updateModel()
+	}
+}
+
+func (app *App) OnCreateCancelClicked(button *ui.Button) {
+	app.createDialog.window.Destroy()
 }

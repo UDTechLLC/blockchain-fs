@@ -9,7 +9,8 @@ import (
 )
 
 type App struct {
-	db FilesystemDB
+	db           FilesystemDB
+	createDialog *CreateDialog
 
 	listView      *ui.Table
 	listViewModel *ui.TableModel
@@ -36,7 +37,8 @@ func (app *App) Init() {
 func (app *App) updateModel() {
 	config.CommonConfig.Load()
 	for origin, filesystem := range config.CommonConfig.Filesystems {
-		if !app.db.FindByOrigin(origin) {
+		// TODO: HACK simple update by checking all map - is not quick solution
+		if !app.db.HasOrigin(origin) {
 			fs := Filesystem{
 				Index:      len(app.db.Filesystems) + 1,
 				Origin:     origin,
@@ -63,10 +65,6 @@ func (app *App) buildGUI() ui.Control {
 	listView.AppendTextColumn("Type", 3)
 	listView.AppendTextColumn("Mount", 4)
 
-	listView.OnSelectionChanged(func(t *ui.Table) {
-		app.HandleSelectionChanged()
-	})
-
 	listBox.Append(listView, true)
 	app.listView = listView
 
@@ -81,18 +79,25 @@ func (app *App) buildGUI() ui.Control {
 	mainBox.Append(buttonBox, false)
 	mainBox.SetPadded(true)
 
-	app.createButton.OnClicked(func(*ui.Button) {
-		createDlg := app.buildCreateDialog()
-		createDlg.Show()
-	})
-
-	app.deleteButton.OnClicked(func(*ui.Button) {
-		app.DeleteSelected()
-	})
+	app.listView.OnSelectionChanged(app.OnListViewSelectionChanged)
+	app.createButton.OnClicked(app.OnCreateClicked)
+	app.deleteButton.OnClicked(app.OnDeleteClicked)
 
 	app.rethink()
-
 	return mainBox
+}
+
+func (app *App) OnListViewSelectionChanged(table *ui.Table) {
+	app.HandleSelectionChanged()
+}
+
+func (app *App) OnCreateClicked(button *ui.Button) {
+	app.buildCreateDialog()
+	app.createDialog.window.Show()
+}
+
+func (app *App) OnDeleteClicked(button *ui.Button) {
+	app.DeleteSelected()
 }
 
 func (app *App) rethink() {
