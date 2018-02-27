@@ -38,7 +38,32 @@ func getConnection(t *testing.T) *grpc.ClientConn {
 	return conn
 }
 
-func TestFullCircle(t *testing.T) {
+func TestCreateInvalidOrigin(t *testing.T) {
+	// TODO: HACK - start server for testing
+	t.Logf("Starting server on %s", serverAddrTest)
+	go startServer(t)
+	time.Sleep(1 * time.Second)
+
+	// start testing
+	conn := getConnection(t)
+	defer conn.Close()
+	client := pb.NewWizeFsServiceClient(conn)
+
+	origin := "image.jpg"
+
+	// Create
+	t.Logf("Request: Create. Origin: %s", origin)
+	resp, err := client.Create(context.Background(), &pb.FilesystemRequest{Origin: origin})
+	if err != nil {
+		t.Fatalf("Fail to execute Create method: %v", err)
+	}
+	if !resp.Executed {
+		t.Fatalf("Bad response from Create method: %s", resp.Message)
+	}
+	t.Logf("Response message: %s.", resp.Message)
+}
+
+func testFullCircle(t *testing.T) {
 	// TODO: HACK - start server for testing
 	t.Logf("Starting server on %s", serverAddrTest)
 	go startServer(t)
