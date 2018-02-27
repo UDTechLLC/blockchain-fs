@@ -2,10 +2,12 @@ package main
 
 import (
 	"fmt"
+	"path/filepath"
 	"sort"
 	"time"
 
 	"bitbucket.org/udt/wizefs/internal/config"
+	"bitbucket.org/udt/wizefs/internal/util"
 	"github.com/leedark/ui"
 )
 
@@ -19,6 +21,8 @@ type App struct {
 	deleteButton  *ui.Button
 	mountButton   *ui.Button
 	unmountButton *ui.Button
+	putfileButton *ui.Button
+	getfileButton *ui.Button
 }
 
 func (app *App) Init() {
@@ -59,10 +63,7 @@ func (app *App) updateModelItem(idx int) {
 	time.Sleep(200 * time.Millisecond)
 
 	filesystem := &app.db.Filesystems[idx]
-
-	var fsinfo config.FilesystemInfo
-	fsinfo, _ = config.CommonConfig.GetMountpointInfoByOrigin(filesystem.Origin)
-
+	fsinfo, _, _ := config.CommonConfig.GetMountpointInfoByOrigin(filesystem.Origin)
 	filesystem.Mountpoint = fsinfo.MountpointKey
 }
 
@@ -87,10 +88,14 @@ func (app *App) buildGUI() ui.Control {
 	app.deleteButton = ui.NewButton("Delete")
 	app.mountButton = ui.NewButton("Mount")
 	app.unmountButton = ui.NewButton("Unmount")
+	app.putfileButton = ui.NewButton("Put file")
+	app.getfileButton = ui.NewButton("Get file")
 	buttonBox.Append(app.createButton, false)
 	buttonBox.Append(app.deleteButton, false)
 	buttonBox.Append(app.mountButton, false)
 	buttonBox.Append(app.unmountButton, false)
+	buttonBox.Append(app.putfileButton, false)
+	buttonBox.Append(app.getfileButton, false)
 	buttonBox.SetPadded(true)
 
 	mainBox.Append(listBox, true)
@@ -102,6 +107,8 @@ func (app *App) buildGUI() ui.Control {
 	app.deleteButton.OnClicked(app.OnDeleteClicked)
 	app.mountButton.OnClicked(app.OnMountClicked)
 	app.unmountButton.OnClicked(app.OnUnmountClicked)
+	app.putfileButton.OnClicked(app.OnPutFileClicked)
+	app.getfileButton.OnClicked(app.OnGetFileClicked)
 
 	app.rethink()
 	return mainBox
@@ -133,7 +140,6 @@ func (app *App) OnMountClicked(button *ui.Button) {
 
 	cerr := RunCommand("mount", origin)
 	if cerr != nil {
-		fmt.Println(cerr)
 		ui.MsgBoxError(window, "Error", fmt.Sprintf("Error: %v", cerr))
 	} else {
 		app.updateModelItem(idx)
@@ -152,13 +158,10 @@ func (app *App) OnUnmountClicked(button *ui.Button) {
 
 	idx := sel[0]
 	dbitem := app.db.Filesystems[idx]
-	fmt.Println("dbitem: ", dbitem)
 	origin = dbitem.Origin
-	fmt.Println("OK Origin: ", origin)
 
 	cerr := RunCommand("unmount", origin)
 	if cerr != nil {
-		fmt.Println(cerr)
 		ui.MsgBoxError(window, "Error", fmt.Sprintf("Error: %v", cerr))
 	} else {
 		app.updateModelItem(idx)
@@ -168,33 +171,102 @@ func (app *App) OnUnmountClicked(button *ui.Button) {
 	}
 }
 
+func (app *App) OnPutFileClicked(button *ui.Button) {
+	var origin string = ""
+	sel := app.listView.GetSelection()
+	if len(sel) != 1 {
+		return
+	}
+
+	idx := sel[0]
+	dbitem := app.db.Filesystems[idx]
+	origin = dbitem.Origin
+
+	file := ui.OpenFile(window, util.UserHomeDir()+"/*.*")
+	//fmt.Println("file: ", file)
+
+	if file == "" {
+		//ui.MsgBoxError(window, "Error",
+		//	fmt.Sprintf("Please, select file for putting it to filesystem"))
+		return
+	}
+
+	cerr := RunCommand("put", file, origin)
+	if cerr != nil {
+		ui.MsgBoxError(window, "Error", fmt.Sprintf("Error: %v", cerr))
+	} else {
+		//app.updateModelItem(idx)
+		//app.listViewModel.RowChanged(idx)
+
+		//app.rethink()
+	}
+}
+
+func (app *App) OnGetFileClicked(button *ui.Button) {
+	var origin string = ""
+	sel := app.listView.GetSelection()
+	if len(sel) != 1 {
+		return
+	}
+
+	idx := sel[0]
+	dbitem := app.db.Filesystems[idx]
+	origin = dbitem.Origin
+
+	// get mountpoint path
+	_, mpinfo, _ := config.CommonConfig.GetMountpointInfoByOrigin(origin)
+	if mpinfo.MountpointPath == "" {
+		return
+	}
+
+	// open file from mountpoint
+	file := ui.OpenFile(window, mpinfo.MountpointPath+"/*.*")
+	//fmt.Println("file: ", file)
+	if file == "" {
+		//ui.MsgBoxError(window, "Error",
+		//	fmt.Sprintf("Please, select file for gettig it from filesystem"))
+		return
+	}
+
+	fileBase := filepath.Base(file)
+	//fmt.Println("fileBase: ", fileBase)
+	cerr := RunCommand("get", fileBase, origin)
+	if cerr != nil {
+		ui.MsgBoxError(window, "Error", fmt.Sprintf("Error: %v", cerr))
+	} else {
+		//
+	}
+}
+
 func (app *App) rethink() {
 	sel := app.listView.GetSelection()
-	fmt.Printf("selected: %v\n", sel)
+	//fmt.Printf("selected: %v\n", sel)
 
 	invalid := len(sel) > 0
 
+	app.deleteButton.Disable()
+	app.mountButton.Disable()
+	app.unmountButton.Disable()
+	app.putfileButton.Disable()
+	app.getfileButton.Disable()
+
 	if invalid {
-		app.deleteButton.Enable()
-		app.mountButton.Enable()
-		app.unmountButton.Enable()
-	} else {
-		app.deleteButton.Disable()
-		app.mountButton.Disable()
-		app.unmountButton.Disable()
-	}
 
-	if len(sel) == 1 {
-		idx := sel[0]
-		dbitem := app.db.Filesystems[idx]
-		// check error
+		if len(sel) == 1 {
+			idx := sel[0]
+			dbitem := app.db.Filesystems[idx]
+			// check error
 
-		// delete?
-		if dbitem.Mountpoint != "" {
-			app.deleteButton.Disable()
-			app.mountButton.Disable()
-		} else {
-			app.unmountButton.Disable()
+			if dbitem.Mountpoint == "" {
+				// is not mounted
+				app.deleteButton.Enable()
+				app.mountButton.Enable()
+			} else {
+				// is mounted
+				app.unmountButton.Enable()
+				app.putfileButton.Enable()
+				app.getfileButton.Enable()
+			}
 		}
 	}
 
@@ -210,17 +282,12 @@ func (app *App) DeleteSelected() {
 	// remove highest-first so we don't screw up our indices
 	sort.Sort(sort.Reverse(sort.IntSlice(sel)))
 	for _, idx := range sel {
-		fmt.Println("idx: ", idx)
 		if len(sel) == 1 {
 			dbitem := app.db.Filesystems[sel[0]]
 			cerr := RunCommand("delete", dbitem.Origin)
 			if cerr != nil {
-				fmt.Println(cerr)
 				ui.MsgBoxError(window, "Error", fmt.Sprintf("Error: %v", cerr))
 			} else {
-				//app.rethink()
-				//app.updateModel()
-
 				app.db.Filesystems = append(app.db.Filesystems[:idx], app.db.Filesystems[idx+1:]...)
 				app.listViewModel.RowDeleted(idx)
 			}
