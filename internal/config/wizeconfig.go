@@ -201,6 +201,14 @@ func (wc *WizeConfig) Load() error {
 		return err
 	}
 
+	// Just clear wc maps
+	for k := range wc.Filesystems {
+		delete(wc.Filesystems, k)
+	}
+	for k := range wc.Mountpoints {
+		delete(wc.Mountpoints, k)
+	}
+
 	// Unmarshal
 	err = json.Unmarshal(js, &wc)
 	if err != nil {
