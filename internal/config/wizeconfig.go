@@ -259,3 +259,21 @@ func (wc *WizeConfig) CheckFilesystem(origin string) (existOrigin bool, existMou
 	}
 	return
 }
+
+func (wc *WizeConfig) GetMountpointInfoByOrigin(origin string) (fsinfo FilesystemInfo, err error) {
+	wc.Load()
+
+	fsinfo, ok := wc.Filesystems[origin]
+	if !ok {
+		tlog.Warn.Printf("Filesystem %s is not exist!", origin)
+		return FilesystemInfo{}, errors.New("Filesystem is not exist!")
+	}
+
+	//mpinfo, ok = wc.Mountpoints[fsinfo.MountpointKey]
+	//if !ok {
+	//	tlog.Warn.Printf("Mounted filesystem %s is not exist!", fsinfo.MountpointKey)
+	//	return MountpointInfo{}, errors.New("Mounted filesystem is not exist!")
+	//}
+
+	return fsinfo, nil
+}

@@ -172,13 +172,11 @@ func CmdMountFilesystem(c *cli.Context) (err error) {
 	existOrigin, existMountpoint := config.CommonConfig.CheckFilesystem(origin)
 	if !existOrigin {
 		err = fmt.Errorf("Did not find ORIGIN: %s in common config.", origin)
-		tlog.Warn.Println(err)
-		return
+		return cli.NewExitError(err, globals.ExitOrigin)
 	}
 	if existMountpoint {
 		err = fmt.Errorf("This ORIGIN: %s is already mounted", origin)
-		tlog.Warn.Println(err)
-		return
+		return cli.NewExitError(err, globals.ExitMountPoint)
 	}
 
 	// Fork a child into the background if "-fg" is not set AND we are mounting
