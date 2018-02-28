@@ -82,7 +82,7 @@ func NewWizeConfig(path string) *WizeConfig {
 
 // TESTS: TestWizeConfig* (several tests)
 func (wc *WizeConfig) CreateFilesystem(origin, originPath string, itype FSType) error {
-	// HACK: this fixed problems with gRPC methods
+	// HACK: this fixed problems with gRPC methods (and GUI?)
 	wc.Load()
 
 	_, ok := wc.Filesystems[origin]
@@ -102,7 +102,7 @@ func (wc *WizeConfig) CreateFilesystem(origin, originPath string, itype FSType) 
 }
 
 func (wc *WizeConfig) DeleteFilesystem(origin string) error {
-	// HACK: this fixed problems with gRPC methods
+	// HACK: this fixed problems with gRPC methods (and GUI?)
 	wc.Load()
 
 	_, ok := wc.Filesystems[origin]
@@ -118,7 +118,7 @@ func (wc *WizeConfig) DeleteFilesystem(origin string) error {
 }
 
 func (wc *WizeConfig) MountFilesystem(origin, mountpoint, mountpointpath string) error {
-	// HACK: this fixed problems with gRPC methods
+	// HACK: this fixed problems with gRPC methods (and GUI?)
 	// HACK2: for gRPC/Mount we don't need to Load() config, because it works via mount CLI app
 	//wc.Load()
 
@@ -145,7 +145,7 @@ func (wc *WizeConfig) MountFilesystem(origin, mountpoint, mountpointpath string)
 }
 
 func (wc *WizeConfig) UnmountFilesystem(mountpoint string) error {
-	// HACK: this fixed problems with gRPC methods
+	// HACK: this fixed problems with gRPC methods (and GUI?)
 	wc.Load()
 
 	mpi, ok := wc.Mountpoints[mountpoint]
@@ -230,7 +230,7 @@ func (wc *WizeConfig) clear() {
 }
 
 func (wc *WizeConfig) CheckOriginGetMountpoint(origin string) (mountpointPath string, err error) {
-	// HACK: this fixed problems with gRPC methods
+	// HACK: this fixed problems with gRPC methods (and GUI?)
 	wc.Load()
 
 	var ok bool
@@ -260,6 +260,9 @@ func (wc *WizeConfig) CheckOriginGetMountpoint(origin string) (mountpointPath st
 }
 
 func (wc *WizeConfig) CheckFilesystem(origin string) (existOrigin bool, existMountpoint bool) {
+	// HACK: this fixed problems with gRPC methods (and GUI?)
+	wc.Load()
+
 	existMountpoint = false
 	fsinfo, existOrigin := wc.Filesystems[origin]
 	if existOrigin {
@@ -271,6 +274,7 @@ func (wc *WizeConfig) CheckFilesystem(origin string) (existOrigin bool, existMou
 }
 
 func (wc *WizeConfig) GetMountpointInfoByOrigin(origin string) (fsinfo FilesystemInfo, mpinfo MountpointInfo, err error) {
+	// HACK: this fixed problems with gRPC methods (and GUI?)
 	wc.Load()
 
 	fsinfo, ok := wc.Filesystems[origin]

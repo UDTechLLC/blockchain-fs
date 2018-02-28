@@ -34,11 +34,10 @@ func CmdCreateFilesystem(c *cli.Context) (err error) {
 }
 
 func ApiCreate(origin string) (exitCode int, err error) {
-	// TEST: TestUnmountNotExistingOrigin, TestUnmountNotMounted
-	exitCode, err = checkConfig(origin, true, false)
-	if err != nil {
-		return
-	}
+	//exitCode, err = checkConfig(origin, true, false)
+	//if err != nil {
+	//	return
+	//}
 
 	originPath := globals.OriginDirPath + origin
 	fstype, err := checkOriginType(originPath)
@@ -165,7 +164,7 @@ func ApiDelete(origin string) (exitCode int, err error) {
 	mountpointPath := globals.OriginDirPath + mountpoint
 
 	if _, err := os.Stat(mountpointPath); os.IsNotExist(err) {
-		tlog.Warn.Printf("Directory %s is not exist!", mountpointPath)
+		//tlog.Warn.Printf("Directory %s is not exist!", mountpointPath)
 	} else {
 		tlog.Debug.Printf("Delete existing directory: %s", mountpointPath)
 		os.RemoveAll(mountpointPath)
@@ -390,6 +389,10 @@ func getMountpoint(origin string, fstype config.FSType) string {
 }
 
 func checkConfig(origin string, shouldFindOrigin, shouldMounted bool) (extCode int, err error) {
+	if config.CommonConfig == nil {
+		config.InitWizeConfig()
+	}
+
 	existOrigin, existMountpoint := config.CommonConfig.CheckFilesystem(origin)
 
 	if shouldFindOrigin {

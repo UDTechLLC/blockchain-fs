@@ -38,7 +38,7 @@ func getConnection(t *testing.T) *grpc.ClientConn {
 	return conn
 }
 
-func TestCreateInvalidOrigin(t *testing.T) {
+func testCreateInvalidOrigin(t *testing.T) {
 	// TODO: HACK - start server for testing
 	t.Logf("Starting server on %s", serverAddrTest)
 	go startServer(t)
@@ -63,7 +63,7 @@ func TestCreateInvalidOrigin(t *testing.T) {
 	t.Logf("Response message: %s.", resp.Message)
 }
 
-func testFullCircle(t *testing.T) {
+func TestFullCircle(t *testing.T) {
 	// TODO: HACK - start server for testing
 	t.Logf("Starting server on %s", serverAddrTest)
 	go startServer(t)

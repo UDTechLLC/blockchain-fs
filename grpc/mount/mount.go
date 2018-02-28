@@ -91,8 +91,8 @@ func main() {
 		os.Exit(1)
 	}
 
-	err := api.ApiMount(origin, args.notifypid)
+	exitCode, err := api.ApiMount(origin, args.notifypid)
 	if err != nil {
-		tlog.Warn.Println("Error with ApiMount: %v", err)
+		tlog.Warn.Println("Error with ApiMount: [%d] %v", exitCode, err)
 	}
 }

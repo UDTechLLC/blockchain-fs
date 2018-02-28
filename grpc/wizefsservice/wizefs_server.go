@@ -38,9 +38,9 @@ func (s *wizefsServer) Delete(ctx context.Context, request *FilesystemRequest) (
 		Executed: true,
 		Message:  "OK",
 	}
-	if err = api.ApiDelete(origin); err != nil {
+	if exitCode, err := api.ApiDelete(origin); err != nil {
 		response.Executed = false
-		response.Message = err.Error()
+		response.Message = fmt.Sprintf("Error: %s. Exit code: %d", err.Error(), exitCode)
 	}
 	return
 }
@@ -85,9 +85,9 @@ func (s *wizefsServer) Unmount(ctx context.Context, request *FilesystemRequest) 
 		Executed: true,
 		Message:  "OK",
 	}
-	if err = api.ApiUnmount(origin); err != nil {
+	if exitCode, err := api.ApiUnmount(origin); err != nil {
 		response.Executed = false
-		response.Message = err.Error()
+		response.Message = fmt.Sprintf("Error: %s. Exit code: %d", err.Error(), exitCode)
 	}
 	return
 }
@@ -104,9 +104,9 @@ func (s *wizefsServer) Put(ctx context.Context, request *PutRequest) (response *
 		Executed: true,
 		Message:  "OK",
 	}
-	if err = api.ApiPut(filename, origin, content); err != nil {
+	if exitCode, err := api.ApiPut(filename, origin, content); err != nil {
 		response.Executed = false
-		response.Message = err.Error()
+		response.Message = fmt.Sprintf("Error: %s. Exit code: %d", err.Error(), exitCode)
 	}
 	return
 }
@@ -123,9 +123,9 @@ func (s *wizefsServer) Get(ctx context.Context, request *GetRequest) (response *
 		Message:  "OK",
 		Content:  nil,
 	}
-	if content, err := api.ApiGet(filename, origin, true); err != nil {
+	if content, exitCode, err := api.ApiGet(filename, origin, true); err != nil {
 		response.Executed = false
-		response.Message = err.Error()
+		response.Message = fmt.Sprintf("Error: %s. Exit code: %d", err.Error(), exitCode)
 	} else {
 		response.Content = content
 	}

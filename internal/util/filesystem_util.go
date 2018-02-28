@@ -53,6 +53,7 @@ func isZipFS(file string) bool {
 
 // TEST: TestUtilCheckDirOrZip
 func CheckDirOrZip(dirOrZip string) (config.FSType, error) {
+	// check on zip/tar archive
 	zips := map[string]int{
 		".zip":     0,
 		".tar":     1,
@@ -61,7 +62,6 @@ func CheckDirOrZip(dirOrZip string) (config.FSType, error) {
 	}
 
 	ext := getExt(dirOrZip)
-
 	_, ok := zips[ext]
 	if ok {
 		if isZipFS(dirOrZip) {
@@ -70,9 +70,16 @@ func CheckDirOrZip(dirOrZip string) (config.FSType, error) {
 		return config.LZFS, nil
 	}
 
+	// check for existing another extension
+	if ext != "" {
+		return config.NoneFS,
+			fmt.Errorf("%s isn't a directory and isn't a zip file",
+				dirOrZip)
+	}
+
 	fi, err := os.Stat(dirOrZip)
 	if err != nil {
-		// HACK
+		// HACK: if directory doesn't exist yet
 		return config.HackFS, err
 	}
 
