@@ -39,16 +39,10 @@ func CmdPutFile(c *cli.Context) (err error) {
 
 // TODO: check MD5, size, type, etc
 func ApiPut(originalFile, origin string, content []byte) (exitCode int, err error) {
-	existOrigin, existMountpoint := config.CommonConfig.CheckFilesystem(origin)
-	if !existOrigin {
-		// TEST: TestPutNotExistingOrigin
-		return globals.ExitOrigin,
-			fmt.Errorf("Did not find ORIGIN: %s in common config.", origin)
-	}
-	if !existMountpoint {
-		// TEST: TestPutNotMounted
-		return globals.ExitMountPoint,
-			fmt.Errorf("This ORIGIN: %s is not mounted yet", origin)
+	// TEST: TestPutNotExistingOrigin, TestPutNotMounted
+	exitCode, err = checkConfig(origin, false, false)
+	if err != nil {
+		return
 	}
 
 	var mountpointPath string
@@ -138,16 +132,10 @@ func CmdGetFile(c *cli.Context) (err error) {
 
 // TODO: check MD5, size, type, etc
 func ApiGet(originalFile, origin string, getContentOnly bool) (content []byte, exitCode int, err error) {
-	existOrigin, existMountpoint := config.CommonConfig.CheckFilesystem(origin)
-	if !existOrigin {
-		// TEST: TestGetNotExistingOrigin
-		return nil, globals.ExitOrigin,
-			fmt.Errorf("Did not find ORIGIN: %s in common config.", origin)
-	}
-	if !existMountpoint {
-		// TEST: TestGetNotMounted
-		return nil, globals.ExitMountPoint,
-			fmt.Errorf("This ORIGIN: %s is not mounted yet", origin)
+	// TEST: TestGetNotExistingOrigin, TestGettNotMounted
+	exitCode, err = checkConfig(origin, false, false)
+	if err != nil {
+		return
 	}
 
 	var mountpointPath string

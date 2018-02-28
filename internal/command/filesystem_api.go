@@ -34,6 +34,12 @@ func CmdCreateFilesystem(c *cli.Context) (err error) {
 }
 
 func ApiCreate(origin string) (exitCode int, err error) {
+	// TEST: TestUnmountNotExistingOrigin, TestUnmountNotMounted
+	exitCode, err = checkConfig(origin, true, false)
+	if err != nil {
+		return
+	}
+
 	originPath := globals.OriginDirPath + origin
 	fstype, err := checkOriginType(originPath)
 	if err != nil {
@@ -121,16 +127,10 @@ func CmdDeleteFilesystem(c *cli.Context) (err error) {
 }
 
 func ApiDelete(origin string) (exitCode int, err error) {
-	existOrigin, existMountpoint := config.CommonConfig.CheckFilesystem(origin)
-	if !existOrigin {
-		// TEST: TestDeleteNotExistingOrigin
-		return globals.ExitOrigin,
-			fmt.Errorf("Did not find ORIGIN: %s in common config.", origin)
-	}
-	if existMountpoint {
-		// TEST: TestDeleteAlreadyMounted
-		return globals.ExitMountPoint,
-			fmt.Errorf("This ORIGIN: %s is already mounted", origin)
+	// TEST: TestDeleteNotExistingOrigin, TestDeleteAlreadyMounted
+	exitCode, err = checkConfig(origin, false, true)
+	if err != nil {
+		return
 	}
 
 	originPath := globals.OriginDirPath + origin
@@ -203,16 +203,10 @@ func CmdMountFilesystem(c *cli.Context) (err error) {
 	// TODO: check permissions
 	origin := c.Args()[0]
 
-	existOrigin, existMountpoint := config.CommonConfig.CheckFilesystem(origin)
-	if !existOrigin {
-		// TEST: TestMountNotExistingOrigin
-		err = fmt.Errorf("Did not find ORIGIN: %s in common config.", origin)
-		return cli.NewExitError(err, globals.ExitOrigin)
-	}
-	if existMountpoint {
-		// TEST: TestMountAlreadyMounted
-		err = fmt.Errorf("This ORIGIN: %s is already mounted", origin)
-		return cli.NewExitError(err, globals.ExitMountPoint)
+	// TEST: TestMountNotExistingOrigin, TestMountAlreadyMounted
+	exitCode, err := checkConfig(origin, false, true)
+	if err != nil {
+		return cli.NewExitError(err, exitCode)
 	}
 
 	// Fork a child into the background if "-fg" is not set AND we are mounting
@@ -226,7 +220,7 @@ func CmdMountFilesystem(c *cli.Context) (err error) {
 
 	notifypid := c.GlobalInt("notifypid")
 
-	exitCode, err := ApiMount(origin, notifypid)
+	exitCode, err = ApiMount(origin, notifypid)
 	if err != nil {
 		//tlog.Warn.Println(err)
 		return cli.NewExitError(err, exitCode)
@@ -305,16 +299,10 @@ func CmdUnmountFilesystem(c *cli.Context) (err error) {
 }
 
 func ApiUnmount(origin string) (exitCode int, err error) {
-	existOrigin, existMountpoint := config.CommonConfig.CheckFilesystem(origin)
-	if !existOrigin {
-		// TEST: TestUnmountNotExistingOrigin
-		return globals.ExitOrigin,
-			fmt.Errorf("Did not find ORIGIN: %s in common config.", origin)
-	}
-	if !existMountpoint {
-		// TEST: TestUnmountNotMounted
-		return globals.ExitMountPoint,
-			fmt.Errorf("This ORIGIN: %s is not mounted yet", origin)
+	// TEST: TestUnmountNotExistingOrigin, TestUnmountNotMounted
+	exitCode, err = checkConfig(origin, false, false)
+	if err != nil {
+		return
 	}
 
 	originPath := globals.OriginDirPath + origin
@@ -399,4 +387,35 @@ func getMountpoint(origin string, fstype config.FSType) string {
 	mountpoint = "_mount" + mountpoint
 
 	return mountpoint
+}
+
+func checkConfig(origin string, shouldFindOrigin, shouldMounted bool) (extCode int, err error) {
+	existOrigin, existMountpoint := config.CommonConfig.CheckFilesystem(origin)
+
+	if shouldFindOrigin {
+		if existOrigin {
+			return globals.ExitOrigin,
+				fmt.Errorf("ORIGIN: %s is already exist in common config.", origin)
+		}
+	} else {
+		if !existOrigin {
+			return globals.ExitOrigin,
+				fmt.Errorf("Did not find ORIGIN: %s in common config.", origin)
+		}
+	}
+
+	if shouldMounted {
+		if existMountpoint {
+			return globals.ExitMountPoint,
+				fmt.Errorf("This ORIGIN: %s is already mounted", origin)
+		}
+	} else {
+		if !existMountpoint {
+			// TEST: TestUnmountNotMounted
+			return globals.ExitMountPoint,
+				fmt.Errorf("This ORIGIN: %s is not mounted yet", origin)
+		}
+	}
+
+	return 0, nil
 }
