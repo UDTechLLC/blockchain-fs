@@ -12,7 +12,6 @@ import (
 	"bitbucket.org/udt/wizefs/internal/config"
 	"bitbucket.org/udt/wizefs/internal/globals"
 	"bitbucket.org/udt/wizefs/internal/tlog"
-	//"bitbucket.org/udt/wizefs/internal/util"
 )
 
 // wizefs load FILE ORIGIN -> load FILE [ORIGIN]
@@ -20,6 +19,7 @@ import (
 // TODO: check permissions
 func CmdPutFile(c *cli.Context) (err error) {
 	if c.NArg() != 2 {
+		// TEST: TestPutUsage
 		return cli.NewExitError(
 			fmt.Sprintf("Wrong number of arguments (have %d, want 2)."+
 				" You passed: %s.", c.NArg(), c.Args()),
@@ -29,11 +29,28 @@ func CmdPutFile(c *cli.Context) (err error) {
 	originalFile := c.Args()[0]
 	origin := c.Args()[1]
 
-	return ApiPut(originalFile, origin, nil)
+	exitCode, err := ApiPut(originalFile, origin, nil)
+	if err != nil {
+		//tlog.Warn.Println(err)
+		return cli.NewExitError(err, exitCode)
+	}
+	return nil
 }
 
 // TODO: check MD5, size, type, etc
-func ApiPut(originalFile, origin string, content []byte) (err error) {
+func ApiPut(originalFile, origin string, content []byte) (exitCode int, err error) {
+	existOrigin, existMountpoint := config.CommonConfig.CheckFilesystem(origin)
+	if !existOrigin {
+		// TEST: TestPutNotExistingOrigin
+		return globals.ExitOrigin,
+			fmt.Errorf("Did not find ORIGIN: %s in common config.", origin)
+	}
+	if !existMountpoint {
+		// TEST: TestPutNotMounted
+		return globals.ExitMountPoint,
+			fmt.Errorf("This ORIGIN: %s is not mounted yet", origin)
+	}
+
 	var mountpointPath string
 	//originPath := OriginDir + origin
 
@@ -43,19 +60,19 @@ func ApiPut(originalFile, origin string, content []byte) (err error) {
 	// TODO: HACK for gRPC methods
 	if config.CommonConfig == nil {
 		config.InitWizeConfig()
-		//} else {
-		//	config.CommonConfig.Load()
 	}
 
 	mountpointPath, err = config.CommonConfig.CheckOriginGetMountpoint(origin)
 	if err != nil {
-		return cli.NewExitError(
-			"Did not find MOUNTPOINT in common config.",
-			globals.ExitMountPoint)
+		// TEST: TestPutFailedMountpointPath
+		return globals.ExitMountPoint,
+			fmt.Errorf("Did not find MOUNTPOINT in common config.")
 	}
 
+	// content is used for gRPC methods
 	if content == nil {
 		// check PATH
+		// TEST: TestPutFullFilename, TestPutShortFilename
 		if !filepath.IsAbs(originalFile) {
 			//return cli.NewExitError(
 			//	"FILE argument is not absolute path to file.",
@@ -69,9 +86,9 @@ func ApiPut(originalFile, origin string, content []byte) (err error) {
 
 		// check original file existing
 		if _, err = os.Stat(originalFile); os.IsNotExist(err) {
-			return cli.NewExitError(
-				fmt.Sprintf("Original FILE (%s) does not exist.", originalFile),
-				globals.ExitOther)
+			// TEST: TestPutNotExistingFile
+			return globals.ExitFile,
+				fmt.Errorf("Original FILE (%s) does not exist.", originalFile)
 		}
 	}
 	originalFileBase := filepath.Base(originalFile)
@@ -79,20 +96,20 @@ func ApiPut(originalFile, origin string, content []byte) (err error) {
 	// check destination file existing
 	destinationFile := mountpointPath + "/" + originalFileBase
 	if _, err = os.Stat(destinationFile); err == nil {
-		return cli.NewExitError(
-			fmt.Sprintf("Destination FILE (%s) is exist.", destinationFile),
-			globals.ExitOther)
+		// TEST: TestPutExistingDestinationFile
+		return globals.ExitFile,
+			fmt.Errorf("Destination FILE (%s) is exist.", destinationFile)
 	}
 
 	// copy (replace?) file to mountpointPath
 	_, err = copyFile(originalFile, destinationFile, content)
 	if err != nil {
-		return cli.NewExitError(
-			fmt.Sprintf("We have a problem with copy file: %v", err),
-			globals.ExitOther)
+		// TEST: TestPutFailedCopyFile
+		return globals.ExitFile,
+			fmt.Errorf("We have a problem with copy file: %v", err)
 	}
 
-	return nil
+	return 0, nil
 }
 
 // wizefs get FILE ORIGIN
@@ -100,6 +117,7 @@ func ApiPut(originalFile, origin string, content []byte) (err error) {
 // TODO: check permissions
 func CmdGetFile(c *cli.Context) (err error) {
 	if c.NArg() != 2 {
+		// TEST: TestPutUsage
 		return cli.NewExitError(
 			fmt.Sprintf("Wrong number of arguments (have %d, want 2)."+
 				" You passed: %s.", c.NArg(), c.Args()),
@@ -109,14 +127,30 @@ func CmdGetFile(c *cli.Context) (err error) {
 	originalFile := c.Args()[0]
 	origin := c.Args()[1]
 
-	_, err = ApiGet(originalFile, origin, false)
-	return err
+	// we don't need content, it's only for gRPC methods
+	_, exitCode, err := ApiGet(originalFile, origin, false)
+	if err != nil {
+		//tlog.Warn.Println(err)
+		return cli.NewExitError(err, exitCode)
+	}
+	return nil
 }
 
 // TODO: check MD5, size, type, etc
-func ApiGet(originalFile, origin string, getContentOnly bool) (content []byte, err error) {
-	var mountpointPath string
+func ApiGet(originalFile, origin string, getContentOnly bool) (content []byte, exitCode int, err error) {
+	existOrigin, existMountpoint := config.CommonConfig.CheckFilesystem(origin)
+	if !existOrigin {
+		// TEST: TestGetNotExistingOrigin
+		return nil, globals.ExitOrigin,
+			fmt.Errorf("Did not find ORIGIN: %s in common config.", origin)
+	}
+	if !existMountpoint {
+		// TEST: TestGetNotMounted
+		return nil, globals.ExitMountPoint,
+			fmt.Errorf("This ORIGIN: %s is not mounted yet", origin)
+	}
 
+	var mountpointPath string
 	//originPath := OriginDir + origin
 
 	// check origin via config file (database) and get mountpoint if it exists
@@ -125,22 +159,20 @@ func ApiGet(originalFile, origin string, getContentOnly bool) (content []byte, e
 	// TODO: HACK for gRPC methods
 	if config.CommonConfig == nil {
 		config.InitWizeConfig()
-		//} else {
-		//	config.CommonConfig.Load()
 	}
 
 	mountpointPath, err = config.CommonConfig.CheckOriginGetMountpoint(origin)
 	if err != nil {
-		return nil, cli.NewExitError(
-			"Did not find MOUNTPOINT in common config.",
-			globals.ExitMountPoint)
+		// TEST: TestGetFailedMountpointPath
+		return nil, globals.ExitMountPoint,
+			fmt.Errorf("Did not find MOUNTPOINT in common config.")
 	}
 
 	// FIXME: check PATH
 	if filepath.IsAbs(originalFile) {
-		return nil, cli.NewExitError(
-			fmt.Sprintf("FILE argument (%s) is absolute path to file.", originalFile),
-			globals.ExitOther)
+		// TEST: TestGetFullFilename, TestGetShortFilename
+		return nil, globals.ExitFile,
+			fmt.Errorf("FILE argument (%s) is absolute path to file.", originalFile)
 	}
 
 	// FIXME: get Base?
@@ -149,9 +181,9 @@ func ApiGet(originalFile, origin string, getContentOnly bool) (content []byte, e
 	// check original file existing
 	originalFile = mountpointPath + "/" + originalFileBase
 	if _, err = os.Stat(originalFile); os.IsNotExist(err) {
-		return nil, cli.NewExitError(
-			fmt.Sprintf("Original FILE (%s) does not exist.", originalFile),
-			globals.ExitOther)
+		// TEST: TestGetNotExistingFile
+		return nil, globals.ExitFile,
+			fmt.Errorf("Original FILE (%s) does not exist.", originalFile)
 	}
 
 	// check destination file existing
@@ -160,21 +192,21 @@ func ApiGet(originalFile, origin string, getContentOnly bool) (content []byte, e
 		// TODO: HACK - we just copy file into application directory
 		destinationFile, _ = filepath.Abs(originalFileBase)
 		if _, err = os.Stat(destinationFile); os.IsExist(err) {
-			return nil, cli.NewExitError(
-				fmt.Sprintf("Destination FILE (%s) is exist.", destinationFile),
-				globals.ExitOther)
+			// TEST: TestGetExistingDestinationFile
+			return nil, globals.ExitFile,
+				fmt.Errorf("Destination FILE (%s) is exist.", destinationFile)
 		}
 	}
 
 	// copy (replace?) file to mountpointPath
 	content, err = copyFile(originalFile, destinationFile, nil)
 	if err != nil {
-		return nil, cli.NewExitError(
-			fmt.Sprintf("We have a problem with copy file: %v", err),
-			globals.ExitOther)
+		// TEST: TestGetFailedCopyFile
+		return nil, globals.ExitFile,
+			fmt.Errorf("We have a problem with copy file: %v", err)
 	}
 
-	return
+	return content, 0, nil
 }
 
 // wizefs search FILE
@@ -183,6 +215,7 @@ func CmdSearchFile(c *cli.Context) {
 }
 
 // TODO: add replace
+// TEST: TestCopyFile (several tests)
 func copyFile(origFile, destFile string, origContent []byte) (destContent []byte, err error) {
 	var oldFile, newFile *os.File
 	var bytes64 int64

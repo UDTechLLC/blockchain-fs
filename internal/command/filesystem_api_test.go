@@ -5,6 +5,8 @@ import (
 	"os"
 	"os/exec"
 	"reflect"
+	"runtime"
+	"strings"
 	"syscall"
 	"testing"
 
@@ -15,8 +17,18 @@ import (
 )
 
 const (
-	projectPath = "/home/sergey/code/go/src/bitbucket.org/udt/wizefs/"
+	packagePath = "internal/command"
 )
+
+var (
+	projectPath = getProjectPath()
+)
+
+func getProjectPath() string {
+	_, testFilename, _, _ := runtime.Caller(0)
+	idx := strings.Index(testFilename, packagePath)
+	return testFilename[0:idx]
+}
 
 func runCommand(t *testing.T, command string, origin string) (cerr error) {
 	appPath := projectPath + "wizefs"
@@ -66,7 +78,7 @@ func TestCreateInvalidOrigin(t *testing.T) {
 	// TODO: remove invalid origin after
 }
 
-func TestCreateDirectoryExist(t *testing.T) {
+func TestCreateAlreadyExist(t *testing.T) {
 	// create directory before
 	os.MkdirAll(globals.OriginDirPath+"EXISTDIR", 0755)
 
@@ -96,6 +108,14 @@ func createMockContext(t *testing.T, mockArgs []string) *cli.Context {
 	mockSet.Parse(mockArgs)
 
 	return cli.NewContext(mockApp, mockSet, nil)
+}
+
+func expect(t *testing.T, a interface{}, b interface{}) {
+	if !reflect.DeepEqual(b, a) {
+		t.Errorf("RED: Expected %#v (type %v) - Got %#v (type %v)", b, reflect.TypeOf(b), a, reflect.TypeOf(a))
+	} else {
+		t.Logf("GREEN: Expected %#v (type %v)", b, reflect.TypeOf(b))
+	}
 }
 
 func testCmdCreateFilesystem(t *testing.T) {
@@ -155,12 +175,4 @@ func testCmdUnmountFilesystem(t *testing.T) {
 // to test different use cases
 func testFullCycleFilesystem(t *testing.T) {
 	t.Log("TODO")
-}
-
-func expect(t *testing.T, a interface{}, b interface{}) {
-	if !reflect.DeepEqual(b, a) {
-		t.Errorf("RED: Expected %#v (type %v) - Got %#v (type %v)", b, reflect.TypeOf(b), a, reflect.TypeOf(a))
-	} else {
-		t.Logf("GREEN: Expected %#v (type %v)", b, reflect.TypeOf(b))
-	}
 }

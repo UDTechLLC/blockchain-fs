@@ -16,6 +16,7 @@ import (
 // USECASE: wizefs create ORIGIN
 func CmdCreateFilesystem(c *cli.Context) (err error) {
 	if c.NArg() != 1 {
+		// TEST: TestCreateUsage
 		return cli.NewExitError(
 			fmt.Sprintf("Wrong number of arguments (have %d, want 1)."+
 				" You passed: %s.", c.NArg(), c.Args()),
@@ -36,12 +37,14 @@ func ApiCreate(origin string) (exitCode int, err error) {
 	originPath := globals.OriginDirPath + origin
 	fstype, err := checkOriginType(originPath)
 	if err != nil {
+		// TEST: TestCreateInvalidOrigin
 		return globals.ExitOrigin,
 			fmt.Errorf("Invalid origin: %v.", err)
 	}
 
 	// TODO: create zip files
 	if fstype == config.ZipFS {
+		// TEST: TestCreateZipFS (like _archive.zip)
 		return globals.ExitOrigin,
 			fmt.Errorf("Creating zip files are not supported now")
 	}
@@ -57,6 +60,7 @@ func ApiCreate(origin string) (exitCode int, err error) {
 		tlog.Debug.Printf("Create new directory: %s", originPath)
 		os.MkdirAll(originPath, 0755)
 	} else {
+		// TODO: what we should done when origin is exist already?
 		return globals.ExitOrigin,
 			fmt.Errorf("Directory %s is exist already!", originPath)
 	}
@@ -69,6 +73,7 @@ func ApiCreate(origin string) (exitCode int, err error) {
 		targetFile := globals.OriginDirPath + origin
 		err = util.ZipFile(originPath, targetFile)
 		if err != nil {
+			// TEST: TestCreateLZFS (like archive.zip)
 			return globals.ExitZip,
 				fmt.Errorf("LZFS file zipping failed: %v", err)
 		}
@@ -76,7 +81,7 @@ func ApiCreate(origin string) (exitCode int, err error) {
 		os.RemoveAll(originPath)
 	}
 
-	// HACK for gRPC methods
+	// TODO: HACK for gRPC methods
 	if config.CommonConfig == nil {
 		config.InitWizeConfig()
 	}
@@ -98,6 +103,7 @@ func ApiCreate(origin string) (exitCode int, err error) {
 // USECASE: wizefs delete ORIGIN
 func CmdDeleteFilesystem(c *cli.Context) (err error) {
 	if c.NArg() != 1 {
+		// TEST: TestDeleteUsage
 		return cli.NewExitError(
 			fmt.Sprintf("Wrong number of arguments (have %d, want 1)."+
 				" You passed: %s.", c.NArg(), c.Args()),
@@ -117,10 +123,12 @@ func CmdDeleteFilesystem(c *cli.Context) (err error) {
 func ApiDelete(origin string) (exitCode int, err error) {
 	existOrigin, existMountpoint := config.CommonConfig.CheckFilesystem(origin)
 	if !existOrigin {
+		// TEST: TestDeleteNotExistingOrigin
 		return globals.ExitOrigin,
 			fmt.Errorf("Did not find ORIGIN: %s in common config.", origin)
 	}
 	if existMountpoint {
+		// TEST: TestDeleteAlreadyMounted
 		return globals.ExitMountPoint,
 			fmt.Errorf("This ORIGIN: %s is already mounted", origin)
 	}
@@ -128,12 +136,14 @@ func ApiDelete(origin string) (exitCode int, err error) {
 	originPath := globals.OriginDirPath + origin
 	fstype, err := checkOriginType(originPath)
 	if err != nil {
+		// TEST: TestDeleteInvalidOrigin
 		return globals.ExitOrigin,
 			fmt.Errorf("Invalid origin: %v", err)
 	}
 
 	// TODO: Delete zip files
 	if fstype == config.ZipFS {
+		// TEST: TestDeleteZipFS
 		return globals.ExitOrigin,
 			fmt.Errorf("Deleting zip files are not support now")
 	}
@@ -143,6 +153,7 @@ func ApiDelete(origin string) (exitCode int, err error) {
 	// delete Directory if it's exist
 	// TODO: check permissions
 	if _, err := os.Stat(originPath); os.IsNotExist(err) {
+		// TODO: what we should done when origin is exist already?
 		tlog.Warn.Printf("Directory %s is not exist!", originPath)
 	} else {
 		tlog.Debug.Printf("Delete existing directory: %s", originPath)
@@ -182,6 +193,7 @@ func ApiDelete(origin string) (exitCode int, err error) {
 // USECASE: wizefs mount ORIGIN
 func CmdMountFilesystem(c *cli.Context) (err error) {
 	if c.NArg() != 1 {
+		// TEST: TestMountUsage
 		return cli.NewExitError(
 			fmt.Sprintf("Wrong number of arguments (have %d, want 1)."+
 				" You passed: %s.", c.NArg(), c.Args()),
@@ -193,10 +205,12 @@ func CmdMountFilesystem(c *cli.Context) (err error) {
 
 	existOrigin, existMountpoint := config.CommonConfig.CheckFilesystem(origin)
 	if !existOrigin {
+		// TEST: TestMountNotExistingOrigin
 		err = fmt.Errorf("Did not find ORIGIN: %s in common config.", origin)
 		return cli.NewExitError(err, globals.ExitOrigin)
 	}
 	if existMountpoint {
+		// TEST: TestMountAlreadyMounted
 		err = fmt.Errorf("This ORIGIN: %s is already mounted", origin)
 		return cli.NewExitError(err, globals.ExitMountPoint)
 	}
@@ -224,6 +238,7 @@ func ApiMount(origin string, notifypid int) (exitCode int, err error) {
 	originPath := globals.OriginDirPath + origin
 	fstype, err := checkOriginType(originPath)
 	if err != nil {
+		// TEST: TestMountInvalidOrigin
 		return globals.ExitOrigin,
 			fmt.Errorf("Invalid origin: %v", err)
 	}
@@ -235,6 +250,7 @@ func ApiMount(origin string, notifypid int) (exitCode int, err error) {
 
 		err = util.UnzipFile(originPath, tempPath)
 		if err != nil {
+			// TEST: TestMountLZFSUnzip
 			return globals.ExitZip,
 				fmt.Errorf("LZFS file unzipping failed: %v", err)
 		}
@@ -271,6 +287,7 @@ func ApiMount(origin string, notifypid int) (exitCode int, err error) {
 // USECASE: wizefs unmount ORIGIN
 func CmdUnmountFilesystem(c *cli.Context) (err error) {
 	if c.NArg() != 1 {
+		// TEST: TestUnmountUsage
 		return cli.NewExitError(
 			fmt.Sprintf("Wrong number of arguments (have %d, want 1)."+
 				" You passed: %s.", c.NArg(), c.Args()),
@@ -290,10 +307,12 @@ func CmdUnmountFilesystem(c *cli.Context) (err error) {
 func ApiUnmount(origin string) (exitCode int, err error) {
 	existOrigin, existMountpoint := config.CommonConfig.CheckFilesystem(origin)
 	if !existOrigin {
+		// TEST: TestUnmountNotExistingOrigin
 		return globals.ExitOrigin,
 			fmt.Errorf("Did not find ORIGIN: %s in common config.", origin)
 	}
 	if !existMountpoint {
+		// TEST: TestUnmountNotMounted
 		return globals.ExitMountPoint,
 			fmt.Errorf("This ORIGIN: %s is not mounted yet", origin)
 	}
@@ -301,6 +320,7 @@ func ApiUnmount(origin string) (exitCode int, err error) {
 	originPath := globals.OriginDirPath + origin
 	fstype, err := checkOriginType(originPath)
 	if err != nil {
+		// TEST: TestUnmountInvalidOrigin
 		return globals.ExitOrigin,
 			fmt.Errorf("Invalid origin: %v", err)
 	}
@@ -323,6 +343,7 @@ func ApiUnmount(origin string) (exitCode int, err error) {
 
 		err = util.ZipFile(tempPath, originPath)
 		if err != nil {
+			// TEST: TestUnmountLZFSZip
 			return globals.ExitZip,
 				fmt.Errorf("LZFS file zipping failed: %v", err)
 		}

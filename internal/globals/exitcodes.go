@@ -21,6 +21,8 @@ const (
 
 	ExitZip = 10
 
+	ExitFile = 11
+
 	// ExitOpenConf - the was an error opening the .conf file for reading
 	ExitOpenConf = 20
 	// ExitLoadConf is an error while loading .conf
