@@ -140,7 +140,7 @@ func (app *App) OnMountClicked(button *ui.Button) {
 
 	cerr := RunCommand("mount", origin)
 	if cerr != nil {
-		ui.MsgBoxError(window, "Error", fmt.Sprintf("Error: %v", cerr))
+		ui.MsgBoxError(window, "Error", fmt.Sprintf("%v", cerr))
 	} else {
 		app.updateModelItem(idx)
 		app.listViewModel.RowChanged(idx)
@@ -162,7 +162,7 @@ func (app *App) OnUnmountClicked(button *ui.Button) {
 
 	cerr := RunCommand("unmount", origin)
 	if cerr != nil {
-		ui.MsgBoxError(window, "Error", fmt.Sprintf("Error: %v", cerr))
+		ui.MsgBoxError(window, "Error", fmt.Sprintf("%v", cerr))
 	} else {
 		app.updateModelItem(idx)
 		app.listViewModel.RowChanged(idx)
@@ -193,7 +193,7 @@ func (app *App) OnPutFileClicked(button *ui.Button) {
 
 	cerr := RunCommand("put", file, origin)
 	if cerr != nil {
-		ui.MsgBoxError(window, "Error", fmt.Sprintf("Error: %v", cerr))
+		ui.MsgBoxError(window, "Error", fmt.Sprintf("%v", cerr))
 	} else {
 		//app.updateModelItem(idx)
 		//app.listViewModel.RowChanged(idx)
@@ -232,7 +232,7 @@ func (app *App) OnGetFileClicked(button *ui.Button) {
 	//fmt.Println("fileBase: ", fileBase)
 	cerr := RunCommand("get", fileBase, origin)
 	if cerr != nil {
-		ui.MsgBoxError(window, "Error", fmt.Sprintf("Error: %v", cerr))
+		ui.MsgBoxError(window, "Error", fmt.Sprintf("%v", cerr))
 	} else {
 		//
 	}
@@ -286,7 +286,7 @@ func (app *App) DeleteSelected() {
 			dbitem := app.db.Filesystems[sel[0]]
 			cerr := RunCommand("delete", dbitem.Origin)
 			if cerr != nil {
-				ui.MsgBoxError(window, "Error", fmt.Sprintf("Error: %v", cerr))
+				ui.MsgBoxError(window, "Error", fmt.Sprintf("%v", cerr))
 			} else {
 				app.db.Filesystems = append(app.db.Filesystems[:idx], app.db.Filesystems[idx+1:]...)
 				app.listViewModel.RowDeleted(idx)

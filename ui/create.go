@@ -68,7 +68,7 @@ func (app *App) OnCreadeOkClicked(button *ui.Button) {
 	cerr := RunCommand("create", origin)
 	if cerr != nil {
 		fmt.Println(cerr)
-		ui.MsgBoxError(window, "Error", fmt.Sprintf("Error: %v", cerr))
+		ui.MsgBoxError(window, "Error", fmt.Sprintf("%v", cerr))
 	} else {
 		app.rethink()
 		app.updateModel()
