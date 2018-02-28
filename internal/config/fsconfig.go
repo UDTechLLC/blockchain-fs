@@ -37,6 +37,7 @@ type FilesystemConfig struct {
 	filename string
 }
 
+// TEST: TestFSConfigMake
 func NewFilesystemConfig(origin, originPath string, itype FSType) *FilesystemConfig {
 	return &FilesystemConfig{
 		Creator:    ProgramName + " ver. " + ProgramVersion,
@@ -48,6 +49,7 @@ func NewFilesystemConfig(origin, originPath string, itype FSType) *FilesystemCon
 	}
 }
 
+// TEST: TestFSConfigSave
 func (c *FilesystemConfig) Save() error {
 	tmp := c.filename + ".tmp"
 	// 0400 permissions: wizefs.conf should be kept secret and never be written to.
@@ -78,4 +80,5 @@ func (c *FilesystemConfig) Save() error {
 	return err
 }
 
+// TEST: TestFSConfigLoad
 // TODO: load FilesystemConfig

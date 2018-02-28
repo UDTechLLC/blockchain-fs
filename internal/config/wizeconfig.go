@@ -3,6 +3,7 @@ package config
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -43,6 +44,7 @@ func init() {
 	//
 }
 
+// TEST: TestWizeConfigInit
 func InitWizeConfig() {
 	// create Directory if it's not exist
 	if _, err := os.Stat(globals.OriginDirPath); os.IsNotExist(err) {
@@ -61,6 +63,7 @@ func InitWizeConfigWithPath(path string) {
 	}
 }
 
+// TEST: TestWizeConfigMake
 func NewWizeConfig(path string) *WizeConfig {
 	if path == "" {
 		exe, err := os.Executable()
@@ -77,14 +80,14 @@ func NewWizeConfig(path string) *WizeConfig {
 	}
 }
 
+// TESTS: TestWizeConfig* (several tests)
 func (wc *WizeConfig) CreateFilesystem(origin, originPath string, itype FSType) error {
 	// HACK: this fixed problems with gRPC methods
 	wc.Load()
 
 	_, ok := wc.Filesystems[origin]
 	if ok {
-		tlog.Warn.Println("This filesystem is already added!")
-		return errors.New("This filesystem is already added!")
+		return fmt.Errorf("This filesystem is already added!")
 	}
 
 	wc.Filesystems[origin] = FilesystemInfo{
@@ -103,9 +106,11 @@ func (wc *WizeConfig) DeleteFilesystem(origin string) error {
 	wc.Load()
 
 	_, ok := wc.Filesystems[origin]
-	if ok {
-		delete(wc.Filesystems, origin)
+	if !ok {
+		return fmt.Errorf("This filesystem is absent!")
 	}
+
+	delete(wc.Filesystems, origin)
 
 	tlog.Debug.Println("Delete filesystem from the created map! ", wc)
 
@@ -119,8 +124,7 @@ func (wc *WizeConfig) MountFilesystem(origin, mountpoint, mountpointpath string)
 
 	_, ok := wc.Mountpoints[mountpoint]
 	if ok {
-		tlog.Warn.Println("This filesystem is already added!")
-		return errors.New("This filesystem is already added!")
+		return fmt.Errorf("This filesystem is already mounted!")
 	}
 
 	wc.Mountpoints[mountpoint] = MountpointInfo{
@@ -145,16 +149,18 @@ func (wc *WizeConfig) UnmountFilesystem(mountpoint string) error {
 	wc.Load()
 
 	mpi, ok := wc.Mountpoints[mountpoint]
-	if ok {
-		origin := mpi.OriginKey
-		delete(wc.Mountpoints, mountpoint)
+	if !ok {
+		return fmt.Errorf("This filesystem is not mounted!")
+	}
 
-		fsi := wc.Filesystems[origin]
-		wc.Filesystems[origin] = FilesystemInfo{
-			OriginPath:    fsi.OriginPath,
-			Type:          fsi.Type,
-			MountpointKey: "",
-		}
+	origin := mpi.OriginKey
+	delete(wc.Mountpoints, mountpoint)
+
+	fsi := wc.Filesystems[origin]
+	wc.Filesystems[origin] = FilesystemInfo{
+		OriginPath:    fsi.OriginPath,
+		Type:          fsi.Type,
+		MountpointKey: "",
 	}
 
 	tlog.Debug.Println("Delete filesystem from the mounted map! ", wc)
@@ -201,13 +207,7 @@ func (wc *WizeConfig) Load() error {
 		return err
 	}
 
-	// Just clear wc maps
-	for k := range wc.Filesystems {
-		delete(wc.Filesystems, k)
-	}
-	for k := range wc.Mountpoints {
-		delete(wc.Mountpoints, k)
-	}
+	wc.clear()
 
 	// Unmarshal
 	err = json.Unmarshal(js, &wc)
@@ -217,6 +217,16 @@ func (wc *WizeConfig) Load() error {
 	}
 
 	return nil
+}
+
+func (wc *WizeConfig) clear() {
+	// Just clear WizeConfig maps
+	for k := range wc.Filesystems {
+		delete(wc.Filesystems, k)
+	}
+	for k := range wc.Mountpoints {
+		delete(wc.Mountpoints, k)
+	}
 }
 
 func (wc *WizeConfig) CheckOriginGetMountpoint(origin string) (mountpointPath string, err error) {

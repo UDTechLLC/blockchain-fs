@@ -8,6 +8,7 @@ import (
 	"strings"
 )
 
+// TEST: TestUnzipFile
 func UnzipFile(archive, target string) (err error) {
 	reader, err := zip.OpenReader(archive)
 	if err != nil {
@@ -65,6 +66,7 @@ func UnzipFile(archive, target string) (err error) {
 	return nil
 }
 
+// TEST: TestZipFile
 func ZipFile(source, target string) (err error) {
 	zipfile, err := os.Create(target)
 	if err != nil {

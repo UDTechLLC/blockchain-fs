@@ -50,6 +50,8 @@ func isZipFS(file string) bool {
 // CheckDirOrZip
 // - check if "dir" exists and is a directory
 // - check if it's not directory but is a zip file
+
+// TEST: TestUtilCheckDirOrZip
 func CheckDirOrZip(dirOrZip string) (config.FSType, error) {
 	zips := map[string]int{
 		".zip":     0,
