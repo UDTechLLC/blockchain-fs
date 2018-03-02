@@ -6,7 +6,8 @@ import (
 )
 
 type MainWindow struct {
-	window *ui.Window
+	window   *ui.Window
+	blockApi *BlockApi
 }
 
 func NewMainWindow() *MainWindow {
@@ -15,7 +16,7 @@ func NewMainWindow() *MainWindow {
 
 	gui := main.buildGUI()
 
-	main.window = ui.NewWindow("Wize Client "+config.ProgramVersion, 700, 500, false)
+	main.window = ui.NewWindow("Wize Client "+config.ProgramVersion, 1000, 600, false)
 	main.window.SetMargined(true)
 	main.window.Center()
 
@@ -27,6 +28,7 @@ func NewMainWindow() *MainWindow {
 }
 
 func (main *MainWindow) Init() {
+	main.blockApi = NewBlockApi()
 }
 
 func (main *MainWindow) Show() {
@@ -38,7 +40,7 @@ func (main *MainWindow) buildGUI() ui.Control {
 
 	tab := ui.NewTab()
 
-	tab.Append("  Wallet  ", NewWalletTab().Control())
+	tab.Append("  Wallet  ", NewWalletTab(main).Control())
 	tab.SetMargined(0, true)
 
 	tab.Append("  Storage  ", NewStorageTab().Control())
