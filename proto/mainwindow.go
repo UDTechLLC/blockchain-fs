@@ -34,9 +34,22 @@ func (main *MainWindow) Show() {
 }
 
 func (main *MainWindow) buildGUI() ui.Control {
-	mainBox := ui.NewHorizontalBox()
+	//mainBox := ui.NewHorizontalBox()
 
-	return mainBox
+	tab := ui.NewTab()
+
+	tab.Append("  Wallet  ", NewWalletTab().Control())
+	tab.SetMargined(0, true)
+
+	tab.Append("  Storage  ", NewStorageTab().Control())
+	tab.SetMargined(1, true)
+
+	tab.Append("  Debug  ", NewDebugTab().Control())
+	tab.SetMargined(2, true)
+
+	return tab
+
+	//return mainBox
 }
 
 func (main *MainWindow) OnClosing(window *ui.Window) bool {
