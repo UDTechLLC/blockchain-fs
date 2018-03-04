@@ -1,9 +1,15 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
+	"io/ioutil"
 
 	"github.com/leedark/ui"
+)
+
+const (
+	walletFilename = "wallet.json"
 )
 
 type WalletTab struct {
@@ -93,22 +99,49 @@ func (t *WalletTab) buildGUI() {
 	t.tab = vbox
 }
 
+func (t *WalletTab) Control() ui.Control {
+	return t.tab
+}
+
 func (t *WalletTab) init() {
-	// TODO: load wallet.json or wizeBlockAPI: get wallet info
-	walletInfo := false
+	// load wallet.json or
+	// TODO: wizeBlockAPI: get wallet info
+	walletInfo, err := loadWalletInfo()
+	if err != nil {
+		//ui.MsgBoxError(t.main.window, "Error", "Load wallet error: "+err.Error())
+		fmt.Println("Load wallet error: ", err.Error())
+		//return
+	}
 
-	// TODO: update controls
-	if walletInfo {
-
+	// update controls
+	if walletInfo != nil {
+		t.updateWalletInfo(walletInfo)
+	} else {
+		//ui.MsgBoxError(t.main.window, "Error", "Wallet Info is nil")
+		fmt.Println("Wallet Info is nil")
+		//return
 	}
 
 	// wallets list
-	t.refreshWalletsView()
+	t.reloadWalletsView()
 }
 
-func (t *WalletTab) refreshWalletsView() {
-	// TODO: refactor to just add new wallet to the end
+func (t *WalletTab) updateWalletInfo(wallet *WalletCreateResponse) {
+	if wallet == nil {
+		return
+	}
 
+	t.walletAddressEntry.SetText(wallet.Address)
+	t.walletPrivateKeyEntry.SetText(wallet.PrivKey)
+
+	idx := len(wallet.PubKey) / 2
+	t.walletPublicKeyEntry1.SetText(wallet.PubKey[:idx])
+	t.walletPublicKeyEntry2.SetText(wallet.PubKey[idx:])
+
+	t.createWalletButton.Disable()
+}
+
+func (t *WalletTab) reloadWalletsView() {
 	for i := 0; i < len(t.db.Wallets); i++ {
 		t.walletsModel.RowDeleted(0)
 	}
@@ -128,39 +161,91 @@ func (t *WalletTab) refreshWalletsView() {
 	}
 }
 
-func (t *WalletTab) Control() ui.Control {
-	return t.tab
-}
-
 func (t *WalletTab) onCreateWalletClicked(button *ui.Button) {
 	// wizeBlockAPI: create wallet
-	result, err := t.main.blockApi.PostWalletCreate(&WalletCreateRequest{})
+	wallet, err := t.main.blockApi.PostWalletCreate(&WalletCreateRequest{})
 	if err != nil {
-		fmt.Println(err)
+		fmt.Println("Create wallet error: ", err.Error())
 	}
 
-	if result == nil {
-		ui.MsgBoxError(t.main.window, "Error", "Result is nil")
+	if wallet == nil {
+		ui.MsgBoxError(t.main.window, "Error", "Wallet Info is nil")
 		return
 	}
 
+	if !wallet.Success {
+		ui.MsgBoxError(t.main.window, "Error", "Response is not success")
+		return
+	}
+
+	// save to wallet.json
+	err = saveWalletInfo(wallet)
+	if err != nil {
+		//ui.MsgBoxError(t.main.window, "Error", "Save wallet error: "+err.Error())
+		fmt.Println("Save wallet error: ", err.Error())
+	}
+
 	// update controls
-	t.walletAddressEntry.SetText(result.Address)
-	t.walletPrivateKeyEntry.SetText(result.PrivKey)
-
-	idx := len(result.PubKey) / 2
-	t.walletPublicKeyEntry1.SetText(result.PubKey[:idx])
-	t.walletPublicKeyEntry2.SetText(result.PubKey[idx:])
-
-	t.createWalletButton.Disable()
+	t.updateWalletInfo(wallet)
 
 	// update table
-	//t.refreshWalletsView()
-
+	//t.reloadWalletsView()
 	w := Wallet{
 		Index:   len(t.db.Wallets) + 1,
-		Address: result.Address,
+		Address: wallet.Address,
 	}
 	t.db.Wallets = append(t.db.Wallets, w)
 	t.walletsModel.RowInserted(len(t.db.Wallets) - 1)
+
+	t.afterCreateWallet()
+}
+
+func (t *WalletTab) afterCreateWallet() {
+	// create single bucket (directory)
+	origin := BucketOriginName
+	cerr := RunCommand("create", origin)
+	if cerr != nil {
+		fmt.Println("Create bucket error: ", cerr.Error())
+		ui.MsgBoxError(t.main.window, "Error", fmt.Sprintf("%v", cerr))
+	}
+}
+
+//
+
+func saveWalletInfo(wallet *WalletCreateResponse) (err error) {
+	// Marshal
+	walletJson, err := json.MarshalIndent(&wallet, "  ", "  ")
+	if err != nil {
+		return
+	}
+
+	// Write to file
+	if walletJson != nil {
+		err = ioutil.WriteFile(walletFilename, walletJson, 0644)
+		if err != nil {
+			fmt.Printf("Save %s: WriteFile: %#v\n", walletFilename, err)
+			return
+		}
+	}
+
+	return
+}
+
+func loadWalletInfo() (wallet *WalletCreateResponse, err error) {
+	// Read from file
+	js, err := ioutil.ReadFile(walletFilename)
+	if err != nil {
+		fmt.Printf("Load %s: ReadFile: %#v\n", walletFilename, err)
+		return nil, err
+	}
+
+	// Unmarshal
+	wallet = &WalletCreateResponse{}
+	err = json.Unmarshal(js, &wallet)
+	if err != nil {
+		fmt.Printf("Failed to unmarshal wallet file")
+		return nil, err
+	}
+
+	return wallet, nil
 }

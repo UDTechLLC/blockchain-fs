@@ -5,6 +5,10 @@ import (
 	"github.com/leedark/ui"
 )
 
+const (
+	BucketOriginName = "Bucket1.zip"
+)
+
 type MainWindow struct {
 	window   *ui.Window
 	blockApi *BlockApi
@@ -14,11 +18,11 @@ func NewMainWindow() *MainWindow {
 	main := &MainWindow{}
 	main.Init()
 
-	gui := main.buildGUI()
-
 	main.window = ui.NewWindow("Wize Client "+config.ProgramVersion, 1000, 600, false)
 	main.window.SetMargined(true)
 	main.window.Center()
+
+	gui := main.buildGUI()
 
 	main.window.SetChild(gui)
 
