@@ -59,8 +59,10 @@ func (t *StorageTab) logMessage(message string) {
 }
 
 func (t *StorageTab) putFile(file string) {
-	t.putFileButton.Disable()
-	t.logMessage("Open file: " + file)
+	ui.QueueMain(func() {
+		t.putFileButton.Disable()
+		t.logMessage("Open file: " + file)
+	})
 
 	origin := BucketOriginName
 
@@ -68,31 +70,44 @@ func (t *StorageTab) putFile(file string) {
 	cerr := RunCommand("mount", origin)
 	if cerr != nil {
 		//ui.MsgBoxError(t.main.window, "Error", fmt.Sprintf("%v", cerr))
-		t.logMessage("Mount error: " + cerr.Error())
+		ui.QueueMain(func() {
+			t.putFileButton.Enable()
+			t.logMessage("Mount error: " + cerr.Error())
+		})
 		return
 	}
 
 	time.Sleep(500 * time.Millisecond)
-	t.logMessage("Mount bucket " + origin)
+	ui.QueueMain(func() {
+		t.logMessage("Mount bucket " + origin)
+	})
 
 	cerr = RunCommand("put", file, origin)
 	if cerr != nil {
 		//ui.MsgBoxError(t.main.window, "Error", fmt.Sprintf("%v", cerr))
-		t.logMessage("Put error: " + cerr.Error())
+		ui.QueueMain(func() {
+			t.logMessage("Put error: " + cerr.Error())
+		})
+	} else {
+		//time.Sleep(500 * time.Millisecond)
+		ui.QueueMain(func() {
+			t.logMessage("Put file [" + file + "] to bucket " + origin)
+		})
 	}
-
-	time.Sleep(500 * time.Millisecond)
-	t.logMessage("Put file [" + file + "] to bucket " + origin)
 
 	// unmount
 	cerr = RunCommand("unmount", origin)
 	if cerr != nil {
 		//ui.MsgBoxError(t.main.window, "Error", fmt.Sprintf("%v", cerr))
-		t.logMessage("Unmount error: " + cerr.Error())
+		ui.QueueMain(func() {
+			t.logMessage("Unmount error: " + cerr.Error())
+		})
 	}
 
-	t.logMessage("Unmount bucket " + origin)
-	t.putFileButton.Enable()
+	ui.QueueMain(func() {
+		t.logMessage("Unmount bucket " + origin)
+		t.putFileButton.Enable()
+	})
 }
 
 func (t *StorageTab) onPutFileClicked(button *ui.Button) {
@@ -105,6 +120,5 @@ func (t *StorageTab) onPutFileClicked(button *ui.Button) {
 		return
 	}
 
-	// TODO: why ui.OpenFile blocks next actions after we choose Open button?
-	t.putFile(file)
+	go t.putFile(file)
 }
