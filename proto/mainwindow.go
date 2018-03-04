@@ -47,7 +47,7 @@ func (main *MainWindow) buildGUI() ui.Control {
 	tab.Append("  Wallet  ", NewWalletTab(main).Control())
 	tab.SetMargined(0, true)
 
-	tab.Append("  Storage  ", NewStorageTab().Control())
+	tab.Append("  Storage  ", NewStorageTab(main).Control())
 	tab.SetMargined(1, true)
 
 	tab.Append("  Debug  ", NewDebugTab().Control())
