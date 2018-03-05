@@ -22,6 +22,10 @@ type StorageTab struct {
 	putFileButton *ui.Button
 	logBuffer     *StringBuffer
 	logBox        *ui.MultilineEntry
+
+	db         FileDB
+	filesView  *ui.Table
+	filesModel *ui.TableModel
 }
 
 func NewStorageTab(mainWindow *MainWindow) *StorageTab {
@@ -29,6 +33,7 @@ func NewStorageTab(mainWindow *MainWindow) *StorageTab {
 		main: mainWindow,
 	}
 	makeTab.buildGUI()
+	makeTab.init()
 	return makeTab
 }
 
@@ -43,16 +48,155 @@ func (t *StorageTab) buildGUI() {
 	vbox1.Append(t.putFileButton, false)
 
 	vbox2 := ui.NewVerticalBox()
+
+	hbox2a := ui.NewHorizontalBox()
+
+	listBox := ui.NewVerticalBox()
+	t.filesModel = ui.NewTableModel(&t.db)
+	t.filesView = ui.NewTable(t.filesModel, ui.TableStyleMultiSelect)
+	t.filesView.AppendTextColumn("Index", 0)
+	t.filesView.AppendTextColumn("Name", 1)
+	t.filesView.AppendTextColumn("Time", 2)
+	listBox.Append(t.filesView, true)
+
+	hbox2a.Append(listBox, true)
+
+	hbox2b := ui.NewHorizontalBox()
+
 	t.logBuffer = NewStringBuffer()
 	t.logBox = ui.NewMultilineEntry()
 	t.logBox.SetReadOnly(true)
+	hbox2b.SetPadded(true)
+	hbox2b.Append(t.logBox, true)
+
 	vbox2.SetPadded(true)
-	vbox2.Append(t.logBox, true)
+	vbox2.Append(hbox2a, true)
+	vbox2.Append(hbox2b, true)
 
 	t.tab.SetPadded(true)
 	t.tab.Append(vbox1, false)
 	t.tab.Append(ui.NewVerticalSeparator(), false)
 	t.tab.Append(vbox2, true)
+}
+
+func (t *StorageTab) init() {
+	// TODO: get files list
+	/*
+		f := File{
+			Index:     len(t.db.Files) + 1,
+			Name:      value,
+			Timestamp: time.Now(),
+		}
+		t.db.Files = append(t.db.Files, f)
+	*/
+
+	t.reloadFilesView()
+}
+
+func (t *StorageTab) reloadFilesView() {
+	for i := 0; i < len(t.db.Files); i++ {
+		t.filesModel.RowDeleted(0)
+	}
+	t.db.Files = nil
+
+	// get last index from CPK Index Store
+	// CPK + 00000000 (8 bytes)
+	// FIXME: is it copy or pointer?
+	cpkIndex0 := []byte(t.main.walletInfo.PubKey)
+	index0 := make([]byte, 8)
+	binary.LittleEndian.PutUint64(index0, uint64(0))
+	index0 = []byte(fmt.Sprintf("%x", index0))
+
+	cpkIndex0 = append(cpkIndex0, index0...)
+
+	cpkIndexLast, err := t.main.raftApi.Get(string(cpkIndex0))
+	// TODO: check cpkIndexLast - len, value, etc
+	if err != nil {
+		fmt.Println("Error: ", err)
+		return
+	}
+
+	fmt.Printf("cpkIndexLast: %s\n", cpkIndexLast)
+	var cpkIndexLastInt64 int64
+	if cpkIndexLast == "" {
+		fmt.Println("Empty...")
+		return
+	} else {
+		cpkIndexLastDecode, _ := hex.DecodeString(cpkIndexLast)
+		// TODO: check it
+		cpkIndexLastInt64 = int64(binary.LittleEndian.Uint64(cpkIndexLastDecode))
+	}
+
+	fmt.Printf("cpkIndexLastInt64: %x\n", cpkIndexLastInt64)
+	fmt.Printf("cpkIndexLastInt64: %s\n", strconv.Itoa(int(cpkIndexLastInt64)))
+
+	// for
+	var index int64 = 0
+	for index < cpkIndexLastInt64 {
+		index++
+
+		cpkIndex := []byte(t.main.walletInfo.PubKey)
+
+		cpkIndexNew := make([]byte, 8)
+		binary.LittleEndian.PutUint64(cpkIndexNew, uint64(index))
+		cpkIndexNew = []byte(fmt.Sprintf("%x", cpkIndexNew))
+
+		fmt.Printf("cpkIndexNew: %x\n", cpkIndexNew)
+		fmt.Printf("cpkIndexNew: %s\n", string(cpkIndexNew))
+
+		cpkIndex = append(cpkIndex, cpkIndexNew...)
+
+		fmt.Printf("cpkIndex: %x\n", cpkIndex)
+		fmt.Printf("cpkIndex: %s\n", string(cpkIndex))
+
+		shaKeyString, err := t.main.raftApi.Get(string(cpkIndex))
+		if err != nil {
+			fmt.Println("Error: ", err)
+		}
+
+		fmt.Printf("shaKeyString: %s\n", shaKeyString)
+
+		value, err := t.main.raftApi.Get(shaKeyString)
+		if err != nil {
+			fmt.Println("Error: ", err)
+		}
+
+		fmt.Printf("value: %s\n", value)
+
+		cpkTest := string(value[0:128])
+		if cpkTest == t.main.walletInfo.PubKey {
+			fmt.Println("Match!")
+		} else {
+			fmt.Println("NOT Match!")
+		}
+
+		info := value[128:]
+		fmt.Println("Info: ", string(info))
+		infoLen := len(info)
+
+		base64FileBasename := info[0 : infoLen-16]
+		fmt.Println("Base64: ", string(base64FileBasename))
+
+		fileBasename, _ := base64.RawURLEncoding.DecodeString(string(base64FileBasename))
+		fmt.Println("Filename: ", string(fileBasename))
+
+		timeStamp := info[infoLen-16:]
+		fmt.Println("Timestamp: ", string(timeStamp))
+
+		timeStampDecode, _ := hex.DecodeString(timeStamp)
+		timeStampInt64 := int64(binary.LittleEndian.Uint64(timeStampDecode))
+
+		timeStampTime := time.Unix(timeStampInt64, 0)
+		fmt.Println("Timestamp: ", timeStampTime.Format(time.RFC1123))
+
+		f := File{
+			Index:     len(t.db.Files) + 1,
+			Name:      string(fileBasename),
+			Timestamp: timeStampTime,
+		}
+		t.db.Files = append(t.db.Files, f)
+		t.filesModel.RowInserted(len(t.db.Files) - 1)
+	}
 }
 
 func (t *StorageTab) Control() ui.Control {
@@ -239,6 +383,8 @@ func (t *StorageTab) saveFileToRaft(file string) {
 	t.main.raftApi.Set(string(cpkIndex), shaKeyResult)
 
 	t.main.raftApi.Set(string(cpkIndex0), string(cpkIndexNew))
+
+	t.reloadFilesView()
 }
 
 func (t *StorageTab) onPutFileClicked(button *ui.Button) {
