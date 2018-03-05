@@ -16,7 +16,7 @@ const baseURL = "http://localhost:4000"
 type WalletCreateRequest struct {
 }
 
-type WalletCreateResponse struct {
+type WalletCreateInfo struct {
 	Success bool
 	Address string
 	PrivKey string
@@ -108,7 +108,7 @@ func (c *BlockApi) GetWalletsList() ([]string, error) {
 	return result.ListWallets, nil
 }
 
-func (c *BlockApi) PostWalletCreate(request *WalletCreateRequest) (*WalletCreateResponse, error) {
+func (c *BlockApi) PostWalletCreate(request *WalletCreateRequest) (*WalletCreateInfo, error) {
 	j, err := json.Marshal(request)
 	if err != nil {
 		return nil, err
@@ -120,7 +120,7 @@ func (c *BlockApi) PostWalletCreate(request *WalletCreateRequest) (*WalletCreate
 	}
 	//fmt.Println("data: ", data, err)
 
-	var result WalletCreateResponse
+	var result WalletCreateInfo
 	err = mapstructure.Decode(data, &result)
 	//fmt.Println("result", result, err)
 	if err != nil {

@@ -116,6 +116,7 @@ func (t *WalletTab) init() {
 	// update controls
 	if walletInfo != nil {
 		t.updateWalletInfo(walletInfo)
+		t.main.walletInfo = walletInfo
 	} else {
 		//ui.MsgBoxError(t.main.window, "Error", "Wallet Info is nil")
 		fmt.Println("Wallet Info is nil")
@@ -126,7 +127,7 @@ func (t *WalletTab) init() {
 	t.reloadWalletsView()
 }
 
-func (t *WalletTab) updateWalletInfo(wallet *WalletCreateResponse) {
+func (t *WalletTab) updateWalletInfo(wallet *WalletCreateInfo) {
 	if wallet == nil {
 		return
 	}
@@ -163,36 +164,38 @@ func (t *WalletTab) reloadWalletsView() {
 
 func (t *WalletTab) onCreateWalletClicked(button *ui.Button) {
 	// wizeBlockAPI: create wallet
-	wallet, err := t.main.blockApi.PostWalletCreate(&WalletCreateRequest{})
+	walletInfo, err := t.main.blockApi.PostWalletCreate(&WalletCreateRequest{})
 	if err != nil {
 		fmt.Println("Create wallet error: ", err.Error())
 	}
 
-	if wallet == nil {
+	if walletInfo == nil {
 		ui.MsgBoxError(t.main.window, "Error", "Wallet Info is nil")
 		return
 	}
 
-	if !wallet.Success {
+	if !walletInfo.Success {
 		ui.MsgBoxError(t.main.window, "Error", "Response is not success")
 		return
 	}
 
 	// save to wallet.json
-	err = saveWalletInfo(wallet)
+	err = saveWalletInfo(walletInfo)
 	if err != nil {
 		//ui.MsgBoxError(t.main.window, "Error", "Save wallet error: "+err.Error())
 		fmt.Println("Save wallet error: ", err.Error())
 	}
 
+	t.main.walletInfo = walletInfo
+
 	// update controls
-	t.updateWalletInfo(wallet)
+	t.updateWalletInfo(walletInfo)
 
 	// update table
 	//t.reloadWalletsView()
 	w := Wallet{
 		Index:   len(t.db.Wallets) + 1,
-		Address: wallet.Address,
+		Address: walletInfo.Address,
 	}
 	t.db.Wallets = append(t.db.Wallets, w)
 	t.walletsModel.RowInserted(len(t.db.Wallets) - 1)
@@ -212,7 +215,7 @@ func (t *WalletTab) afterCreateWallet() {
 
 //
 
-func saveWalletInfo(wallet *WalletCreateResponse) (err error) {
+func saveWalletInfo(wallet *WalletCreateInfo) (err error) {
 	// Marshal
 	walletJson, err := json.MarshalIndent(&wallet, "  ", "  ")
 	if err != nil {
@@ -231,7 +234,7 @@ func saveWalletInfo(wallet *WalletCreateResponse) (err error) {
 	return
 }
 
-func loadWalletInfo() (wallet *WalletCreateResponse, err error) {
+func loadWalletInfo() (wallet *WalletCreateInfo, err error) {
 	// Read from file
 	js, err := ioutil.ReadFile(walletFilename)
 	if err != nil {
@@ -240,7 +243,7 @@ func loadWalletInfo() (wallet *WalletCreateResponse, err error) {
 	}
 
 	// Unmarshal
-	wallet = &WalletCreateResponse{}
+	wallet = &WalletCreateInfo{}
 	err = json.Unmarshal(js, &wallet)
 	if err != nil {
 		fmt.Printf("Failed to unmarshal wallet file")

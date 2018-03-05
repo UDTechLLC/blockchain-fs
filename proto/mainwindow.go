@@ -12,6 +12,9 @@ const (
 type MainWindow struct {
 	window   *ui.Window
 	blockApi *BlockApi
+	raftApi  *RaftApi
+
+	walletInfo *WalletCreateInfo
 }
 
 func NewMainWindow() *MainWindow {
@@ -33,6 +36,7 @@ func NewMainWindow() *MainWindow {
 
 func (main *MainWindow) Init() {
 	main.blockApi = NewBlockApi()
+	main.raftApi = NewRaftApi()
 }
 
 func (main *MainWindow) Show() {
