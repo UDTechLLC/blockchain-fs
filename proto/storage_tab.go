@@ -80,16 +80,6 @@ func (t *StorageTab) buildGUI() {
 }
 
 func (t *StorageTab) init() {
-	// TODO: get files list
-	/*
-		f := File{
-			Index:     len(t.db.Files) + 1,
-			Name:      value,
-			Timestamp: time.Now(),
-		}
-		t.db.Files = append(t.db.Files, f)
-	*/
-
 	t.reloadFilesView()
 }
 
@@ -265,123 +255,109 @@ func (t *StorageTab) putFile(file string) {
 }
 
 func (t *StorageTab) saveFileToRaft(file string) {
-	// TODO: Raft API
-	// TODO: Key = SHA256 [ Base64(File.Basename) + File.Size + Timestamp ]
-	fileBasename := filepath.Base(file)
-	fmt.Printf("fileBasename: %s\n", fileBasename)
-
-	fi, err := os.Stat(file)
-	if err != nil || fi == nil {
-		// TODO:
-		fmt.Printf("os.Stat error: %s\n", err.Error())
+	// chech wallet info existing
+	if t.main.walletInfo == nil {
+		fmt.Printf("walletInfo is nil\n")
+		return
 	}
 
-	// TODO: Key init
+	basename := filepath.Base(file)
+	//fmt.Printf("basename: %s\n", basename)
+	fi, err := os.Stat(file)
+	if err != nil || fi == nil {
+		fmt.Printf("os.Stat error: %s\n", err.Error())
+		return
+	}
+
+	// Key = SHA256 [ Base64(File.Basename) + File.Size + Timestamp ]
 	key := []byte{}
 
 	// Base64(File.Basename)
-	base64FileBasename := make([]byte, base64.RawURLEncoding.EncodedLen(len(fileBasename)))
-	base64.RawURLEncoding.Encode(base64FileBasename, []byte(fileBasename))
-	key = append(key, base64FileBasename...)
-
-	fmt.Printf("base64FileBasename: %x\n", base64FileBasename)
-	fmt.Printf("base64FileBasename: %s\n", string(base64FileBasename))
+	basename64 := make([]byte, base64.RawURLEncoding.EncodedLen(len(basename)))
+	base64.RawURLEncoding.Encode(basename64, []byte(basename))
+	//fmt.Printf("basename64: %s\n", string(basename64))
+	key = append(key, basename64...)
 
 	// File.Size, int64 to []byte
 	fileSize := make([]byte, 8)
 	binary.LittleEndian.PutUint64(fileSize, uint64(fi.Size()))
-	fileSize = []byte(fmt.Sprintf("%x", fileSize))
+	fileSize = []byte(hex.EncodeToString(fileSize))
+	//fmt.Printf("fi.Size(): %d\n", fi.Size())
+	//fmt.Printf("fileSize: %s\n", string(fileSize))
 	key = append(key, fileSize...)
-
-	fmt.Printf("fi.Size(): %d\n", fi.Size())
-	fmt.Printf("fileSize: %x\n", fileSize)
-	fmt.Printf("fileSize: %s\n", string(fileSize))
 
 	// Timestamp
 	timeStamp := make([]byte, 8)
 	binary.LittleEndian.PutUint64(timeStamp, uint64(time.Now().Unix()))
-	timeStamp = []byte(fmt.Sprintf("%x", timeStamp))
+	timeStamp = []byte(hex.EncodeToString(timeStamp))
+	//fmt.Printf("timeStamp: %s\n", string(timeStamp))
 	key = append(key, timeStamp...)
 
-	fmt.Printf("timeStamp: %x\n", timeStamp)
-	fmt.Printf("timeStamp: %s\n", string(timeStamp))
-
-	fmt.Printf("key: %x\n", key)
-	fmt.Printf("key: %s\n", string(key))
+	//fmt.Printf("key: %s\n", string(key))
 
 	shaKey := sha256.Sum256(key)
-	shaKeyString := sha256.Sum256([]byte(string(key)))
+	////shaKey2 := sha256.Sum256([]byte(string(key)))
+	//fmt.Printf("shaKey: %x\n", shaKey[:])
+	shaKeyString := hex.EncodeToString(shaKey[:])
 
-	fmt.Printf("shaKey: %x\n", shaKey[:])
-	fmt.Printf("shaKey: %s\n", string(shaKey[:]))
-	fmt.Printf("shaKeyString: %x\n", shaKeyString[:])
-	fmt.Printf("shaKeyString: %s\n", string(shaKeyString[:]))
+	// Value = CPK + Base64(File.Basename) + Timestamp
+	value := []byte(t.main.walletInfo.PubKey) // CPK
+	value = append(value, basename64...)      // Base64
+	value = append(value, timeStamp...)       // Timestamp
+	//fmt.Printf("value: %s\n", string(value))
 
-	shaKeyResult := fmt.Sprintf("%x", shaKeyString[:])
+	////
 
-	// TODO: Value = CPK + Base64(File.Basename) + Timestamp
-	if t.main.walletInfo == nil {
-		// TODO:
-		fmt.Printf("walletInfo is nil\n")
-		return
-	}
-	value := []byte(t.main.walletInfo.PubKey)    // CPK
-	value = append(value, base64FileBasename...) // Base64
-	value = append(value, timeStamp...)          // Timestamp
-
-	fmt.Printf("value: %x\n", value)
-	fmt.Printf("value: %s\n", string(value))
-
-	// main Key/Value Store
-	t.main.raftApi.Set(shaKeyResult, string(value))
-
-	//
-	// FIXME: is it copy or pointer?
+	// CPK Index
 	cpkIndex := []byte(t.main.walletInfo.PubKey)
 
-	// get last index from CPK Index Store
-	// CPK + 00000000 (8 bytes)
-	// FIXME: is it copy or pointer?
+	// get last CPKIndex = CPK + 0000000000000000 (8 bytes)
+	// prepare key for Get
 	cpkIndex0 := []byte(t.main.walletInfo.PubKey)
 	index0 := make([]byte, 8)
 	binary.LittleEndian.PutUint64(index0, uint64(0))
-	index0 = []byte(fmt.Sprintf("%x", index0))
+	index0 = []byte(hex.EncodeToString(index0))
+	//fmt.Printf("index0: %s\n", string(index0))
 
 	cpkIndex0 = append(cpkIndex0, index0...)
 
+	// Get last CPIIndex
 	cpkIndexLast, err := t.main.raftApi.Get(string(cpkIndex0))
-	// TODO: check cpkIndexLast - len, value, etc
 	if err != nil {
+		fmt.Printf("Try to get last CPKIndex was failed with error: %s\n", err.Error())
 		return
 	}
-	fmt.Printf("cpkIndexLast: %s\n", cpkIndexLast)
+	//fmt.Printf("cpkIndexLast: %s\n", cpkIndexLast)
+
+	// casting string to int64
 	var cpkIndexLastInt64 int64
 	if cpkIndexLast == "" {
+		// if last CPKIndex is not existing, just set it to 0
 		cpkIndexLastInt64 = int64(0)
 	} else {
-		cpkIndexLastDecode, _ := hex.DecodeString(cpkIndexLast)
-		// TODO: check it
+		cpkIndexLastDecode, err := hex.DecodeString(cpkIndexLast)
+		if err != nil {
+			fmt.Printf("Try to decode last CPKIndex was failed with error: %s\n", err.Error())
+			return
+		}
 		cpkIndexLastInt64 = int64(binary.LittleEndian.Uint64(cpkIndexLastDecode))
 	}
+	//fmt.Printf("cpkIndexLastInt64: %d\n", cpkIndexLastInt64)
 
-	fmt.Printf("cpkIndexLastInt64: %x\n", cpkIndexLastInt64)
-	fmt.Printf("cpkIndexLastInt64: %s\n", strconv.Itoa(int(cpkIndexLastInt64)))
-
+	// create new CPKIndex
 	cpkIndexNew := make([]byte, 8)
 	binary.LittleEndian.PutUint64(cpkIndexNew, uint64(cpkIndexLastInt64+1))
-	cpkIndexNew = []byte(fmt.Sprintf("%x", cpkIndexNew))
-
-	fmt.Printf("cpkIndexNew: %x\n", cpkIndexNew)
-	fmt.Printf("cpkIndexNew: %s\n", string(cpkIndexNew))
+	cpkIndexNew = []byte(hex.EncodeToString(cpkIndexNew))
+	//fmt.Printf("cpkIndexNew: %s\n", string(cpkIndexNew))
 
 	cpkIndex = append(cpkIndex, cpkIndexNew...)
+	//fmt.Printf("cpkIndex: %s\n", string(cpkIndex))
 
-	fmt.Printf("cpkIndex: %x\n", cpkIndex)
-	fmt.Printf("cpkIndex: %s\n", string(cpkIndex))
+	// Main Key/Value Store
+	t.main.raftApi.Set(shaKeyString, string(value))
 
-	// CPK Index Key/Value Store
-	t.main.raftApi.Set(string(cpkIndex), shaKeyResult)
-
+	// CPKIndex Key/Value Store
+	t.main.raftApi.Set(string(cpkIndex), shaKeyString)
 	t.main.raftApi.Set(string(cpkIndex0), string(cpkIndexNew))
 
 	t.reloadFilesView()

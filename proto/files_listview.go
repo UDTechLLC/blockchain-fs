@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"strconv"
 	"time"
 
@@ -33,6 +34,10 @@ func (db *FileDB) NumRows(m *ui.TableModel) int {
 }
 
 func (db *FileDB) CellValue(m *ui.TableModel, row int, col int) interface{} {
+	if row >= len(db.Files) {
+		fmt.Println("Error: try to get row %d when len is %d", row, len(db.Files))
+		return nil
+	}
 	value := &db.Files[row]
 	switch col {
 	case 0:
