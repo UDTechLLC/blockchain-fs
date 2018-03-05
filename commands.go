@@ -80,6 +80,12 @@ var Commands = []cli.Command{
 		Usage:   "",
 		Action:  command.CmdGetFile,
 	},
+	{
+		Name:    "xget",
+		Aliases: []string{"g"},
+		Usage:   "",
+		Action:  command.CmdXGetFile,
+	},
 }
 
 // CommandNotFound implements action when subcommand not found

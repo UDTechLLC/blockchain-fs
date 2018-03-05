@@ -111,7 +111,7 @@ func ApiPut(originalFile, origin string, content []byte) (exitCode int, err erro
 // TODO: check permissions
 func CmdGetFile(c *cli.Context) (err error) {
 	if c.NArg() != 2 {
-		// TEST: TestPutUsage
+		// TEST: TestGetUsage
 		return cli.NewExitError(
 			fmt.Sprintf("Wrong number of arguments (have %d, want 2)."+
 				" You passed: %s.", c.NArg(), c.Args()),
@@ -122,7 +122,30 @@ func CmdGetFile(c *cli.Context) (err error) {
 	origin := c.Args()[1]
 
 	// we don't need content, it's only for gRPC methods
-	_, exitCode, err := ApiGet(originalFile, origin, false)
+	_, exitCode, err := ApiGet(originalFile, origin, "", false)
+	if err != nil {
+		//tlog.Warn.Println(err)
+		return cli.NewExitError(err, exitCode)
+	}
+	return nil
+}
+
+// wizefs xget FILE ORIGIN DESTINATIONFILEPATH
+func CmdXGetFile(c *cli.Context) (err error) {
+	if c.NArg() != 3 {
+		// TEST: TestXGetUsage
+		return cli.NewExitError(
+			fmt.Sprintf("Wrong number of arguments (have %d, want 3)."+
+				" You passed: %s.", c.NArg(), c.Args()),
+			globals.ExitUsage)
+	}
+
+	originalFile := c.Args()[0]
+	origin := c.Args()[1]
+	destinationFilePath := c.Args()[2]
+
+	// we don't need content, it's only for gRPC methods
+	_, exitCode, err := ApiGet(originalFile, origin, destinationFilePath, false)
 	if err != nil {
 		//tlog.Warn.Println(err)
 		return cli.NewExitError(err, exitCode)
@@ -131,7 +154,7 @@ func CmdGetFile(c *cli.Context) (err error) {
 }
 
 // TODO: check MD5, size, type, etc
-func ApiGet(originalFile, origin string, getContentOnly bool) (content []byte, exitCode int, err error) {
+func ApiGet(originalFile, origin, destinationFilePath string, getContentOnly bool) (content []byte, exitCode int, err error) {
 	// TEST: TestGetNotExistingOrigin, TestGettNotMounted
 	exitCode, err = checkConfig(origin, false, false)
 	if err != nil {
@@ -177,8 +200,12 @@ func ApiGet(originalFile, origin string, getContentOnly bool) (content []byte, e
 	// check destination file existing
 	var destinationFile string = ""
 	if !getContentOnly {
-		// TODO: HACK - we just copy file into application directory
-		destinationFile, _ = filepath.Abs(originalFileBase)
+		if destinationFilePath != "" {
+			destinationFile = destinationFilePath
+		} else {
+			// TODO: HACK - we just copy file into application directory
+			destinationFile, _ = filepath.Abs(originalFileBase)
+		}
 		if _, err = os.Stat(destinationFile); os.IsExist(err) {
 			// TEST: TestGetExistingDestinationFile
 			return nil, globals.ExitFile,
