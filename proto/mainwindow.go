@@ -10,7 +10,10 @@ const (
 )
 
 type MainWindow struct {
-	window   *ui.Window
+	window     *ui.Window
+	walletTab  *WalletTab
+	storageTab *StorageTab
+
 	blockApi *BlockApi
 	raftApi  *RaftApi
 
@@ -44,27 +47,30 @@ func (main *MainWindow) Show() {
 }
 
 func (main *MainWindow) buildGUI() ui.Control {
-	//mainBox := ui.NewHorizontalBox()
-
 	tab := ui.NewTab()
 
-	tab.Append("  Wallet  ", NewWalletTab(main).Control())
+	main.walletTab = NewWalletTab(main)
+	tab.Append("  Wallet  ", main.walletTab.Control())
 	tab.SetMargined(0, true)
 
-	tab.Append("  Storage  ", NewStorageTab(main).Control())
+	main.storageTab = NewStorageTab(main)
+	tab.Append("  Storage  ", main.storageTab.Control())
 	tab.SetMargined(1, true)
 
 	tab.Append("  Debug  ", NewDebugTab().Control())
 	tab.SetMargined(2, true)
 
-	return tab
+	main.walletTab.init()
+	main.storageTab.init()
 
-	//return mainBox
+	return tab
 }
 
 func (main *MainWindow) OnClosing(window *ui.Window) bool {
 	// FIXME:
-	saveWalletInfo(main.walletInfo)
+	if main.walletInfo != nil {
+		saveWalletInfo(main.walletInfo)
+	}
 
 	ui.Quit()
 	return true

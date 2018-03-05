@@ -34,13 +34,11 @@ func NewStorageTab(mainWindow *MainWindow) *StorageTab {
 		main: mainWindow,
 	}
 	makeTab.buildGUI()
-	makeTab.init()
 	return makeTab
 }
 
 func (t *StorageTab) buildGUI() {
 	t.tab = ui.NewHorizontalBox()
-	//t.tab.Append(ui.NewLabel("Storage Page will be soon!"), false)
 
 	vbox1 := ui.NewVerticalBox()
 	t.putFileButton = ui.NewButton("Put file")
@@ -93,6 +91,13 @@ func (t *StorageTab) init() {
 }
 
 func (t *StorageTab) reloadFilesView() {
+	// chech wallet info existing
+	if t.main.walletInfo == nil {
+		fmt.Printf("walletInfo is nil\n")
+		return
+	}
+
+	// clear db and Model
 	for i := 0; i < len(t.db.Files); i++ {
 		t.filesModel.RowDeleted(0)
 	}
@@ -132,7 +137,7 @@ func (t *StorageTab) reloadFilesView() {
 	}
 	//fmt.Printf("cpkIndexLastInt64: %d\n", cpkIndexLastInt64)
 
-	// for
+	// list cycle
 	var index int64 = 0
 	for index < cpkIndexLastInt64 {
 		index++
@@ -153,7 +158,7 @@ func (t *StorageTab) reloadFilesView() {
 			fmt.Println("Error when getting SHA256:", err)
 			continue
 		}
-		// TODO: CPKIndex is absent
+		// CPKIndex is absent
 		if shaKeyString == "" {
 			//fmt.Printf("Skip this index: %d\n", index)
 			continue
@@ -178,16 +183,13 @@ func (t *StorageTab) reloadFilesView() {
 
 		// Info (Base64(File.Basename) + Timestamp)
 		info := value[128:]
-		//fmt.Println("Info: ", string(info))
 		infoLen := len(info)
 
 		basename64 := info[0 : infoLen-16]
-		//fmt.Println("Base64: ", string(basename64))
 		fileBasename, _ := base64.RawURLEncoding.DecodeString(string(basename64))
 		//fmt.Println("Filename: ", string(fileBasename))
 
 		timeStamp := info[infoLen-16:]
-		//fmt.Println("Timestamp: ", string(timeStamp))
 		timeStampDecode, _ := hex.DecodeString(timeStamp)
 		timeStampInt64 := int64(binary.LittleEndian.Uint64(timeStampDecode))
 		timeStampTime := time.Unix(timeStampInt64, 0)
@@ -233,10 +235,10 @@ func (t *StorageTab) logMessage(message string) {
 	t.logBox.SetText(t.logBuffer.ToString())
 }
 
-func (t *StorageTab) putFile(file string) {
+func (t *StorageTab) putFile(filename string) {
 	ui.QueueMain(func() {
 		t.buttonEnabled(false)
-		t.logMessage("Open file: " + file)
+		t.logMessage("Open file: " + filename)
 	})
 
 	origin := BucketOriginName
@@ -252,30 +254,31 @@ func (t *StorageTab) putFile(file string) {
 		return
 	}
 
+	// TODO: we must wait until mount finishes its actions
+	// TODO: check ORIGIN? every 100 milliseconds
 	time.Sleep(500 * time.Millisecond)
 	ui.QueueMain(func() {
 		t.logMessage("Mount bucket " + origin)
 	})
 
 	putSuccess := false
-	cerr = RunCommand("put", file, origin)
+	cerr = RunCommand("put", filename, origin)
 	if cerr != nil {
-		//ui.MsgBoxError(t.main.window, "Error", fmt.Sprintf("%v", cerr))
 		ui.QueueMain(func() {
 			t.logMessage("Put error: " + cerr.Error())
 		})
 	} else {
 		putSuccess = true
+		// TODO: should we wait after put command?
 		//time.Sleep(500 * time.Millisecond)
 		ui.QueueMain(func() {
-			t.logMessage("Put file [" + file + "] to bucket " + origin)
+			t.logMessage("Put file [" + filename + "] to bucket " + origin)
 		})
 	}
 
 	// unmount
 	cerr = RunCommand("unmount", origin)
 	if cerr != nil {
-		//ui.MsgBoxError(t.main.window, "Error", fmt.Sprintf("%v", cerr))
 		ui.QueueMain(func() {
 			t.logMessage("Unmount error: " + cerr.Error())
 		})
@@ -283,7 +286,7 @@ func (t *StorageTab) putFile(file string) {
 
 	// TODO: add Key/Value to Raft here
 	if putSuccess {
-		t.saveFileToRaft(file)
+		t.saveFileToRaft(filename)
 		t.reloadFilesView()
 	}
 
@@ -294,12 +297,6 @@ func (t *StorageTab) putFile(file string) {
 }
 
 func (t *StorageTab) saveFileToRaft(file string) {
-	// chech wallet info existing
-	if t.main.walletInfo == nil {
-		fmt.Printf("walletInfo is nil\n")
-		return
-	}
-
 	basename := filepath.Base(file)
 	//fmt.Printf("basename: %s\n", basename)
 	fi, err := os.Stat(file)
@@ -361,6 +358,7 @@ func (t *StorageTab) saveFileToRaft(file string) {
 	cpkIndex0 = append(cpkIndex0, index0...)
 
 	// Get last CPIIndex
+	// TODO: try to use wallet.CpkZeroIndex instead of this
 	cpkIndexLast, err := t.main.raftApi.Get(string(cpkIndex0))
 	if err != nil {
 		fmt.Printf("Try to get last CPKIndex was failed with error: %s\n", err.Error())
@@ -399,7 +397,7 @@ func (t *StorageTab) saveFileToRaft(file string) {
 	t.main.raftApi.Set(string(cpkIndex), shaKeyString)
 	t.main.raftApi.Set(string(cpkIndex0), string(cpkIndexNew))
 
-	// TODO: save it to wallet
+	// TODO: save last cpkIndex to wallet
 	t.main.walletInfo.CpkZeroIndex = string(cpkIndexNew)
 }
 
@@ -537,7 +535,13 @@ func (t *StorageTab) removeFileFromRaft(file File) {
 }
 
 func (t *StorageTab) onPutFileClicked(button *ui.Button) {
-	file := ui.OpenFile(t.main.window, util.UserHomeDir()+"/Downloads/*.*")
+	// chech wallet info existing
+	if t.main.walletInfo == nil {
+		fmt.Printf("walletInfo is nil\n")
+		return
+	}
+
+	file := ui.OpenFile(t.main.window, util.UserHomeDir()+"/*.*")
 	//fmt.Println("file: ", file)
 
 	if file == "" {
@@ -550,6 +554,12 @@ func (t *StorageTab) onPutFileClicked(button *ui.Button) {
 }
 
 func (t *StorageTab) onGetFileClicked(button *ui.Button) {
+	// chech wallet info existing
+	if t.main.walletInfo == nil {
+		fmt.Printf("walletInfo is nil\n")
+		return
+	}
+
 	sel := t.filesView.GetSelection()
 	if len(sel) != 1 {
 		fmt.Println("Nothing is selected!")
@@ -562,7 +572,7 @@ func (t *StorageTab) onGetFileClicked(button *ui.Button) {
 	fmt.Println("filename:", filename)
 
 	// save file to path
-	filenameSave := ui.SaveFile(t.main.window, util.UserHomeDir()+"/Downloads/"+filename)
+	filenameSave := ui.SaveFile(t.main.window, util.UserHomeDir()+"/"+filename)
 	fmt.Println("filenameSave: ", filenameSave)
 	if filenameSave == "" {
 		ui.MsgBoxError(t.main.window, "Error",
@@ -577,6 +587,12 @@ func (t *StorageTab) onGetFileClicked(button *ui.Button) {
 }
 
 func (t *StorageTab) onRemoveFileClicked(button *ui.Button) {
+	// chech wallet info existing
+	if t.main.walletInfo == nil {
+		fmt.Printf("walletInfo is nil\n")
+		return
+	}
+
 	sel := t.filesView.GetSelection()
 	if len(sel) != 1 {
 		fmt.Println("Nothing is selected!")

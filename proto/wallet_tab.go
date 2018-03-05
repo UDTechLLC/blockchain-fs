@@ -38,7 +38,6 @@ func NewWalletTab(mainWindow *MainWindow) *WalletTab {
 		main: mainWindow,
 	}
 	makeTab.buildGUI()
-	makeTab.init()
 	return makeTab
 }
 
@@ -117,9 +116,11 @@ func (t *WalletTab) init() {
 	if walletInfo != nil {
 		t.updateWalletInfo(walletInfo)
 		t.main.walletInfo = walletInfo
+		t.main.storageTab.buttonEnabled(true)
 	} else {
 		//ui.MsgBoxError(t.main.window, "Error", "Wallet Info is nil")
-		fmt.Println("Wallet Info is nil")
+		fmt.Println("walletInfo is nil")
+		t.main.storageTab.buttonEnabled(false)
 		//return
 	}
 
@@ -189,6 +190,7 @@ func (t *WalletTab) onCreateWalletClicked(button *ui.Button) {
 	}
 
 	t.main.walletInfo = walletInfo
+	t.main.storageTab.buttonEnabled(true)
 
 	// update controls
 	t.updateWalletInfo(walletInfo)
@@ -210,8 +212,8 @@ func (t *WalletTab) afterCreateWallet() {
 	origin := BucketOriginName
 	cerr := RunCommand("create", origin)
 	if cerr != nil {
-		fmt.Println("Create bucket error: ", cerr.Error())
-		ui.MsgBoxError(t.main.window, "Error", fmt.Sprintf("%v", cerr))
+		fmt.Println("Create bucket error:", cerr.Error())
+		//ui.MsgBoxError(t.main.window, "Error", fmt.Sprintf("%v", cerr))
 	}
 }
 
