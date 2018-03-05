@@ -82,9 +82,15 @@ var Commands = []cli.Command{
 	},
 	{
 		Name:    "xget",
-		Aliases: []string{"g"},
+		Aliases: []string{"x"},
 		Usage:   "",
 		Action:  command.CmdXGetFile,
+	},
+	{
+		Name:    "remove",
+		Aliases: []string{"r"},
+		Usage:   "",
+		Action:  command.CmdRemoveFile,
 	},
 }
 

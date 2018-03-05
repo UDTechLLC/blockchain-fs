@@ -224,6 +224,83 @@ func ApiGet(originalFile, origin, destinationFilePath string, getContentOnly boo
 	return content, 0, nil
 }
 
+// wizefs remove FILE ORIGIN
+// TODO: check permissions
+func CmdRemoveFile(c *cli.Context) (err error) {
+	if c.NArg() != 2 {
+		// TEST: TestRemoveUsage
+		return cli.NewExitError(
+			fmt.Sprintf("Wrong number of arguments (have %d, want 2)."+
+				" You passed: %s.", c.NArg(), c.Args()),
+			globals.ExitUsage)
+	}
+
+	originalFile := c.Args()[0]
+	origin := c.Args()[1]
+
+	// we don't need content, it's only for gRPC methods
+	exitCode, err := ApiRemove(originalFile, origin)
+	if err != nil {
+		//tlog.Warn.Println(err)
+		return cli.NewExitError(err, exitCode)
+	}
+	return nil
+}
+
+func ApiRemove(originalFile, origin string) (exitCode int, err error) {
+	// TEST: TestRemoveNotExistingOrigin, TestRemoveNotMounted
+	exitCode, err = checkConfig(origin, false, false)
+	if err != nil {
+		return
+	}
+
+	var mountpointPath string
+	//originPath := OriginDir + origin
+
+	// check origin via config file (database) and get mountpoint if it exists
+	// TODO: auto-mount if (Filesystem is not mounted!)?
+
+	// TODO: HACK for gRPC methods
+	if config.CommonConfig == nil {
+		config.InitWizeConfig()
+	}
+
+	mountpointPath, err = config.CommonConfig.CheckOriginGetMountpoint(origin)
+	if err != nil {
+		// TEST: TestRemoveFailedMountpointPath
+		return globals.ExitMountPoint,
+			fmt.Errorf("Did not find MOUNTPOINT in common config.")
+	}
+
+	// FIXME: check PATH
+	if filepath.IsAbs(originalFile) {
+		// TEST: TestRemoveFullFilename, TestRemoveShortFilename
+		return globals.ExitFile,
+			fmt.Errorf("FILE argument (%s) is absolute path to file.", originalFile)
+	}
+
+	// FIXME: get Base?
+	originalFileBase := filepath.Base(originalFile)
+
+	// check original file existing
+	originalFile = mountpointPath + "/" + originalFileBase
+	if _, err = os.Stat(originalFile); os.IsNotExist(err) {
+		// TEST: TestRemoveNotExistingFile
+		return globals.ExitFile,
+			fmt.Errorf("Original FILE (%s) does not exist.", originalFile)
+	}
+
+	// remove file from mountpointPath
+	err = os.Remove(originalFile)
+	if err != nil {
+		// TEST: TestRemoveFailedRemoveFile
+		return globals.ExitFile,
+			fmt.Errorf("We have a problem with removing file: %v", err)
+	}
+
+	return 0, nil
+}
+
 // wizefs search FILE
 func CmdSearchFile(c *cli.Context) {
 
