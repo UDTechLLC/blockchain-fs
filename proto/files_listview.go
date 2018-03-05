@@ -11,6 +11,7 @@ import (
 // File Model
 type File struct {
 	Index     int
+	RaftIndex int
 	Name      string
 	Timestamp time.Time
 }
@@ -22,7 +23,7 @@ type FileDB struct {
 // implement the TableModelHandler interface
 
 func (db *FileDB) NumColumns(m *ui.TableModel) int {
-	return 3
+	return 4
 }
 
 func (db *FileDB) ColumnType(m *ui.TableModel, col int) ui.TableModelColumnType {
@@ -43,8 +44,10 @@ func (db *FileDB) CellValue(m *ui.TableModel, row int, col int) interface{} {
 	case 0:
 		return strconv.Itoa(row + 1)
 	case 1:
-		return value.Name
+		return strconv.Itoa(value.RaftIndex)
 	case 2:
+		return value.Name
+	case 3:
 		return value.Timestamp.Format(time.RFC1123)
 	}
 	return nil

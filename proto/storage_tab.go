@@ -19,6 +19,7 @@ type StorageTab struct {
 	tab  *ui.Box
 
 	putFileButton *ui.Button
+	getFileButton *ui.Button
 	logBuffer     *StringBuffer
 	logBox        *ui.MultilineEntry
 
@@ -42,9 +43,13 @@ func (t *StorageTab) buildGUI() {
 
 	vbox1 := ui.NewVerticalBox()
 	t.putFileButton = ui.NewButton("Put file")
+	t.getFileButton = ui.NewButton("Get file")
+
 	t.putFileButton.OnClicked(t.onPutFileClicked)
+	t.getFileButton.OnClicked(t.onGetFileClicked)
 	vbox1.SetPadded(true)
 	vbox1.Append(t.putFileButton, false)
+	vbox1.Append(t.getFileButton, false)
 
 	vbox2 := ui.NewVerticalBox()
 
@@ -54,8 +59,9 @@ func (t *StorageTab) buildGUI() {
 	t.filesModel = ui.NewTableModel(&t.db)
 	t.filesView = ui.NewTable(t.filesModel, ui.TableStyleMultiSelect)
 	t.filesView.AppendTextColumn("Index", 0)
-	t.filesView.AppendTextColumn("Name", 1)
-	t.filesView.AppendTextColumn("Time", 2)
+	t.filesView.AppendTextColumn("RaftIndex", 1)
+	t.filesView.AppendTextColumn("Name", 2)
+	t.filesView.AppendTextColumn("Time", 3)
 	listBox.Append(t.filesView, true)
 
 	hbox2a.Append(listBox, true)
@@ -184,6 +190,7 @@ func (t *StorageTab) reloadFilesView() {
 
 		f := File{
 			Index:     len(t.db.Files) + 1,
+			RaftIndex: int(index),
 			Name:      string(fileBasename),
 			Timestamp: timeStampTime,
 		}
@@ -366,15 +373,95 @@ func (t *StorageTab) saveFileToRaft(file string) {
 	t.reloadFilesView()
 }
 
+func (t *StorageTab) getFile(source string, destination string) {
+	ui.QueueMain(func() {
+		t.getFileButton.Disable()
+		t.logMessage("Save file: " + source + " to " + destination)
+	})
+
+	origin := BucketOriginName
+
+	// mount
+	cerr := RunCommand("mount", origin)
+	if cerr != nil {
+		//ui.MsgBoxError(t.main.window, "Error", fmt.Sprintf("%v", cerr))
+		ui.QueueMain(func() {
+			t.putFileButton.Enable()
+			t.logMessage("Mount error: " + cerr.Error())
+		})
+		return
+	}
+
+	time.Sleep(500 * time.Millisecond)
+	ui.QueueMain(func() {
+		t.logMessage("Mount bucket " + origin)
+	})
+
+	cerr = RunCommand("xget", source, origin, destination)
+	if cerr != nil {
+		//ui.MsgBoxError(t.main.window, "Error", fmt.Sprintf("%v", cerr))
+		ui.QueueMain(func() {
+			t.logMessage("Put error: " + cerr.Error())
+		})
+	} else {
+		//time.Sleep(500 * time.Millisecond)
+		ui.QueueMain(func() {
+			t.logMessage("Get file [" + source + "] from bucket " + origin +
+				" to path [" + destination + "]")
+		})
+	}
+
+	// unmount
+	cerr = RunCommand("unmount", origin)
+	if cerr != nil {
+		//ui.MsgBoxError(t.main.window, "Error", fmt.Sprintf("%v", cerr))
+		ui.QueueMain(func() {
+			t.logMessage("Unmount error: " + cerr.Error())
+		})
+	}
+
+	ui.QueueMain(func() {
+		t.logMessage("Unmount bucket " + origin)
+		t.getFileButton.Enable()
+	})
+}
+
 func (t *StorageTab) onPutFileClicked(button *ui.Button) {
 	file := ui.OpenFile(t.main.window, util.UserHomeDir()+"/Downloads/*.*")
 	//fmt.Println("file: ", file)
 
 	if file == "" {
 		ui.MsgBoxError(t.main.window, "Error",
-			fmt.Sprintf("Please, select file for putting it to filesystem"))
+			fmt.Sprintf("Please, select file for putting it to storage"))
 		return
 	}
 
 	go t.putFile(file)
+}
+
+func (t *StorageTab) onGetFileClicked(button *ui.Button) {
+	sel := t.filesView.GetSelection()
+	if len(sel) != 1 {
+		fmt.Println("Nothing is select!")
+		return
+	}
+
+	idx := sel[0]
+	dbitem := t.db.Files[idx]
+	filename := dbitem.Name
+	fmt.Println("filename:", filename)
+
+	// save file to path
+	filenameSave := ui.SaveFile(t.main.window, util.UserHomeDir()+"/Downloads/"+filename)
+	fmt.Println("filenameSave: ", filenameSave)
+	if filenameSave == "" {
+		ui.MsgBoxError(t.main.window, "Error",
+			fmt.Sprintf("Please, select file for gettig it from storage"))
+		return
+	}
+
+	filePath := filepath.Dir(filenameSave)
+	fmt.Println("filePath:", filePath)
+
+	go t.getFile(filename, filenameSave)
 }
