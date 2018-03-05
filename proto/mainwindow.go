@@ -63,6 +63,9 @@ func (main *MainWindow) buildGUI() ui.Control {
 }
 
 func (main *MainWindow) OnClosing(window *ui.Window) bool {
+	// FIXME:
+	saveWalletInfo(main.walletInfo)
+
 	ui.Quit()
 	return true
 }

@@ -179,6 +179,8 @@ func (t *WalletTab) onCreateWalletClicked(button *ui.Button) {
 		return
 	}
 
+	walletInfo.CpkZeroIndex = "0"
+
 	// save to wallet.json
 	err = saveWalletInfo(walletInfo)
 	if err != nil {

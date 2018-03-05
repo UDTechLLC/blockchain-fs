@@ -17,10 +17,11 @@ type WalletCreateRequest struct {
 }
 
 type WalletCreateInfo struct {
-	Success bool
-	Address string
-	PrivKey string
-	PubKey  string
+	Success      bool
+	Address      string
+	PrivKey      string
+	PubKey       string
+	CpkZeroIndex string
 }
 
 type WalletListResponse struct {
