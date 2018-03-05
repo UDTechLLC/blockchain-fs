@@ -45,7 +45,7 @@ func (db *FileDB) CellValue(m *ui.TableModel, row int, col int) interface{} {
 	case 1:
 		return value.Name
 	case 2:
-		return "Now"
+		return value.Timestamp.Format(time.RFC1123)
 	}
 	return nil
 }

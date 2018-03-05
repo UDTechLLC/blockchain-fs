@@ -8,7 +8,6 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"strconv"
 	"time"
 
 	"bitbucket.org/udt/wizefs/internal/util"
@@ -89,36 +88,38 @@ func (t *StorageTab) reloadFilesView() {
 	}
 	t.db.Files = nil
 
-	// get last index from CPK Index Store
-	// CPK + 00000000 (8 bytes)
-	// FIXME: is it copy or pointer?
+	// get last CPKIndex = CPK + 0000000000000000 (8 bytes)
+	// prepare key for Get
 	cpkIndex0 := []byte(t.main.walletInfo.PubKey)
 	index0 := make([]byte, 8)
 	binary.LittleEndian.PutUint64(index0, uint64(0))
-	index0 = []byte(fmt.Sprintf("%x", index0))
+	index0 = []byte(hex.EncodeToString(index0))
+	//fmt.Printf("index0: %s\n", string(index0))
 
 	cpkIndex0 = append(cpkIndex0, index0...)
 
+	// Get last CPIIndex
 	cpkIndexLast, err := t.main.raftApi.Get(string(cpkIndex0))
-	// TODO: check cpkIndexLast - len, value, etc
 	if err != nil {
-		fmt.Println("Error: ", err)
+		fmt.Printf("Try to get last CPKIndex was failed with error: %s\n", err.Error())
 		return
 	}
+	//fmt.Printf("cpkIndexLast: %s\n", cpkIndexLast)
 
-	fmt.Printf("cpkIndexLast: %s\n", cpkIndexLast)
+	// casting string to int64
 	var cpkIndexLastInt64 int64
 	if cpkIndexLast == "" {
-		fmt.Println("Empty...")
-		return
+		// if last CPKIndex is not existing, just set it to 0
+		cpkIndexLastInt64 = int64(0)
 	} else {
-		cpkIndexLastDecode, _ := hex.DecodeString(cpkIndexLast)
-		// TODO: check it
+		cpkIndexLastDecode, err := hex.DecodeString(cpkIndexLast)
+		if err != nil {
+			fmt.Printf("Try to decode last CPKIndex was failed with error: %s\n", err.Error())
+			return
+		}
 		cpkIndexLastInt64 = int64(binary.LittleEndian.Uint64(cpkIndexLastDecode))
 	}
-
-	fmt.Printf("cpkIndexLastInt64: %x\n", cpkIndexLastInt64)
-	fmt.Printf("cpkIndexLastInt64: %s\n", strconv.Itoa(int(cpkIndexLastInt64)))
+	//fmt.Printf("cpkIndexLastInt64: %d\n", cpkIndexLastInt64)
 
 	// for
 	var index int64 = 0
@@ -129,55 +130,57 @@ func (t *StorageTab) reloadFilesView() {
 
 		cpkIndexNew := make([]byte, 8)
 		binary.LittleEndian.PutUint64(cpkIndexNew, uint64(index))
-		cpkIndexNew = []byte(fmt.Sprintf("%x", cpkIndexNew))
-
-		fmt.Printf("cpkIndexNew: %x\n", cpkIndexNew)
-		fmt.Printf("cpkIndexNew: %s\n", string(cpkIndexNew))
+		cpkIndexNew = []byte(hex.EncodeToString(cpkIndexNew))
+		//fmt.Printf("cpkIndexNew: %s\n", string(cpkIndexNew))
 
 		cpkIndex = append(cpkIndex, cpkIndexNew...)
-
-		fmt.Printf("cpkIndex: %x\n", cpkIndex)
-		fmt.Printf("cpkIndex: %s\n", string(cpkIndex))
+		//fmt.Printf("cpkIndex: %s\n", string(cpkIndex))
 
 		shaKeyString, err := t.main.raftApi.Get(string(cpkIndex))
 		if err != nil {
-			fmt.Println("Error: ", err)
+			// TODO:
+			fmt.Println("Error when getting SHA256:", err)
+			continue
 		}
-
-		fmt.Printf("shaKeyString: %s\n", shaKeyString)
+		// TODO: CPKIndex is absent
+		if shaKeyString == "" {
+			fmt.Printf("Skip this index: %d", index)
+			continue
+		}
+		//fmt.Printf("shaKeyString: %s\n", shaKeyString)
 
 		value, err := t.main.raftApi.Get(shaKeyString)
 		if err != nil {
-			fmt.Println("Error: ", err)
+			// TODO:
+			fmt.Println("Error when getting FileInfo:", err)
+			continue
 		}
+		//fmt.Printf("value: %s\n", value)
 
-		fmt.Printf("value: %s\n", value)
-
+		// CPK
 		cpkTest := string(value[0:128])
-		if cpkTest == t.main.walletInfo.PubKey {
-			fmt.Println("Match!")
-		} else {
-			fmt.Println("NOT Match!")
+		if cpkTest != t.main.walletInfo.PubKey {
+			// TODO:
+			fmt.Println("CPK was not matched!")
+			continue
 		}
 
+		// Info (Base64(File.Basename) + Timestamp)
 		info := value[128:]
-		fmt.Println("Info: ", string(info))
+		//fmt.Println("Info: ", string(info))
 		infoLen := len(info)
 
-		base64FileBasename := info[0 : infoLen-16]
-		fmt.Println("Base64: ", string(base64FileBasename))
-
-		fileBasename, _ := base64.RawURLEncoding.DecodeString(string(base64FileBasename))
-		fmt.Println("Filename: ", string(fileBasename))
+		basename64 := info[0 : infoLen-16]
+		//fmt.Println("Base64: ", string(basename64))
+		fileBasename, _ := base64.RawURLEncoding.DecodeString(string(basename64))
+		//fmt.Println("Filename: ", string(fileBasename))
 
 		timeStamp := info[infoLen-16:]
-		fmt.Println("Timestamp: ", string(timeStamp))
-
+		//fmt.Println("Timestamp: ", string(timeStamp))
 		timeStampDecode, _ := hex.DecodeString(timeStamp)
 		timeStampInt64 := int64(binary.LittleEndian.Uint64(timeStampDecode))
-
 		timeStampTime := time.Unix(timeStampInt64, 0)
-		fmt.Println("Timestamp: ", timeStampTime.Format(time.RFC1123))
+		//fmt.Println("Timestamp: ", timeStampTime.Format(time.RFC1123))
 
 		f := File{
 			Index:     len(t.db.Files) + 1,
