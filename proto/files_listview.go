@@ -14,6 +14,9 @@ type File struct {
 	RaftIndex int
 	Name      string
 	Timestamp time.Time
+
+	shaKey   string
+	cpkIndex string
 }
 
 type FileDB struct {

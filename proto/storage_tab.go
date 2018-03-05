@@ -18,10 +18,11 @@ type StorageTab struct {
 	main *MainWindow
 	tab  *ui.Box
 
-	putFileButton *ui.Button
-	getFileButton *ui.Button
-	logBuffer     *StringBuffer
-	logBox        *ui.MultilineEntry
+	putFileButton    *ui.Button
+	getFileButton    *ui.Button
+	removeFileButton *ui.Button
+	logBuffer        *StringBuffer
+	logBox           *ui.MultilineEntry
 
 	db         FileDB
 	filesView  *ui.Table
@@ -44,12 +45,15 @@ func (t *StorageTab) buildGUI() {
 	vbox1 := ui.NewVerticalBox()
 	t.putFileButton = ui.NewButton("Put file")
 	t.getFileButton = ui.NewButton("Get file")
+	t.removeFileButton = ui.NewButton("Remove file")
 
 	t.putFileButton.OnClicked(t.onPutFileClicked)
 	t.getFileButton.OnClicked(t.onGetFileClicked)
+	t.removeFileButton.OnClicked(t.onRemoveFileClicked)
 	vbox1.SetPadded(true)
 	vbox1.Append(t.putFileButton, false)
 	vbox1.Append(t.getFileButton, false)
+	vbox1.Append(t.removeFileButton, false)
 
 	vbox2 := ui.NewVerticalBox()
 
@@ -105,6 +109,7 @@ func (t *StorageTab) reloadFilesView() {
 	cpkIndex0 = append(cpkIndex0, index0...)
 
 	// Get last CPIIndex
+	// TODO: try to use wallet.CpkZeroIndex instead of this
 	cpkIndexLast, err := t.main.raftApi.Get(string(cpkIndex0))
 	if err != nil {
 		fmt.Printf("Try to get last CPKIndex was failed with error: %s\n", err.Error())
@@ -150,7 +155,7 @@ func (t *StorageTab) reloadFilesView() {
 		}
 		// TODO: CPKIndex is absent
 		if shaKeyString == "" {
-			fmt.Printf("Skip this index: %d", index)
+			//fmt.Printf("Skip this index: %d\n", index)
 			continue
 		}
 		//fmt.Printf("shaKeyString: %s\n", shaKeyString)
@@ -193,14 +198,33 @@ func (t *StorageTab) reloadFilesView() {
 			RaftIndex: int(index),
 			Name:      string(fileBasename),
 			Timestamp: timeStampTime,
+			shaKey:    shaKeyString,
+			cpkIndex:  string(cpkIndex),
 		}
 		t.db.Files = append(t.db.Files, f)
 		t.filesModel.RowInserted(len(t.db.Files) - 1)
 	}
+
+	// TODO: how to select row?
+	//if len(t.db.Files) > 0 {
+	//	t.filesModel.RowChanged(0)
+	//}
 }
 
 func (t *StorageTab) Control() ui.Control {
 	return t.tab
+}
+
+func (t *StorageTab) buttonEnabled(enable bool) {
+	if enable {
+		t.putFileButton.Enable()
+		t.getFileButton.Enable()
+		t.removeFileButton.Enable()
+	} else {
+		t.putFileButton.Disable()
+		t.getFileButton.Disable()
+		t.removeFileButton.Disable()
+	}
 }
 
 func (t *StorageTab) logMessage(message string) {
@@ -211,7 +235,7 @@ func (t *StorageTab) logMessage(message string) {
 
 func (t *StorageTab) putFile(file string) {
 	ui.QueueMain(func() {
-		t.putFileButton.Disable()
+		t.buttonEnabled(false)
 		t.logMessage("Open file: " + file)
 	})
 
@@ -233,6 +257,7 @@ func (t *StorageTab) putFile(file string) {
 		t.logMessage("Mount bucket " + origin)
 	})
 
+	putSuccess := false
 	cerr = RunCommand("put", file, origin)
 	if cerr != nil {
 		//ui.MsgBoxError(t.main.window, "Error", fmt.Sprintf("%v", cerr))
@@ -240,14 +265,12 @@ func (t *StorageTab) putFile(file string) {
 			t.logMessage("Put error: " + cerr.Error())
 		})
 	} else {
+		putSuccess = true
 		//time.Sleep(500 * time.Millisecond)
 		ui.QueueMain(func() {
 			t.logMessage("Put file [" + file + "] to bucket " + origin)
 		})
 	}
-
-	// TODO: add Key/Value to Raft here
-	t.saveFileToRaft(file)
 
 	// unmount
 	cerr = RunCommand("unmount", origin)
@@ -258,9 +281,15 @@ func (t *StorageTab) putFile(file string) {
 		})
 	}
 
+	// TODO: add Key/Value to Raft here
+	if putSuccess {
+		t.saveFileToRaft(file)
+		t.reloadFilesView()
+	}
+
 	ui.QueueMain(func() {
 		t.logMessage("Unmount bucket " + origin)
-		t.putFileButton.Enable()
+		t.buttonEnabled(true)
 	})
 }
 
@@ -370,12 +399,13 @@ func (t *StorageTab) saveFileToRaft(file string) {
 	t.main.raftApi.Set(string(cpkIndex), shaKeyString)
 	t.main.raftApi.Set(string(cpkIndex0), string(cpkIndexNew))
 
-	t.reloadFilesView()
+	// TODO: save it to wallet
+	t.main.walletInfo.CpkZeroIndex = string(cpkIndexNew)
 }
 
 func (t *StorageTab) getFile(source string, destination string) {
 	ui.QueueMain(func() {
-		t.getFileButton.Disable()
+		t.buttonEnabled(false)
 		t.logMessage("Save file: " + source + " to " + destination)
 	})
 
@@ -422,8 +452,88 @@ func (t *StorageTab) getFile(source string, destination string) {
 
 	ui.QueueMain(func() {
 		t.logMessage("Unmount bucket " + origin)
-		t.getFileButton.Enable()
+		t.buttonEnabled(true)
 	})
+}
+
+func (t *StorageTab) removeFile(file File) {
+	ui.QueueMain(func() {
+		t.buttonEnabled(false)
+		t.logMessage("Open file: " + file.Name)
+	})
+
+	origin := BucketOriginName
+
+	// mount
+	cerr := RunCommand("mount", origin)
+	if cerr != nil {
+		//ui.MsgBoxError(t.main.window, "Error", fmt.Sprintf("%v", cerr))
+		ui.QueueMain(func() {
+			t.putFileButton.Enable()
+			t.logMessage("Mount error: " + cerr.Error())
+		})
+		return
+	}
+
+	time.Sleep(500 * time.Millisecond)
+	ui.QueueMain(func() {
+		t.logMessage("Mount bucket " + origin)
+	})
+
+	removeSuccess := false
+	cerr = RunCommand("remove", file.Name, origin)
+	if cerr != nil {
+		//ui.MsgBoxError(t.main.window, "Error", fmt.Sprintf("%v", cerr))
+		ui.QueueMain(func() {
+			t.logMessage("Remove error: " + cerr.Error())
+		})
+	} else {
+		removeSuccess = true
+		//time.Sleep(500 * time.Millisecond)
+		ui.QueueMain(func() {
+			t.logMessage("Remove file [" + file.Name + "] from bucket " + origin)
+		})
+	}
+
+	// unmount
+	cerr = RunCommand("unmount", origin)
+	if cerr != nil {
+		//ui.MsgBoxError(t.main.window, "Error", fmt.Sprintf("%v", cerr))
+		ui.QueueMain(func() {
+			t.logMessage("Unmount error: " + cerr.Error())
+		})
+	}
+
+	// TODO: add Key/Value to Raft here
+	if removeSuccess {
+		t.removeFileFromRaft(file)
+		t.reloadFilesView()
+	}
+
+	ui.QueueMain(func() {
+		t.logMessage("Unmount bucket " + origin)
+		t.buttonEnabled(true)
+	})
+}
+
+func (t *StorageTab) removeFileFromRaft(file File) {
+	fmt.Println("shaKey:", file.shaKey)
+	fmt.Println("cpkIndex:", file.cpkIndex)
+
+	t.main.raftApi.Delete(file.shaKey)
+	t.main.raftApi.Delete(file.cpkIndex)
+
+	// TODO: we can fix cpkIndex0 for last cpkIndex?
+	lastIndex := t.main.walletInfo.PubKey + t.main.walletInfo.CpkZeroIndex
+	if file.cpkIndex == lastIndex {
+		// we can update CpkZeroIndex here!
+		fmt.Println("We can update CpkZeroIndex here")
+	}
+
+	// TODO: or we can rebuild index, yeah!
+
+	// TODO: or we can save file count with cpkIndex!?
+	// so cpkIndex will have 2 values: last cpkIndex and file count
 }
 
 func (t *StorageTab) onPutFileClicked(button *ui.Button) {
@@ -442,7 +552,7 @@ func (t *StorageTab) onPutFileClicked(button *ui.Button) {
 func (t *StorageTab) onGetFileClicked(button *ui.Button) {
 	sel := t.filesView.GetSelection()
 	if len(sel) != 1 {
-		fmt.Println("Nothing is select!")
+		fmt.Println("Nothing is selected!")
 		return
 	}
 
@@ -464,4 +574,19 @@ func (t *StorageTab) onGetFileClicked(button *ui.Button) {
 	fmt.Println("filePath:", filePath)
 
 	go t.getFile(filename, filenameSave)
+}
+
+func (t *StorageTab) onRemoveFileClicked(button *ui.Button) {
+	sel := t.filesView.GetSelection()
+	if len(sel) != 1 {
+		fmt.Println("Nothing is selected!")
+		return
+	}
+
+	idx := sel[0]
+	dbitem := t.db.Files[idx]
+	filename := dbitem.Name
+	fmt.Println("filename:", filename)
+
+	go t.removeFile(dbitem)
 }
