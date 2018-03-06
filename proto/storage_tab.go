@@ -235,14 +235,26 @@ func (t *StorageTab) reloadFilesView() {
 		// TODO: Base64 signed with CSK - Parse & Verify with CPK
 		signed64 := info[0 : infoLen-16]
 		fmt.Printf("signed64: %s\n", signed64)
-		basename64 := t.parseVerifyWithCPK(signed64)
+		basename64, err := t.ecdsaParseVerifyWithCPK(signed64)
+		if err != nil {
+			// if we got error then we don't add this file to list
+			continue
+		}
 		fmt.Printf("basename64: %s\n", basename64)
 
-		fileBasename, _ := base64.RawURLEncoding.DecodeString(string(basename64))
+		fileBasename, err := base64.RawURLEncoding.DecodeString(string(basename64))
+		if err != nil {
+			// if we got error then we don't add this file to list
+			continue
+		}
 		fmt.Println("Filename:", string(fileBasename))
 
 		timeStamp := info[infoLen-16:]
-		timeStampDecode, _ := hex.DecodeString(timeStamp)
+		timeStampDecode, err := hex.DecodeString(timeStamp)
+		if err != nil {
+			// if we got error then we don't add this file to list
+			continue
+		}
 		timeStampInt64 := int64(binary.LittleEndian.Uint64(timeStampDecode))
 		timeStampTime := time.Unix(timeStampInt64, 0)
 		//fmt.Println("Timestamp: ", timeStampTime.Format(time.RFC1123))
@@ -357,7 +369,17 @@ func (t *StorageTab) putFile(filename string) {
 	})
 }
 
-func (t *StorageTab) signWithCSK(basename64 string) string {
+func (t *StorageTab) ecdsaSignWithCSK(basename64 string) (string, error) {
+	// TODO: check walletInfo and Keys
+	if t.main.walletInfo == nil {
+		return "", fmt.Errorf("Wallet Info is nil. We can't get Keys.")
+	}
+	if len(t.main.walletInfo.PrivKey) != 64 {
+		return "", fmt.Errorf("Private Key is wrong!")
+	}
+	if len(t.main.walletInfo.PubKey) != 128 {
+		return "", fmt.Errorf("Public Key is wrong!")
+	}
 	ECDSAKeyD := t.main.walletInfo.PrivKey
 	ECDSAKeyX := t.main.walletInfo.PubKey[:64]
 	ECDSAKeyY := t.main.walletInfo.PubKey[64:]
@@ -365,7 +387,6 @@ func (t *StorageTab) signWithCSK(basename64 string) string {
 	keyD := new(big.Int)
 	keyX := new(big.Int)
 	keyY := new(big.Int)
-
 	keyD.SetString(ECDSAKeyD, 16)
 	keyX.SetString(ECDSAKeyX, 16)
 	keyY.SetString(ECDSAKeyY, 16)
@@ -385,20 +406,26 @@ func (t *StorageTab) signWithCSK(basename64 string) string {
 	privateKey := ecdsa.PrivateKey{D: keyD, PublicKey: publicKey}
 	signed64, err := token.SignedString(&privateKey)
 	if err != nil {
-
+		return "", err
 	}
 	//fmt.Println("signed64:", signed64)
 
-	return signed64
+	return signed64, nil
 }
 
-func (t *StorageTab) parseVerifyWithCPK(signed64 string) string {
+func (t *StorageTab) ecdsaParseVerifyWithCPK(signed64 string) (string, error) {
+	// TODO: check walletInfo and Keys
+	if t.main.walletInfo == nil {
+		return "", fmt.Errorf("Wallet Info is nil. We can't get Keys")
+	}
+	if len(t.main.walletInfo.PubKey) != 128 {
+		return "", fmt.Errorf("Public Key is wrong!")
+	}
 	ECDSAKeyX := t.main.walletInfo.PubKey[:64]
 	ECDSAKeyY := t.main.walletInfo.PubKey[64:]
 
 	keyX := new(big.Int)
 	keyY := new(big.Int)
-
 	keyX.SetString(ECDSAKeyX, 16)
 	keyY.SetString(ECDSAKeyY, 16)
 
@@ -408,21 +435,25 @@ func (t *StorageTab) parseVerifyWithCPK(signed64 string) string {
 		Y:     keyY,
 	}
 
-	token, _ := jwt.Parse(signed64, func(token *jwt.Token) (interface{}, error) {
+	token, err := jwt.Parse(signed64, func(token *jwt.Token) (interface{}, error) {
 		if _, ok := token.Method.(*jwt.SigningMethodECDSA); !ok {
 			return nil, fmt.Errorf("Unexpected signing method: %v", token.Header["alg"])
 		}
 		return &publicKey, nil
 	})
 	// TODO: err != nil
+	if err != nil {
+		return "", err
+	}
 
 	var basename64 string
 	if claims, ok := token.Claims.(jwt.MapClaims); ok && token.Valid {
 		basename64 = claims["basename64"].(string)
+	} else {
+		// TODO: not ok?
 	}
-	// TODO: not ok?
 
-	return basename64
+	return basename64, nil
 }
 
 func (t *StorageTab) saveFileToRaft(file string) {
@@ -470,9 +501,17 @@ func (t *StorageTab) saveFileToRaft(file string) {
 
 	// TODO: Base64 signed with CSK
 	fmt.Printf("basename64: %s\n", string(basename64))
-	signed64 := t.signWithCSK(string(basename64))
+	signed64, err := t.ecdsaSignWithCSK(string(basename64))
+	if err != nil {
+		// if we got error then we don't save this file to Raft
+		return
+	}
 	fmt.Printf("signed64: %s\n", signed64)
-	basename64test := t.parseVerifyWithCPK(signed64)
+	basename64test, err := t.ecdsaParseVerifyWithCPK(signed64)
+	if err != nil {
+		// if we got error then we don't save this file to Raft
+		return
+	}
 	fmt.Printf("basename64test: %s\n", basename64test)
 
 	value = append(value, signed64...)  // Base64
