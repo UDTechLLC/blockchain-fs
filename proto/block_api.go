@@ -30,28 +30,46 @@ type WalletListResponse struct {
 }
 
 type BlockApi struct {
-	http *http.Client
+	Available bool
+	http      *http.Client
 }
 
 func NewBlockApi() *BlockApi {
-	return &BlockApi{
-		http: &http.Client{},
+	blockApi := &BlockApi{
+		Available: true,
+		http:      &http.Client{},
+	}
+
+	blockApi.CheckApi()
+	return blockApi
+}
+
+func (c *BlockApi) CheckApi() {
+	_, err := c.Get("")
+	if err != nil {
+		//c.Available = false
 	}
 }
 
 func (c *BlockApi) doRequest(req *http.Request) ([]byte, error) {
 	resp, err := c.http.Do(req)
 	if err != nil {
+		fmt.Println("doRequest http.Do Error:", err.Error())
+		c.Available = false
 		return nil, err
 	}
 	defer resp.Body.Close()
 	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
+		fmt.Println("doRequest ioutil.ReadAll Error:", err.Error())
+		c.Available = false
 		return nil, err
 	}
 	if 200 != resp.StatusCode {
 		return nil, fmt.Errorf("%s", body)
 	}
+
+	c.Available = true
 	return body, nil
 }
 

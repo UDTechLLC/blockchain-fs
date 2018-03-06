@@ -125,7 +125,11 @@ func (t *WalletTab) init() {
 	}
 
 	// wallets list
-	t.reloadWalletsView()
+	if t.main.blockApi.Available {
+		t.reloadWalletsView()
+	} else {
+		t.createWalletButton.Disable()
+	}
 }
 
 func (t *WalletTab) updateWalletInfo(wallet *WalletCreateInfo) {

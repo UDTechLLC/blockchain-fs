@@ -1,6 +1,9 @@
 package main
 
 import (
+	"fmt"
+	"time"
+
 	"bitbucket.org/udt/wizefs/internal/config"
 	"github.com/leedark/ui"
 )
@@ -14,8 +17,9 @@ type MainWindow struct {
 	walletTab  *WalletTab
 	storageTab *StorageTab
 
-	blockApi *BlockApi
-	raftApi  *RaftApi
+	blockApi   *BlockApi
+	raftApi    *RaftApi
+	timeTicker *time.Ticker
 
 	walletInfo *WalletCreateInfo
 }
@@ -37,9 +41,25 @@ func NewMainWindow() *MainWindow {
 	return main
 }
 
+func NewTimer(seconds int, action func()) *time.Ticker {
+	timeTicker := time.NewTicker(time.Duration(seconds) * time.Second)
+	go action()
+	return timeTicker
+}
+
 func (main *MainWindow) Init() {
 	main.blockApi = NewBlockApi()
 	main.raftApi = NewRaftApi()
+
+	main.timeTicker = NewTimer(60, main.ApiTicker)
+}
+
+func (main *MainWindow) ApiTicker() {
+	for t := range main.timeTicker.C {
+		fmt.Println("Tick at", t)
+		main.blockApi.CheckApi()
+		main.raftApi.CheckApi()
+	}
 }
 
 func (main *MainWindow) Show() {
@@ -50,14 +70,14 @@ func (main *MainWindow) buildGUI() ui.Control {
 	tab := ui.NewTab()
 
 	main.walletTab = NewWalletTab(main)
-	tab.Append("  Wallet  ", main.walletTab.Control())
+	tab.Append("   Wallet  ", main.walletTab.Control())
 	tab.SetMargined(0, true)
 
 	main.storageTab = NewStorageTab(main)
 	tab.Append("  Storage  ", main.storageTab.Control())
 	tab.SetMargined(1, true)
 
-	tab.Append("  Debug  ", NewDebugTab().Control())
+	tab.Append("   Debug   ", NewDebugTab().Control())
 	tab.SetMargined(2, true)
 
 	main.walletTab.init()
@@ -67,6 +87,9 @@ func (main *MainWindow) buildGUI() ui.Control {
 }
 
 func (main *MainWindow) OnClosing(window *ui.Window) bool {
+	main.timeTicker.Stop()
+	fmt.Println("Ticker stopped")
+
 	// FIXME:
 	if main.walletInfo != nil {
 		saveWalletInfo(main.walletInfo)

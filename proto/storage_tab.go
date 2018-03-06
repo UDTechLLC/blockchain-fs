@@ -87,7 +87,11 @@ func (t *StorageTab) buildGUI() {
 }
 
 func (t *StorageTab) init() {
-	t.reloadFilesView()
+	if t.main.raftApi.Available {
+		t.reloadFilesView()
+	} else {
+		t.buttonEnabled(false)
+	}
 }
 
 func (t *StorageTab) reloadFilesView() {
@@ -115,7 +119,7 @@ func (t *StorageTab) reloadFilesView() {
 
 	// Get last CPIIndex
 	// TODO: try to use wallet.CpkZeroIndex instead of this
-	cpkIndexLast, err := t.main.raftApi.Get(string(cpkIndex0))
+	cpkIndexLast, err := t.main.raftApi.GetKey(string(cpkIndex0))
 	if err != nil {
 		fmt.Printf("Try to get last CPKIndex was failed with error: %s\n", err.Error())
 		return
@@ -152,7 +156,7 @@ func (t *StorageTab) reloadFilesView() {
 		cpkIndex = append(cpkIndex, cpkIndexNew...)
 		//fmt.Printf("cpkIndex: %s\n", string(cpkIndex))
 
-		shaKeyString, err := t.main.raftApi.Get(string(cpkIndex))
+		shaKeyString, err := t.main.raftApi.GetKey(string(cpkIndex))
 		if err != nil {
 			// TODO:
 			fmt.Println("Error when getting SHA256:", err)
@@ -165,7 +169,7 @@ func (t *StorageTab) reloadFilesView() {
 		}
 		//fmt.Printf("shaKeyString: %s\n", shaKeyString)
 
-		value, err := t.main.raftApi.Get(shaKeyString)
+		value, err := t.main.raftApi.GetKey(shaKeyString)
 		if err != nil {
 			// TODO:
 			fmt.Println("Error when getting FileInfo:", err)
@@ -211,6 +215,16 @@ func (t *StorageTab) reloadFilesView() {
 	//if len(t.db.Files) > 0 {
 	//	t.filesModel.RowChanged(0)
 	//}
+
+	//
+	//fmt.Println("len:", len(t.db.Files))
+	if len(t.db.Files) > 0 {
+		t.buttonEnabled(true)
+	} else {
+		t.buttonEnabled(false)
+		// just Put file
+		t.putFileButton.Enable()
+	}
 }
 
 func (t *StorageTab) Control() ui.Control {
@@ -359,7 +373,7 @@ func (t *StorageTab) saveFileToRaft(file string) {
 
 	// Get last CPIIndex
 	// TODO: try to use wallet.CpkZeroIndex instead of this
-	cpkIndexLast, err := t.main.raftApi.Get(string(cpkIndex0))
+	cpkIndexLast, err := t.main.raftApi.GetKey(string(cpkIndex0))
 	if err != nil {
 		fmt.Printf("Try to get last CPKIndex was failed with error: %s\n", err.Error())
 		return
@@ -391,11 +405,11 @@ func (t *StorageTab) saveFileToRaft(file string) {
 	//fmt.Printf("cpkIndex: %s\n", string(cpkIndex))
 
 	// Main Key/Value Store
-	t.main.raftApi.Set(shaKeyString, string(value))
+	t.main.raftApi.SetKey(shaKeyString, string(value))
 
 	// CPKIndex Key/Value Store
-	t.main.raftApi.Set(string(cpkIndex), shaKeyString)
-	t.main.raftApi.Set(string(cpkIndex0), string(cpkIndexNew))
+	t.main.raftApi.SetKey(string(cpkIndex), shaKeyString)
+	t.main.raftApi.SetKey(string(cpkIndex0), string(cpkIndexNew))
 
 	// TODO: save last cpkIndex to wallet
 	t.main.walletInfo.CpkZeroIndex = string(cpkIndexNew)
@@ -518,8 +532,8 @@ func (t *StorageTab) removeFileFromRaft(file File) {
 	fmt.Println("shaKey:", file.shaKey)
 	fmt.Println("cpkIndex:", file.cpkIndex)
 
-	t.main.raftApi.Delete(file.shaKey)
-	t.main.raftApi.Delete(file.cpkIndex)
+	t.main.raftApi.DeleteKey(file.shaKey)
+	t.main.raftApi.DeleteKey(file.cpkIndex)
 
 	// TODO: we can fix cpkIndex0 for last cpkIndex?
 	lastIndex := t.main.walletInfo.PubKey + t.main.walletInfo.CpkZeroIndex
