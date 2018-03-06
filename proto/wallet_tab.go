@@ -117,6 +117,9 @@ func (t *WalletTab) init() {
 		t.updateWalletInfo(walletInfo)
 		t.main.walletInfo = walletInfo
 		t.main.storageTab.buttonEnabled(true)
+
+		// mount!?
+		t.main.MountStorage()
 	} else {
 		//ui.MsgBoxError(t.main.window, "Error", "Wallet Info is nil")
 		fmt.Println("walletInfo is nil")
@@ -219,6 +222,9 @@ func (t *WalletTab) afterCreateWallet() {
 		fmt.Println("Create bucket error:", cerr.Error())
 		//ui.MsgBoxError(t.main.window, "Error", fmt.Sprintf("%v", cerr))
 	}
+
+	// mount?
+	t.main.MountStorage()
 }
 
 //

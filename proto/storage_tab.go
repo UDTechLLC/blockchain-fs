@@ -258,25 +258,25 @@ func (t *StorageTab) putFile(filename string) {
 	origin := BucketOriginName
 
 	// mount
-	cerr := RunCommand("mount", origin)
-	if cerr != nil {
-		//ui.MsgBoxError(t.main.window, "Error", fmt.Sprintf("%v", cerr))
-		ui.QueueMain(func() {
-			t.putFileButton.Enable()
-			t.logMessage("Mount error: " + cerr.Error())
-		})
-		return
-	}
+	//cerr := RunCommand("mount", origin)
+	//if cerr != nil {
+	//	//ui.MsgBoxError(t.main.window, "Error", fmt.Sprintf("%v", cerr))
+	//	ui.QueueMain(func() {
+	//		t.putFileButton.Enable()
+	//		t.logMessage("Mount error: " + cerr.Error())
+	//	})
+	//	return
+	//}
 
 	// TODO: we must wait until mount finishes its actions
 	// TODO: check ORIGIN? every 100 milliseconds
-	time.Sleep(500 * time.Millisecond)
-	ui.QueueMain(func() {
-		t.logMessage("Mount bucket " + origin)
-	})
+	//time.Sleep(500 * time.Millisecond)
+	//ui.QueueMain(func() {
+	//	t.logMessage("Mount bucket " + origin)
+	//})
 
 	putSuccess := false
-	cerr = RunCommand("put", filename, origin)
+	cerr := RunCommand("put", filename, origin)
 	if cerr != nil {
 		ui.QueueMain(func() {
 			t.logMessage("Put error: " + cerr.Error())
@@ -291,12 +291,16 @@ func (t *StorageTab) putFile(filename string) {
 	}
 
 	// unmount
-	cerr = RunCommand("unmount", origin)
-	if cerr != nil {
-		ui.QueueMain(func() {
-			t.logMessage("Unmount error: " + cerr.Error())
-		})
-	}
+	//cerr = RunCommand("unmount", origin)
+	//if cerr != nil {
+	//	ui.QueueMain(func() {
+	//		t.logMessage("Unmount error: " + cerr.Error())
+	//	})
+	//}
+
+	//ui.QueueMain(func() {
+	//	t.logMessage("Unmount bucket " + origin)
+	//})
 
 	// TODO: add Key/Value to Raft here
 	if putSuccess {
@@ -305,7 +309,6 @@ func (t *StorageTab) putFile(filename string) {
 	}
 
 	ui.QueueMain(func() {
-		t.logMessage("Unmount bucket " + origin)
 		t.buttonEnabled(true)
 	})
 }
@@ -424,22 +427,22 @@ func (t *StorageTab) getFile(source string, destination string) {
 	origin := BucketOriginName
 
 	// mount
-	cerr := RunCommand("mount", origin)
-	if cerr != nil {
-		//ui.MsgBoxError(t.main.window, "Error", fmt.Sprintf("%v", cerr))
-		ui.QueueMain(func() {
-			t.putFileButton.Enable()
-			t.logMessage("Mount error: " + cerr.Error())
-		})
-		return
-	}
+	//cerr := RunCommand("mount", origin)
+	//if cerr != nil {
+	//	//ui.MsgBoxError(t.main.window, "Error", fmt.Sprintf("%v", cerr))
+	//	ui.QueueMain(func() {
+	//		t.putFileButton.Enable()
+	//		t.logMessage("Mount error: " + cerr.Error())
+	//	})
+	//	return
+	//}
 
-	time.Sleep(500 * time.Millisecond)
-	ui.QueueMain(func() {
-		t.logMessage("Mount bucket " + origin)
-	})
+	//time.Sleep(500 * time.Millisecond)
+	//ui.QueueMain(func() {
+	//	t.logMessage("Mount bucket " + origin)
+	//})
 
-	cerr = RunCommand("xget", source, origin, destination)
+	cerr := RunCommand("xget", source, origin, destination)
 	if cerr != nil {
 		//ui.MsgBoxError(t.main.window, "Error", fmt.Sprintf("%v", cerr))
 		ui.QueueMain(func() {
@@ -454,16 +457,16 @@ func (t *StorageTab) getFile(source string, destination string) {
 	}
 
 	// unmount
-	cerr = RunCommand("unmount", origin)
-	if cerr != nil {
-		//ui.MsgBoxError(t.main.window, "Error", fmt.Sprintf("%v", cerr))
-		ui.QueueMain(func() {
-			t.logMessage("Unmount error: " + cerr.Error())
-		})
-	}
+	//cerr = RunCommand("unmount", origin)
+	//if cerr != nil {
+	//	//ui.MsgBoxError(t.main.window, "Error", fmt.Sprintf("%v", cerr))
+	//	ui.QueueMain(func() {
+	//		t.logMessage("Unmount error: " + cerr.Error())
+	//	})
+	//}
 
 	ui.QueueMain(func() {
-		t.logMessage("Unmount bucket " + origin)
+		//t.logMessage("Unmount bucket " + origin)
 		t.buttonEnabled(true)
 	})
 }
@@ -477,23 +480,23 @@ func (t *StorageTab) removeFile(file File) {
 	origin := BucketOriginName
 
 	// mount
-	cerr := RunCommand("mount", origin)
-	if cerr != nil {
-		//ui.MsgBoxError(t.main.window, "Error", fmt.Sprintf("%v", cerr))
-		ui.QueueMain(func() {
-			t.putFileButton.Enable()
-			t.logMessage("Mount error: " + cerr.Error())
-		})
-		return
-	}
+	//cerr := RunCommand("mount", origin)
+	//if cerr != nil {
+	//	//ui.MsgBoxError(t.main.window, "Error", fmt.Sprintf("%v", cerr))
+	//	ui.QueueMain(func() {
+	//		t.putFileButton.Enable()
+	//		t.logMessage("Mount error: " + cerr.Error())
+	//	})
+	//	return
+	//}
 
-	time.Sleep(500 * time.Millisecond)
-	ui.QueueMain(func() {
-		t.logMessage("Mount bucket " + origin)
-	})
+	//time.Sleep(500 * time.Millisecond)
+	//ui.QueueMain(func() {
+	//	t.logMessage("Mount bucket " + origin)
+	//})
 
 	removeSuccess := false
-	cerr = RunCommand("remove", file.Name, origin)
+	cerr := RunCommand("remove", file.Name, origin)
 	if cerr != nil {
 		//ui.MsgBoxError(t.main.window, "Error", fmt.Sprintf("%v", cerr))
 		ui.QueueMain(func() {
@@ -508,13 +511,17 @@ func (t *StorageTab) removeFile(file File) {
 	}
 
 	// unmount
-	cerr = RunCommand("unmount", origin)
-	if cerr != nil {
-		//ui.MsgBoxError(t.main.window, "Error", fmt.Sprintf("%v", cerr))
-		ui.QueueMain(func() {
-			t.logMessage("Unmount error: " + cerr.Error())
-		})
-	}
+	//cerr = RunCommand("unmount", origin)
+	//if cerr != nil {
+	//	//ui.MsgBoxError(t.main.window, "Error", fmt.Sprintf("%v", cerr))
+	//	ui.QueueMain(func() {
+	//		t.logMessage("Unmount error: " + cerr.Error())
+	//	})
+	//}
+
+	//ui.QueueMain(func() {
+	//	t.logMessage("Unmount bucket " + origin)
+	//})
 
 	// TODO: add Key/Value to Raft here
 	if removeSuccess {
@@ -523,7 +530,6 @@ func (t *StorageTab) removeFile(file File) {
 	}
 
 	ui.QueueMain(func() {
-		t.logMessage("Unmount bucket " + origin)
 		t.buttonEnabled(true)
 	})
 }

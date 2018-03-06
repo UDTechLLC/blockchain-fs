@@ -9,7 +9,8 @@ import (
 )
 
 const (
-	BucketOriginName = "Bucket1.zip"
+	//BucketOriginName = "Bucket1.zip"
+	BucketOriginName = "Bucket1"
 )
 
 type MainWindow struct {
@@ -26,11 +27,12 @@ type MainWindow struct {
 
 func NewMainWindow() *MainWindow {
 	main := &MainWindow{}
-	main.Init()
 
 	main.window = ui.NewWindow("Wize Client "+config.ProgramVersion, 1000, 600, false)
 	main.window.SetMargined(true)
 	main.window.Center()
+
+	main.Init()
 
 	gui := main.buildGUI()
 
@@ -47,7 +49,36 @@ func NewTimer(seconds int, action func()) *time.Ticker {
 	return timeTicker
 }
 
+func (main *MainWindow) MountStorage() {
+	origin := BucketOriginName
+
+	// mount
+	cerr := RunCommand("mount", origin)
+	if cerr != nil {
+		ui.MsgBoxError(main.window, "Mount Storage Error", fmt.Sprintf("%v", cerr))
+		return
+	}
+
+	// TODO: we must wait until mount finishes its actions
+	// TODO: check ORIGIN? every 100 milliseconds
+	time.Sleep(500 * time.Millisecond)
+}
+
+func (main *MainWindow) UnmountStorage() {
+	origin := BucketOriginName
+
+	// unmount
+	cerr := RunCommand("unmount", origin)
+	if cerr != nil {
+		ui.MsgBoxError(main.window, "Unmount Storage Error", fmt.Sprintf("%v", cerr))
+	}
+}
+
 func (main *MainWindow) Init() {
+	//if main.walletInfo != nil {
+	//	main.MountStorage()
+	//}
+
 	main.blockApi = NewBlockApi()
 	main.raftApi = NewRaftApi()
 
@@ -93,6 +124,10 @@ func (main *MainWindow) OnClosing(window *ui.Window) bool {
 	// FIXME:
 	if main.walletInfo != nil {
 		saveWalletInfo(main.walletInfo)
+	}
+
+	if main.walletInfo != nil {
+		main.UnmountStorage()
 	}
 
 	ui.Quit()
