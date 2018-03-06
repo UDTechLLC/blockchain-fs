@@ -1,16 +1,20 @@
 package main
 
 import (
+	"crypto/ecdsa"
+	"crypto/elliptic"
 	"crypto/sha256"
 	"encoding/base64"
 	"encoding/binary"
 	"encoding/hex"
 	"fmt"
+	"math/big"
 	"os"
 	"path/filepath"
 	"time"
 
 	"bitbucket.org/udt/wizefs/internal/util"
+	jwt "github.com/dgrijalva/jwt-go"
 	"github.com/leedark/ui"
 )
 
@@ -228,9 +232,14 @@ func (t *StorageTab) reloadFilesView() {
 		info := value[128:]
 		infoLen := len(info)
 
-		basename64 := info[0 : infoLen-16]
+		// TODO: Base64 signed with CSK - Parse & Verify with CPK
+		signed64 := info[0 : infoLen-16]
+		fmt.Printf("signed64: %s\n", signed64)
+		basename64 := t.parseVerifyWithCPK(signed64)
+		fmt.Printf("basename64: %s\n", basename64)
+
 		fileBasename, _ := base64.RawURLEncoding.DecodeString(string(basename64))
-		//fmt.Println("Filename: ", string(fileBasename))
+		fmt.Println("Filename:", string(fileBasename))
 
 		timeStamp := info[infoLen-16:]
 		timeStampDecode, _ := hex.DecodeString(timeStamp)
@@ -348,6 +357,74 @@ func (t *StorageTab) putFile(filename string) {
 	})
 }
 
+func (t *StorageTab) signWithCSK(basename64 string) string {
+	ECDSAKeyD := t.main.walletInfo.PrivKey
+	ECDSAKeyX := t.main.walletInfo.PubKey[:64]
+	ECDSAKeyY := t.main.walletInfo.PubKey[64:]
+
+	keyD := new(big.Int)
+	keyX := new(big.Int)
+	keyY := new(big.Int)
+
+	keyD.SetString(ECDSAKeyD, 16)
+	keyX.SetString(ECDSAKeyX, 16)
+	keyY.SetString(ECDSAKeyY, 16)
+
+	//fmt.Println("basename64:", basename64)
+	claims := &jwt.MapClaims{
+		"basename64": basename64,
+	}
+	token := jwt.NewWithClaims(jwt.SigningMethodES256, claims)
+
+	publicKey := ecdsa.PublicKey{
+		Curve: elliptic.P256(),
+		X:     keyX,
+		Y:     keyY,
+	}
+
+	privateKey := ecdsa.PrivateKey{D: keyD, PublicKey: publicKey}
+	signed64, err := token.SignedString(&privateKey)
+	if err != nil {
+
+	}
+	//fmt.Println("signed64:", signed64)
+
+	return signed64
+}
+
+func (t *StorageTab) parseVerifyWithCPK(signed64 string) string {
+	ECDSAKeyX := t.main.walletInfo.PubKey[:64]
+	ECDSAKeyY := t.main.walletInfo.PubKey[64:]
+
+	keyX := new(big.Int)
+	keyY := new(big.Int)
+
+	keyX.SetString(ECDSAKeyX, 16)
+	keyY.SetString(ECDSAKeyY, 16)
+
+	publicKey := ecdsa.PublicKey{
+		Curve: elliptic.P256(),
+		X:     keyX,
+		Y:     keyY,
+	}
+
+	token, _ := jwt.Parse(signed64, func(token *jwt.Token) (interface{}, error) {
+		if _, ok := token.Method.(*jwt.SigningMethodECDSA); !ok {
+			return nil, fmt.Errorf("Unexpected signing method: %v", token.Header["alg"])
+		}
+		return &publicKey, nil
+	})
+	// TODO: err != nil
+
+	var basename64 string
+	if claims, ok := token.Claims.(jwt.MapClaims); ok && token.Valid {
+		basename64 = claims["basename64"].(string)
+	}
+	// TODO: not ok?
+
+	return basename64
+}
+
 func (t *StorageTab) saveFileToRaft(file string) {
 	basename := filepath.Base(file)
 	//fmt.Printf("basename: %s\n", basename)
@@ -390,8 +467,16 @@ func (t *StorageTab) saveFileToRaft(file string) {
 
 	// Value = CPK + Base64(File.Basename) + Timestamp
 	value := []byte(t.main.walletInfo.PubKey) // CPK
-	value = append(value, basename64...)      // Base64
-	value = append(value, timeStamp...)       // Timestamp
+
+	// TODO: Base64 signed with CSK
+	fmt.Printf("basename64: %s\n", string(basename64))
+	signed64 := t.signWithCSK(string(basename64))
+	fmt.Printf("signed64: %s\n", signed64)
+	basename64test := t.parseVerifyWithCPK(signed64)
+	fmt.Printf("basename64test: %s\n", basename64test)
+
+	value = append(value, signed64...)  // Base64
+	value = append(value, timeStamp...) // Timestamp
 	//fmt.Printf("value: %s\n", string(value))
 
 	////
