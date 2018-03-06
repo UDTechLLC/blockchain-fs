@@ -108,8 +108,8 @@ func (main *MainWindow) buildGUI() ui.Control {
 	tab.Append("  Storage  ", main.storageTab.Control())
 	tab.SetMargined(1, true)
 
-	tab.Append("   Debug   ", NewDebugTab().Control())
-	tab.SetMargined(2, true)
+	//tab.Append("   Debug   ", NewDebugTab().Control())
+	//tab.SetMargined(2, true)
 
 	main.walletTab.init()
 	main.storageTab.init()
