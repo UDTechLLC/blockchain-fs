@@ -94,6 +94,7 @@ func (t *WalletTab) buildGUI() {
 	t.walletsView = ui.NewTable(t.walletsModel, ui.TableStyleMultiSelect)
 	t.walletsView.AppendTextColumn("Index", 0)
 	t.walletsView.AppendTextColumn("Address", 1)
+	t.walletsView.AppendTextColumn("Credit", 2)
 	listBox.Append(t.walletsView, true)
 
 	hbox2.Append(listBox, true)
@@ -196,10 +197,21 @@ func (t *WalletTab) reloadWalletsView() {
 	if err != nil {
 		fmt.Println(err)
 	}
-	for _, value := range result {
+	for _, address := range result {
+
+		var credit int = -1
+		info, err := t.main.blockApi.GetWalletInfo(address)
+		if err != nil {
+		} else {
+			if info.Success {
+				credit = info.Credit
+			}
+		}
+
 		w := Wallet{
 			Index:   len(t.db.Wallets) + 1,
-			Address: value,
+			Address: address,
+			Credit:  credit,
 		}
 		t.db.Wallets = append(t.db.Wallets, w)
 		t.walletsModel.RowInserted(len(t.db.Wallets) - 1)

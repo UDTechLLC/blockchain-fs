@@ -29,6 +29,11 @@ type WalletListResponse struct {
 	ListWallets []string
 }
 
+type WalletHashInfo struct {
+	Success bool
+	Credit  int
+}
+
 type BlockApi struct {
 	Available bool
 	http      *http.Client
@@ -125,6 +130,26 @@ func (c *BlockApi) GetWalletsList() ([]string, error) {
 	}
 
 	return result.ListWallets, nil
+}
+
+func (c *BlockApi) GetWalletInfo(address string) (*WalletHashInfo, error) {
+	data, err := c.Get("/wallet/" + address)
+	if err != nil {
+		return nil, err
+	}
+	//fmt.Println("data: ", data, err)
+
+	var result WalletHashInfo
+	err = mapstructure.Decode(data, &result)
+	//fmt.Println("result", result, err)
+	if err != nil {
+		return nil, err
+	}
+	if !result.Success {
+		return nil, err
+	}
+
+	return &result, nil
 }
 
 func (c *BlockApi) PostWalletCreate(request *WalletCreateRequest) (*WalletCreateInfo, error) {
