@@ -15,8 +15,10 @@ import (
 )
 
 type StorageTab struct {
-	main *MainWindow
-	tab  *ui.Box
+	main             *MainWindow
+	tab              *ui.Box
+	timeTicker       *time.Ticker
+	alreadyAvailable bool
 
 	putFileButton    *ui.Button
 	getFileButton    *ui.Button
@@ -35,6 +37,11 @@ func NewStorageTab(mainWindow *MainWindow) *StorageTab {
 	}
 	makeTab.buildGUI()
 	return makeTab
+}
+
+func (t *StorageTab) NewTimer(seconds int, action func()) {
+	t.timeTicker = time.NewTicker(time.Duration(seconds) * time.Second)
+	go action()
 }
 
 func (t *StorageTab) buildGUI() {
@@ -86,12 +93,44 @@ func (t *StorageTab) buildGUI() {
 	t.tab.Append(vbox2, true)
 }
 
-func (t *StorageTab) init() {
+func (t *StorageTab) Control() ui.Control {
+	return t.tab
+}
+
+func (t *StorageTab) ApiTicker() {
+	for {
+		select {
+		case <-t.timeTicker.C: // t := <-t.timeTicker.C:
+			//fmt.Println("Tick at", t)
+			if t.alreadyAvailable != t.main.raftApi.Available {
+				if t.main.blockApi.Available {
+					t.reloadFilesView()
+					t.alreadyAvailable = true
+				} else {
+					// just clear files listview
+					for i := 0; i < len(t.db.Files); i++ {
+						t.filesModel.RowDeleted(0)
+					}
+					t.db.Files = nil
+
+					t.buttonEnabled(false)
+					t.alreadyAvailable = false
+				}
+			}
+		}
+	}
+}
+
+func (t *StorageTab) Init() {
 	if t.main.raftApi.Available {
 		t.reloadFilesView()
+		t.alreadyAvailable = true
 	} else {
 		t.buttonEnabled(false)
+		t.alreadyAvailable = false
 	}
+
+	t.NewTimer(10, t.ApiTicker)
 }
 
 func (t *StorageTab) reloadFilesView() {
@@ -225,10 +264,6 @@ func (t *StorageTab) reloadFilesView() {
 		// just Put file
 		t.putFileButton.Enable()
 	}
-}
-
-func (t *StorageTab) Control() ui.Control {
-	return t.tab
 }
 
 func (t *StorageTab) buttonEnabled(enable bool) {

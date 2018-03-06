@@ -43,10 +43,9 @@ func NewMainWindow() *MainWindow {
 	return main
 }
 
-func NewTimer(seconds int, action func()) *time.Ticker {
-	timeTicker := time.NewTicker(time.Duration(seconds) * time.Second)
+func (main *MainWindow) NewTimer(seconds int, action func()) {
+	main.timeTicker = time.NewTicker(time.Duration(seconds) * time.Second)
 	go action()
-	return timeTicker
 }
 
 func (main *MainWindow) MountStorage() {
@@ -82,14 +81,17 @@ func (main *MainWindow) Init() {
 	main.blockApi = NewBlockApi()
 	main.raftApi = NewRaftApi()
 
-	main.timeTicker = NewTimer(60, main.ApiTicker)
+	main.NewTimer(10, main.ApiTicker)
 }
 
 func (main *MainWindow) ApiTicker() {
-	for t := range main.timeTicker.C {
-		fmt.Println("Tick at", t)
-		main.blockApi.CheckApi()
-		main.raftApi.CheckApi()
+	for {
+		select {
+		case <-main.timeTicker.C: // t := <-main.timeTicker.C:
+			//fmt.Println("Tick at", t)
+			main.blockApi.CheckApi()
+			main.raftApi.CheckApi()
+		}
 	}
 }
 
@@ -111,8 +113,8 @@ func (main *MainWindow) buildGUI() ui.Control {
 	//tab.Append("   Debug   ", NewDebugTab().Control())
 	//tab.SetMargined(2, true)
 
-	main.walletTab.init()
-	main.storageTab.init()
+	main.walletTab.Init()
+	main.storageTab.Init()
 
 	return tab
 }

@@ -95,7 +95,7 @@ func (c *RaftApi) Get(api string, checkStatus bool) (map[string]string, error) {
 	url.WriteString(c.LeaderPort)
 	url.WriteString(api)
 
-	fmt.Println("url:", url.String())
+	//fmt.Println("url:", url.String())
 
 	req, err := http.NewRequest("GET", url.String(), nil)
 	if err != nil {

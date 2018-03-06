@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
+	"time"
 
 	"github.com/leedark/ui"
 )
@@ -13,8 +14,10 @@ const (
 )
 
 type WalletTab struct {
-	main *MainWindow
-	tab  *ui.Box
+	main             *MainWindow
+	tab              *ui.Box
+	timeTicker       *time.Ticker
+	alreadyAvailable bool
 
 	walletAddressLabel    *ui.Label
 	walletPrivateKeyLabel *ui.Label
@@ -39,6 +42,11 @@ func NewWalletTab(mainWindow *MainWindow) *WalletTab {
 	}
 	makeTab.buildGUI()
 	return makeTab
+}
+
+func (t *WalletTab) NewTimer(seconds int, action func()) {
+	t.timeTicker = time.NewTicker(time.Duration(seconds) * time.Second)
+	go action()
 }
 
 func (t *WalletTab) buildGUI() {
@@ -102,7 +110,31 @@ func (t *WalletTab) Control() ui.Control {
 	return t.tab
 }
 
-func (t *WalletTab) init() {
+func (t *WalletTab) ApiTicker() {
+	for {
+		select {
+		case <-t.timeTicker.C: // t := <-t.timeTicker.C:
+			//fmt.Println("Tick at", t)
+			if t.alreadyAvailable != t.main.blockApi.Available {
+				if t.main.blockApi.Available {
+					t.reloadWalletsView()
+					t.alreadyAvailable = true
+				} else {
+					// just clear wallets listview
+					for i := 0; i < len(t.db.Wallets); i++ {
+						t.walletsModel.RowDeleted(0)
+					}
+					t.db.Wallets = nil
+
+					t.createWalletButton.Disable()
+					t.alreadyAvailable = false
+				}
+			}
+		}
+	}
+}
+
+func (t *WalletTab) Init() {
 	// load wallet.json or
 	// TODO: wizeBlockAPI: get wallet info
 	walletInfo, err := loadWalletInfo()
@@ -130,9 +162,13 @@ func (t *WalletTab) init() {
 	// wallets list
 	if t.main.blockApi.Available {
 		t.reloadWalletsView()
+		t.alreadyAvailable = true
 	} else {
 		t.createWalletButton.Disable()
+		t.alreadyAvailable = false
 	}
+
+	t.NewTimer(10, t.ApiTicker)
 }
 
 func (t *WalletTab) updateWalletInfo(wallet *WalletCreateInfo) {
