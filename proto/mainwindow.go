@@ -81,7 +81,7 @@ func (main *MainWindow) Init() {
 	main.blockApi = NewBlockApi()
 	main.raftApi = NewRaftApi()
 
-	main.NewTimer(10, main.ApiTicker)
+	main.NewTimer(60, main.ApiTicker)
 }
 
 func (main *MainWindow) ApiTicker() {

@@ -134,7 +134,7 @@ func (t *StorageTab) Init() {
 		t.alreadyAvailable = false
 	}
 
-	t.NewTimer(10, t.ApiTicker)
+	t.NewTimer(60, t.ApiTicker)
 }
 
 func (t *StorageTab) reloadFilesView() {
