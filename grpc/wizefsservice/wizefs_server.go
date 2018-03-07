@@ -123,7 +123,7 @@ func (s *wizefsServer) Get(ctx context.Context, request *GetRequest) (response *
 		Message:  "OK",
 		Content:  nil,
 	}
-	if content, exitCode, err := api.ApiGet(filename, origin, true); err != nil {
+	if content, exitCode, err := api.ApiGet(filename, origin, "", true); err != nil {
 		response.Executed = false
 		response.Message = fmt.Sprintf("Error: %s. Exit code: %d", err.Error(), exitCode)
 	} else {

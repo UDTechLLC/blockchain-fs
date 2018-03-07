@@ -80,6 +80,18 @@ var Commands = []cli.Command{
 		Usage:   "",
 		Action:  command.CmdGetFile,
 	},
+	{
+		Name:    "xget",
+		Aliases: []string{"x"},
+		Usage:   "",
+		Action:  command.CmdXGetFile,
+	},
+	{
+		Name:    "remove",
+		Aliases: []string{"r"},
+		Usage:   "",
+		Action:  command.CmdRemoveFile,
+	},
 }
 
 // CommandNotFound implements action when subcommand not found
