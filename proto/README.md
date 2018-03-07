@@ -16,6 +16,33 @@ GUI application is based on platform-native GUI library `andlabs/ui`, we have fo
 go get -u github.com/leedark/ui
 ```
 
+Данная библиотека основана на простой кросс-платформенной библиотеке, написанной на C: [andlabs/libui](https://github.com/andlabs/libui). Мы также сделали форк данной библиотеки для некоторых исправлений: [leedark/libui](https://github.com/LeeDark/libui).
+
+**You must include this library in your binary distributions.**
+
+Для ее построения необходим CMake 3.1.0 или новее.
+
+Out-of-tree builds typical of cmake are preferred:
+
+```
+$ # you must be in the top-level libui directory, otherwise this won't work
+$ mkdir build
+$ cd build
+$ cmake ..
+```
+
+Pass `-DBUILD_SHARED_LIBS=OFF` to `cmake` to build a static library. The standard cmake build configurations are provided; if none is specified, `Debug` is used.
+
+If you use a makefile generator with cmake, then
+
+```
+$ make
+$ make tester         # for the test program
+$ make examples       # for examples
+```
+
+and pass `VERBOSE=1` to see build commands. Build targets will be in the `build/out` folder.
+
 Then you should go to the directory `wizefs/proto` and run `go build`.
 
 ### Разворачивание и старт кластера
