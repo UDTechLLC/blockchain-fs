@@ -105,7 +105,6 @@ func (main *MainWindow) buildGUI() ui.Control {
 
 func (main *MainWindow) OnClosing(window *ui.Window) bool {
 	main.timeTicker.Stop()
-	fmt.Println("Ticker stopped")
 
 	if main.walletInfo != nil {
 		nongui.SaveWalletInfo(main.walletInfo)
