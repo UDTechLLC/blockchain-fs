@@ -1,20 +1,11 @@
 package main
 
 import (
-	"crypto/ecdsa"
-	"crypto/elliptic"
-	"crypto/sha256"
-	"encoding/base64"
-	"encoding/binary"
-	"encoding/hex"
 	"fmt"
-	"math/big"
-	"os"
-	"path/filepath"
 	"time"
 
 	"bitbucket.org/udt/wizefs/internal/util"
-	jwt "github.com/dgrijalva/jwt-go"
+	"bitbucket.org/udt/wizefs/proto/nongui"
 	"github.com/leedark/ui"
 )
 
@@ -27,7 +18,7 @@ type StorageTab struct {
 	putFileButton    *ui.Button
 	getFileButton    *ui.Button
 	removeFileButton *ui.Button
-	logBuffer        *StringBuffer
+	logBuffer        *nongui.StringBuffer
 	logBox           *ui.MultilineEntry
 
 	db         FileDB
@@ -81,7 +72,7 @@ func (t *StorageTab) buildGUI() {
 
 	hbox2b := ui.NewHorizontalBox()
 
-	t.logBuffer = NewStringBuffer()
+	t.logBuffer = nongui.NewStringBuffer()
 	t.logBox = ui.NewMultilineEntry()
 	t.logBox.SetReadOnly(true)
 	hbox2b.SetPadded(true)
@@ -104,8 +95,7 @@ func (t *StorageTab) Control() ui.Control {
 func (t *StorageTab) ApiTicker() {
 	for {
 		select {
-		case <-t.timeTicker.C: // t := <-t.timeTicker.C:
-			//fmt.Println("Tick at", t)
+		case <-t.timeTicker.C:
 			if t.alreadyAvailable != t.main.raftApi.Available {
 				if t.main.blockApi.Available {
 					t.reloadFilesView()
@@ -138,9 +128,9 @@ func (t *StorageTab) Init() {
 }
 
 func (t *StorageTab) reloadFilesView() {
-	// chech wallet info existing
-	if t.main.walletInfo == nil {
-		fmt.Printf("walletInfo is nil\n")
+	// check wallet info existing
+	if t.main.walletInfo.IsEmpty() {
+		//fmt.Printf("walletInfo is empty\n")
 		return
 	}
 
@@ -150,122 +140,30 @@ func (t *StorageTab) reloadFilesView() {
 	}
 	t.db.Files = nil
 
-	// get last CPKIndex = CPK + 0000000000000000 (8 bytes)
-	// prepare key for Get
-	cpkIndex0 := []byte(t.main.walletInfo.PubKey)
-	index0 := make([]byte, 8)
-	binary.LittleEndian.PutUint64(index0, uint64(0))
-	index0 = []byte(hex.EncodeToString(index0))
-	//fmt.Printf("index0: %s\n", string(index0))
-
-	cpkIndex0 = append(cpkIndex0, index0...)
-
-	// Get last CPIIndex
-	// TODO: try to use wallet.CpkZeroIndex instead of this
-	cpkIndexLast, err := t.main.raftApi.GetKey(string(cpkIndex0))
+	// CHECKIT:
+	_, cpkIndexLastInt64, err := t.main.walletInfo.GetZeroIndex()
 	if err != nil {
-		fmt.Printf("Try to get last CPKIndex was failed with error: %s\n", err.Error())
-		return
-	}
-	//fmt.Printf("cpkIndexLast: %s\n", cpkIndexLast)
 
-	// casting string to int64
-	var cpkIndexLastInt64 int64
-	if cpkIndexLast == "" {
-		// if last CPKIndex is not existing, just set it to 0
-		cpkIndexLastInt64 = int64(0)
-	} else {
-		cpkIndexLastDecode, err := hex.DecodeString(cpkIndexLast)
-		if err != nil {
-			fmt.Printf("Try to decode last CPKIndex was failed with error: %s\n", err.Error())
-			return
-		}
-		cpkIndexLastInt64 = int64(binary.LittleEndian.Uint64(cpkIndexLastDecode))
 	}
-	//fmt.Printf("cpkIndexLastInt64: %d\n", cpkIndexLastInt64)
 
 	// list cycle
 	var index int64 = 0
 	for index < cpkIndexLastInt64 {
 		index++
 
-		cpkIndex := []byte(t.main.walletInfo.PubKey)
-
-		cpkIndexNew := make([]byte, 8)
-		binary.LittleEndian.PutUint64(cpkIndexNew, uint64(index))
-		cpkIndexNew = []byte(hex.EncodeToString(cpkIndexNew))
-		//fmt.Printf("cpkIndexNew: %s\n", string(cpkIndexNew))
-
-		cpkIndex = append(cpkIndex, cpkIndexNew...)
-		//fmt.Printf("cpkIndex: %s\n", string(cpkIndex))
-
-		shaKeyString, err := t.main.raftApi.GetKey(string(cpkIndex))
+		// CHECKIT:
+		fileRaft, err := t.main.walletInfo.GetFileIndex(index)
 		if err != nil {
-			// TODO:
-			fmt.Println("Error when getting SHA256:", err)
 			continue
 		}
-		// CPKIndex is absent
-		if shaKeyString == "" {
-			//fmt.Printf("Skip this index: %d\n", index)
-			continue
-		}
-		//fmt.Printf("shaKeyString: %s\n", shaKeyString)
-
-		value, err := t.main.raftApi.GetKey(shaKeyString)
-		if err != nil {
-			// TODO:
-			fmt.Println("Error when getting FileInfo:", err)
-			continue
-		}
-		//fmt.Printf("value: %s\n", value)
-
-		// CPK
-		cpkTest := string(value[0:128])
-		if cpkTest != t.main.walletInfo.PubKey {
-			// TODO:
-			fmt.Println("CPK was not matched!")
-			continue
-		}
-
-		// Info (Base64(File.Basename) + Timestamp)
-		info := value[128:]
-		infoLen := len(info)
-
-		// TODO: Base64 signed with CSK - Parse & Verify with CPK
-		signed64 := info[0 : infoLen-16]
-		fmt.Printf("signed64: %s\n", signed64)
-		basename64, err := t.ecdsaParseVerifyWithCPK(signed64)
-		if err != nil {
-			// if we got error then we don't add this file to list
-			continue
-		}
-		fmt.Printf("basename64: %s\n", basename64)
-
-		fileBasename, err := base64.RawURLEncoding.DecodeString(string(basename64))
-		if err != nil {
-			// if we got error then we don't add this file to list
-			continue
-		}
-		fmt.Println("Filename:", string(fileBasename))
-
-		timeStamp := info[infoLen-16:]
-		timeStampDecode, err := hex.DecodeString(timeStamp)
-		if err != nil {
-			// if we got error then we don't add this file to list
-			continue
-		}
-		timeStampInt64 := int64(binary.LittleEndian.Uint64(timeStampDecode))
-		timeStampTime := time.Unix(timeStampInt64, 0)
-		//fmt.Println("Timestamp: ", timeStampTime.Format(time.RFC1123))
 
 		f := File{
 			Index:     len(t.db.Files) + 1,
 			RaftIndex: int(index),
-			Name:      string(fileBasename),
-			Timestamp: timeStampTime,
-			shaKey:    shaKeyString,
-			cpkIndex:  string(cpkIndex),
+			Name:      fileRaft.Filename,
+			Timestamp: fileRaft.TimeStamp,
+			shaKey:    fileRaft.ShaKey,
+			cpkIndex:  fileRaft.CpkIndex,
 		}
 		t.db.Files = append(t.db.Files, f)
 		t.filesModel.RowInserted(len(t.db.Files) - 1)
@@ -277,7 +175,6 @@ func (t *StorageTab) reloadFilesView() {
 	//}
 
 	//
-	//fmt.Println("len:", len(t.db.Files))
 	if len(t.db.Files) > 0 {
 		t.buttonEnabled(true)
 	} else {
@@ -306,6 +203,8 @@ func (t *StorageTab) logMessage(message string) {
 }
 
 func (t *StorageTab) putFile(filename string) {
+	var cerr error
+
 	ui.QueueMain(func() {
 		t.buttonEnabled(false)
 		t.logMessage("Open file: " + filename)
@@ -313,8 +212,8 @@ func (t *StorageTab) putFile(filename string) {
 
 	origin := BucketOriginName
 
-	// mount
-	//cerr := RunCommand("mount", origin)
+	// mount?!
+	//cerr = nongui.MountStorage(origin)
 	//if cerr != nil {
 	//	//ui.MsgBoxError(t.main.window, "Error", fmt.Sprintf("%v", cerr))
 	//	ui.QueueMain(func() {
@@ -322,17 +221,14 @@ func (t *StorageTab) putFile(filename string) {
 	//		t.logMessage("Mount error: " + cerr.Error())
 	//	})
 	//	return
+	//} else {
+	//	ui.QueueMain(func() {
+	//		t.logMessage("Mount bucket " + origin)
+	//	})
 	//}
 
-	// TODO: we must wait until mount finishes its actions
-	// TODO: check ORIGIN? every 100 milliseconds
-	//time.Sleep(500 * time.Millisecond)
-	//ui.QueueMain(func() {
-	//	t.logMessage("Mount bucket " + origin)
-	//})
-
 	putSuccess := false
-	cerr := RunCommand("put", filename, origin)
+	cerr = nongui.PutFile(filename, origin)
 	if cerr != nil {
 		ui.QueueMain(func() {
 			t.logMessage("Put error: " + cerr.Error())
@@ -346,235 +242,27 @@ func (t *StorageTab) putFile(filename string) {
 		})
 	}
 
-	// unmount
-	//cerr = RunCommand("unmount", origin)
+	// unmount?!
+	//cerr = nongui.UnmountStorage(origin)
 	//if cerr != nil {
 	//	ui.QueueMain(func() {
 	//		t.logMessage("Unmount error: " + cerr.Error())
 	//	})
+	//	return
+	//} else {
+	//	ui.QueueMain(func() {
+	//		t.logMessage("Unmount bucket " + origin)
+	//	})
 	//}
 
-	//ui.QueueMain(func() {
-	//	t.logMessage("Unmount bucket " + origin)
-	//})
-
-	// TODO: add Key/Value to Raft here
 	if putSuccess {
-		t.saveFileToRaft(filename)
+		t.main.walletInfo.SaveFileToRaft(filename)
 		t.reloadFilesView()
 	}
 
 	ui.QueueMain(func() {
 		t.buttonEnabled(true)
 	})
-}
-
-func (t *StorageTab) ecdsaSignWithCSK(basename64 string) (string, error) {
-	// TODO: check walletInfo and Keys
-	if t.main.walletInfo == nil {
-		return "", fmt.Errorf("Wallet Info is nil. We can't get Keys.")
-	}
-	if len(t.main.walletInfo.PrivKey) != 64 {
-		return "", fmt.Errorf("Private Key is wrong!")
-	}
-	if len(t.main.walletInfo.PubKey) != 128 {
-		return "", fmt.Errorf("Public Key is wrong!")
-	}
-	ECDSAKeyD := t.main.walletInfo.PrivKey
-	ECDSAKeyX := t.main.walletInfo.PubKey[:64]
-	ECDSAKeyY := t.main.walletInfo.PubKey[64:]
-
-	keyD := new(big.Int)
-	keyX := new(big.Int)
-	keyY := new(big.Int)
-	keyD.SetString(ECDSAKeyD, 16)
-	keyX.SetString(ECDSAKeyX, 16)
-	keyY.SetString(ECDSAKeyY, 16)
-
-	//fmt.Println("basename64:", basename64)
-	claims := &jwt.MapClaims{
-		"basename64": basename64,
-	}
-	token := jwt.NewWithClaims(jwt.SigningMethodES256, claims)
-
-	publicKey := ecdsa.PublicKey{
-		Curve: elliptic.P256(),
-		X:     keyX,
-		Y:     keyY,
-	}
-
-	privateKey := ecdsa.PrivateKey{D: keyD, PublicKey: publicKey}
-	signed64, err := token.SignedString(&privateKey)
-	if err != nil {
-		return "", err
-	}
-	//fmt.Println("signed64:", signed64)
-
-	return signed64, nil
-}
-
-func (t *StorageTab) ecdsaParseVerifyWithCPK(signed64 string) (string, error) {
-	// TODO: check walletInfo and Keys
-	if t.main.walletInfo == nil {
-		return "", fmt.Errorf("Wallet Info is nil. We can't get Keys")
-	}
-	if len(t.main.walletInfo.PubKey) != 128 {
-		return "", fmt.Errorf("Public Key is wrong!")
-	}
-	ECDSAKeyX := t.main.walletInfo.PubKey[:64]
-	ECDSAKeyY := t.main.walletInfo.PubKey[64:]
-
-	keyX := new(big.Int)
-	keyY := new(big.Int)
-	keyX.SetString(ECDSAKeyX, 16)
-	keyY.SetString(ECDSAKeyY, 16)
-
-	publicKey := ecdsa.PublicKey{
-		Curve: elliptic.P256(),
-		X:     keyX,
-		Y:     keyY,
-	}
-
-	token, err := jwt.Parse(signed64, func(token *jwt.Token) (interface{}, error) {
-		if _, ok := token.Method.(*jwt.SigningMethodECDSA); !ok {
-			return nil, fmt.Errorf("Unexpected signing method: %v", token.Header["alg"])
-		}
-		return &publicKey, nil
-	})
-	// TODO: err != nil
-	if err != nil {
-		return "", err
-	}
-
-	var basename64 string
-	if claims, ok := token.Claims.(jwt.MapClaims); ok && token.Valid {
-		basename64 = claims["basename64"].(string)
-	} else {
-		// TODO: not ok?
-	}
-
-	return basename64, nil
-}
-
-func (t *StorageTab) saveFileToRaft(file string) {
-	basename := filepath.Base(file)
-	//fmt.Printf("basename: %s\n", basename)
-	fi, err := os.Stat(file)
-	if err != nil || fi == nil {
-		fmt.Printf("os.Stat error: %s\n", err.Error())
-		return
-	}
-
-	// Key = SHA256 [ Base64(File.Basename) + File.Size + Timestamp ]
-	key := []byte{}
-
-	// Base64(File.Basename)
-	basename64 := make([]byte, base64.RawURLEncoding.EncodedLen(len(basename)))
-	base64.RawURLEncoding.Encode(basename64, []byte(basename))
-	//fmt.Printf("basename64: %s\n", string(basename64))
-	key = append(key, basename64...)
-
-	// File.Size, int64 to []byte
-	fileSize := make([]byte, 8)
-	binary.LittleEndian.PutUint64(fileSize, uint64(fi.Size()))
-	fileSize = []byte(hex.EncodeToString(fileSize))
-	//fmt.Printf("fi.Size(): %d\n", fi.Size())
-	//fmt.Printf("fileSize: %s\n", string(fileSize))
-	key = append(key, fileSize...)
-
-	// Timestamp
-	timeStamp := make([]byte, 8)
-	binary.LittleEndian.PutUint64(timeStamp, uint64(time.Now().Unix()))
-	timeStamp = []byte(hex.EncodeToString(timeStamp))
-	//fmt.Printf("timeStamp: %s\n", string(timeStamp))
-	key = append(key, timeStamp...)
-
-	//fmt.Printf("key: %s\n", string(key))
-
-	shaKey := sha256.Sum256(key)
-	////shaKey2 := sha256.Sum256([]byte(string(key)))
-	//fmt.Printf("shaKey: %x\n", shaKey[:])
-	shaKeyString := hex.EncodeToString(shaKey[:])
-
-	// Value = CPK + Base64(File.Basename) + Timestamp
-	value := []byte(t.main.walletInfo.PubKey) // CPK
-
-	// TODO: Base64 signed with CSK
-	fmt.Printf("basename64: %s\n", string(basename64))
-	signed64, err := t.ecdsaSignWithCSK(string(basename64))
-	if err != nil {
-		// if we got error then we don't save this file to Raft
-		return
-	}
-	fmt.Printf("signed64: %s\n", signed64)
-	basename64test, err := t.ecdsaParseVerifyWithCPK(signed64)
-	if err != nil {
-		// if we got error then we don't save this file to Raft
-		return
-	}
-	fmt.Printf("basename64test: %s\n", basename64test)
-
-	value = append(value, signed64...)  // Base64
-	value = append(value, timeStamp...) // Timestamp
-	//fmt.Printf("value: %s\n", string(value))
-
-	////
-
-	// CPK Index
-	cpkIndex := []byte(t.main.walletInfo.PubKey)
-
-	// get last CPKIndex = CPK + 0000000000000000 (8 bytes)
-	// prepare key for Get
-	cpkIndex0 := []byte(t.main.walletInfo.PubKey)
-	index0 := make([]byte, 8)
-	binary.LittleEndian.PutUint64(index0, uint64(0))
-	index0 = []byte(hex.EncodeToString(index0))
-	//fmt.Printf("index0: %s\n", string(index0))
-
-	cpkIndex0 = append(cpkIndex0, index0...)
-
-	// Get last CPIIndex
-	// TODO: try to use wallet.CpkZeroIndex instead of this
-	cpkIndexLast, err := t.main.raftApi.GetKey(string(cpkIndex0))
-	if err != nil {
-		fmt.Printf("Try to get last CPKIndex was failed with error: %s\n", err.Error())
-		return
-	}
-	//fmt.Printf("cpkIndexLast: %s\n", cpkIndexLast)
-
-	// casting string to int64
-	var cpkIndexLastInt64 int64
-	if cpkIndexLast == "" {
-		// if last CPKIndex is not existing, just set it to 0
-		cpkIndexLastInt64 = int64(0)
-	} else {
-		cpkIndexLastDecode, err := hex.DecodeString(cpkIndexLast)
-		if err != nil {
-			fmt.Printf("Try to decode last CPKIndex was failed with error: %s\n", err.Error())
-			return
-		}
-		cpkIndexLastInt64 = int64(binary.LittleEndian.Uint64(cpkIndexLastDecode))
-	}
-	//fmt.Printf("cpkIndexLastInt64: %d\n", cpkIndexLastInt64)
-
-	// create new CPKIndex
-	cpkIndexNew := make([]byte, 8)
-	binary.LittleEndian.PutUint64(cpkIndexNew, uint64(cpkIndexLastInt64+1))
-	cpkIndexNew = []byte(hex.EncodeToString(cpkIndexNew))
-	//fmt.Printf("cpkIndexNew: %s\n", string(cpkIndexNew))
-
-	cpkIndex = append(cpkIndex, cpkIndexNew...)
-	//fmt.Printf("cpkIndex: %s\n", string(cpkIndex))
-
-	// Main Key/Value Store
-	t.main.raftApi.SetKey(shaKeyString, string(value))
-
-	// CPKIndex Key/Value Store
-	t.main.raftApi.SetKey(string(cpkIndex), shaKeyString)
-	t.main.raftApi.SetKey(string(cpkIndex0), string(cpkIndexNew))
-
-	// TODO: save last cpkIndex to wallet
-	t.main.walletInfo.CpkZeroIndex = string(cpkIndexNew)
 }
 
 func (t *StorageTab) getFile(source string, destination string) {
@@ -585,8 +273,8 @@ func (t *StorageTab) getFile(source string, destination string) {
 
 	origin := BucketOriginName
 
-	// mount
-	//cerr := RunCommand("mount", origin)
+	// mount?!
+	//cerr = nongui.MountStorage(origin)
 	//if cerr != nil {
 	//	//ui.MsgBoxError(t.main.window, "Error", fmt.Sprintf("%v", cerr))
 	//	ui.QueueMain(func() {
@@ -594,18 +282,17 @@ func (t *StorageTab) getFile(source string, destination string) {
 	//		t.logMessage("Mount error: " + cerr.Error())
 	//	})
 	//	return
+	//} else {
+	//	ui.QueueMain(func() {
+	//		t.logMessage("Mount bucket " + origin)
+	//	})
 	//}
 
-	//time.Sleep(500 * time.Millisecond)
-	//ui.QueueMain(func() {
-	//	t.logMessage("Mount bucket " + origin)
-	//})
-
-	cerr := RunCommand("xget", source, origin, destination)
+	cerr := nongui.GetFile(source, origin, destination)
 	if cerr != nil {
 		//ui.MsgBoxError(t.main.window, "Error", fmt.Sprintf("%v", cerr))
 		ui.QueueMain(func() {
-			t.logMessage("Put error: " + cerr.Error())
+			t.logMessage("Get error: " + cerr.Error())
 		})
 	} else {
 		//time.Sleep(500 * time.Millisecond)
@@ -615,17 +302,20 @@ func (t *StorageTab) getFile(source string, destination string) {
 		})
 	}
 
-	// unmount
-	//cerr = RunCommand("unmount", origin)
+	// unmount?!
+	//cerr = nongui.UnmountStorage(origin)
 	//if cerr != nil {
-	//	//ui.MsgBoxError(t.main.window, "Error", fmt.Sprintf("%v", cerr))
 	//	ui.QueueMain(func() {
 	//		t.logMessage("Unmount error: " + cerr.Error())
+	//	})
+	//	return
+	//} else {
+	//	ui.QueueMain(func() {
+	//		t.logMessage("Unmount bucket " + origin)
 	//	})
 	//}
 
 	ui.QueueMain(func() {
-		//t.logMessage("Unmount bucket " + origin)
 		t.buttonEnabled(true)
 	})
 }
@@ -638,8 +328,8 @@ func (t *StorageTab) removeFile(file File) {
 
 	origin := BucketOriginName
 
-	// mount
-	//cerr := RunCommand("mount", origin)
+	// mount?!
+	//cerr = nongui.MountStorage(origin)
 	//if cerr != nil {
 	//	//ui.MsgBoxError(t.main.window, "Error", fmt.Sprintf("%v", cerr))
 	//	ui.QueueMain(func() {
@@ -647,15 +337,14 @@ func (t *StorageTab) removeFile(file File) {
 	//		t.logMessage("Mount error: " + cerr.Error())
 	//	})
 	//	return
+	//} else {
+	//	ui.QueueMain(func() {
+	//		t.logMessage("Mount bucket " + origin)
+	//	})
 	//}
 
-	//time.Sleep(500 * time.Millisecond)
-	//ui.QueueMain(func() {
-	//	t.logMessage("Mount bucket " + origin)
-	//})
-
 	removeSuccess := false
-	cerr := RunCommand("remove", file.Name, origin)
+	cerr := nongui.RemoveFile(file.Name, origin)
 	if cerr != nil {
 		//ui.MsgBoxError(t.main.window, "Error", fmt.Sprintf("%v", cerr))
 		ui.QueueMain(func() {
@@ -669,22 +358,31 @@ func (t *StorageTab) removeFile(file File) {
 		})
 	}
 
-	// unmount
-	//cerr = RunCommand("unmount", origin)
+	// unmount?!
+	//cerr = nongui.UnmountStorage(origin)
 	//if cerr != nil {
-	//	//ui.MsgBoxError(t.main.window, "Error", fmt.Sprintf("%v", cerr))
 	//	ui.QueueMain(func() {
 	//		t.logMessage("Unmount error: " + cerr.Error())
 	//	})
+	//	return
+	//} else {
+	//	ui.QueueMain(func() {
+	//		t.logMessage("Unmount bucket " + origin)
+	//	})
 	//}
 
-	//ui.QueueMain(func() {
-	//	t.logMessage("Unmount bucket " + origin)
-	//})
-
-	// TODO: add Key/Value to Raft here
 	if removeSuccess {
-		t.removeFileFromRaft(file)
+		fileRaft := &nongui.FileRaftValue{
+			Filename:  file.Name,
+			TimeStamp: file.Timestamp,
+			ShaKey:    file.shaKey,
+			CpkIndex:  file.cpkIndex,
+		}
+
+		err := t.main.walletInfo.RemoveFileFromRaft(fileRaft)
+		if err != nil {
+
+		}
 		t.reloadFilesView()
 	}
 
@@ -693,36 +391,14 @@ func (t *StorageTab) removeFile(file File) {
 	})
 }
 
-func (t *StorageTab) removeFileFromRaft(file File) {
-	fmt.Println("shaKey:", file.shaKey)
-	fmt.Println("cpkIndex:", file.cpkIndex)
-
-	t.main.raftApi.DeleteKey(file.shaKey)
-	t.main.raftApi.DeleteKey(file.cpkIndex)
-
-	// TODO: we can fix cpkIndex0 for last cpkIndex?
-	lastIndex := t.main.walletInfo.PubKey + t.main.walletInfo.CpkZeroIndex
-	if file.cpkIndex == lastIndex {
-		// we can update CpkZeroIndex here!
-		fmt.Println("We can update CpkZeroIndex here")
-	}
-
-	// TODO: or we can rebuild index, yeah!
-
-	// TODO: or we can save file count with cpkIndex!?
-	// so cpkIndex will have 2 values: last cpkIndex and file count
-}
-
 func (t *StorageTab) onPutFileClicked(button *ui.Button) {
-	// chech wallet info existing
-	if t.main.walletInfo == nil {
-		fmt.Printf("walletInfo is nil\n")
+	// check wallet info existing
+	if t.main.walletInfo.IsEmpty() {
+		fmt.Printf("walletInfo is empty\n")
 		return
 	}
 
 	file := ui.OpenFile(t.main.window, util.UserHomeDir()+"/*.*")
-	//fmt.Println("file: ", file)
-
 	if file == "" {
 		ui.MsgBoxError(t.main.window, "Error",
 			fmt.Sprintf("Please, select file for putting it to storage"))
@@ -733,9 +409,9 @@ func (t *StorageTab) onPutFileClicked(button *ui.Button) {
 }
 
 func (t *StorageTab) onGetFileClicked(button *ui.Button) {
-	// chech wallet info existing
-	if t.main.walletInfo == nil {
-		fmt.Printf("walletInfo is nil\n")
+	// check wallet info existing
+	if t.main.walletInfo.IsEmpty() {
+		fmt.Printf("walletInfo is empty\n")
 		return
 	}
 
@@ -748,27 +424,22 @@ func (t *StorageTab) onGetFileClicked(button *ui.Button) {
 	idx := sel[0]
 	dbitem := t.db.Files[idx]
 	filename := dbitem.Name
-	fmt.Println("filename:", filename)
 
 	// save file to path
-	filenameSave := ui.SaveFile(t.main.window, util.UserHomeDir()+"/"+filename)
-	fmt.Println("filenameSave: ", filenameSave)
+	filenameSave := ui.SaveFile(t.main.window, filename)
 	if filenameSave == "" {
-		ui.MsgBoxError(t.main.window, "Error",
-			fmt.Sprintf("Please, select file for gettig it from storage"))
+		//ui.MsgBoxError(t.main.window, "Error",
+		//	fmt.Sprintf("Please, select file for gettig it from storage"))
 		return
 	}
-
-	filePath := filepath.Dir(filenameSave)
-	fmt.Println("filePath:", filePath)
 
 	go t.getFile(filename, filenameSave)
 }
 
 func (t *StorageTab) onRemoveFileClicked(button *ui.Button) {
-	// chech wallet info existing
-	if t.main.walletInfo == nil {
-		fmt.Printf("walletInfo is nil\n")
+	// check wallet info existing
+	if t.main.walletInfo.IsEmpty() {
+		fmt.Printf("walletInfo is empty\n")
 		return
 	}
 
@@ -780,8 +451,6 @@ func (t *StorageTab) onRemoveFileClicked(button *ui.Button) {
 
 	idx := sel[0]
 	dbitem := t.db.Files[idx]
-	filename := dbitem.Name
-	fmt.Println("filename:", filename)
 
 	go t.removeFile(dbitem)
 }
