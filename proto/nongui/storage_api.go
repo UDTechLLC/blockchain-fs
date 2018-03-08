@@ -7,6 +7,7 @@ import (
 	"runtime"
 	"strings"
 	"syscall"
+	"time"
 )
 
 const (
@@ -55,4 +56,24 @@ func RunCommand(arg ...string) (cerr error) {
 
 	//t.Logf("finishing command %s...", command)
 	return cerr
+}
+
+func CreateStorage(origin string) error {
+	return RunCommand("create", origin)
+}
+
+func MountStorage(origin string) (cerr error) {
+	cerr = RunCommand("mount", origin)
+	if cerr != nil {
+		return cerr
+	}
+
+	// TODO: we must wait until mount finishes its actions
+	// TODO: check ORIGIN? every 100 milliseconds
+	time.Sleep(500 * time.Millisecond)
+	return nil
+}
+
+func UnmountStorage(origin string) error {
+	return RunCommand("unmount", origin)
 }

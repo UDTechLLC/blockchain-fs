@@ -4,9 +4,6 @@ import (
 	"github.com/leedark/ui"
 )
 
-// FIXME
-//var window *ui.Window
-
 func main() {
 	err := ui.Main(func() {
 		NewMainWindow().Show()

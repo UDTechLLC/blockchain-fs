@@ -34,11 +34,9 @@ func NewMainWindow() *MainWindow {
 	main.window.Center()
 
 	main.Init()
-
 	gui := main.buildGUI()
 
 	main.window.SetChild(gui)
-
 	main.window.OnClosing(main.OnClosing)
 
 	return main
@@ -50,35 +48,21 @@ func (main *MainWindow) NewTimer(seconds int, action func()) {
 }
 
 func (main *MainWindow) MountStorage() {
-	origin := BucketOriginName
-
-	// mount
-	cerr := nongui.RunCommand("mount", origin)
+	cerr := nongui.MountStorage(BucketOriginName)
 	if cerr != nil {
 		ui.MsgBoxError(main.window, "Mount Storage Error", fmt.Sprintf("%v", cerr))
 		return
 	}
-
-	// TODO: we must wait until mount finishes its actions
-	// TODO: check ORIGIN? every 100 milliseconds
-	time.Sleep(500 * time.Millisecond)
 }
 
 func (main *MainWindow) UnmountStorage() {
-	origin := BucketOriginName
-
-	// unmount
-	cerr := nongui.RunCommand("unmount", origin)
+	cerr := nongui.UnmountStorage(BucketOriginName)
 	if cerr != nil {
 		ui.MsgBoxError(main.window, "Unmount Storage Error", fmt.Sprintf("%v", cerr))
 	}
 }
 
 func (main *MainWindow) Init() {
-	//if main.walletInfo != nil {
-	//	main.MountStorage()
-	//}
-
 	main.blockApi = nongui.NewBlockApi()
 	main.raftApi = nongui.NewRaftApi()
 
@@ -88,8 +72,7 @@ func (main *MainWindow) Init() {
 func (main *MainWindow) ApiTicker() {
 	for {
 		select {
-		case <-main.timeTicker.C: // t := <-main.timeTicker.C:
-			//fmt.Println("Tick at", t)
+		case <-main.timeTicker.C:
 			main.blockApi.CheckApi()
 			main.raftApi.CheckApi()
 		}
@@ -124,12 +107,9 @@ func (main *MainWindow) OnClosing(window *ui.Window) bool {
 	main.timeTicker.Stop()
 	fmt.Println("Ticker stopped")
 
-	// FIXME:
 	if main.walletInfo != nil {
-		saveWalletInfo(main.walletInfo)
-	}
+		nongui.SaveWalletInfo(main.walletInfo)
 
-	if main.walletInfo != nil {
 		main.UnmountStorage()
 	}
 

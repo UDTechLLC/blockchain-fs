@@ -1,17 +1,11 @@
 package main
 
 import (
-	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"time"
 
 	"bitbucket.org/udt/wizefs/proto/nongui"
 	"github.com/leedark/ui"
-)
-
-const (
-	walletFilename = "wallet.json"
 )
 
 type WalletTab struct {
@@ -115,8 +109,7 @@ func (t *WalletTab) Control() ui.Control {
 func (t *WalletTab) ApiTicker() {
 	for {
 		select {
-		case <-t.timeTicker.C: // t := <-t.timeTicker.C:
-			//fmt.Println("Tick at", t)
+		case <-t.timeTicker.C:
 			if t.alreadyAvailable != t.main.blockApi.Available {
 				if t.main.blockApi.Available {
 					t.reloadWalletsView()
@@ -137,28 +130,22 @@ func (t *WalletTab) ApiTicker() {
 }
 
 func (t *WalletTab) Init() {
-	// load wallet.json or
-	// TODO: wizeBlockAPI: get wallet info
-	walletInfo, err := loadWalletInfo()
+	walletInfo, err := nongui.LoadWalletInfo()
 	if err != nil {
-		//ui.MsgBoxError(t.main.window, "Error", "Load wallet error: "+err.Error())
-		fmt.Println("Load wallet error: ", err.Error())
-		//return
+		//fmt.Println("Load wallet error: ", err.Error())
 	}
 
 	// update controls
 	if walletInfo != nil {
-		t.updateWalletInfo(walletInfo)
 		t.main.walletInfo = walletInfo
-		t.main.storageTab.buttonEnabled(true)
+		t.updateWalletInfo()
 
 		// mount!?
 		t.main.MountStorage()
+		t.main.storageTab.buttonEnabled(true)
 	} else {
-		//ui.MsgBoxError(t.main.window, "Error", "Wallet Info is nil")
-		fmt.Println("walletInfo is nil")
+		//fmt.Println("walletInfo is nil")
 		t.main.storageTab.buttonEnabled(false)
-		//return
 	}
 
 	// wallets list
@@ -173,17 +160,17 @@ func (t *WalletTab) Init() {
 	t.NewTimer(60, t.ApiTicker)
 }
 
-func (t *WalletTab) updateWalletInfo(wallet *nongui.WalletCreateInfo) {
-	if wallet == nil {
+func (t *WalletTab) updateWalletInfo() {
+	if t.main.walletInfo == nil {
 		return
 	}
 
-	t.walletAddressEntry.SetText(wallet.Address)
-	t.walletPrivateKeyEntry.SetText(wallet.PrivKey)
+	t.walletAddressEntry.SetText(t.main.walletInfo.Address)
+	t.walletPrivateKeyEntry.SetText(t.main.walletInfo.PrivKey)
 
-	idx := len(wallet.PubKey) / 2
-	t.walletPublicKeyEntry1.SetText(wallet.PubKey[:idx])
-	t.walletPublicKeyEntry2.SetText(wallet.PubKey[idx:])
+	idx := len(t.main.walletInfo.PubKey) / 2
+	t.walletPublicKeyEntry1.SetText(t.main.walletInfo.PubKey[:idx])
+	t.walletPublicKeyEntry2.SetText(t.main.walletInfo.PubKey[idx:])
 
 	t.createWalletButton.Disable()
 }
@@ -194,16 +181,18 @@ func (t *WalletTab) reloadWalletsView() {
 	}
 	t.db.Wallets = nil
 
-	result, err := t.main.blockApi.GetWalletsList()
+	// wizeBlockAPI: Get Wallets List
+	walletsList, err := t.main.blockApi.GetWalletsList()
 	if err != nil {
 		fmt.Println(err)
 	}
-	for _, address := range result {
 
+	// Fill Wallets List View
+	for _, address := range walletsList {
+		// wizeBlockAPI: Get Wallet Info for every Wallet by address
 		var credit int = -1
 		info, err := t.main.blockApi.GetWalletInfo(address)
-		if err != nil {
-		} else {
+		if err == nil {
 			if info.Success {
 				credit = info.Credit
 			}
@@ -220,17 +209,15 @@ func (t *WalletTab) reloadWalletsView() {
 }
 
 func (t *WalletTab) onCreateWalletClicked(button *ui.Button) {
-	// wizeBlockAPI: create wallet
+	// wizeBlockAPI: Create Wallet
 	walletInfo, err := t.main.blockApi.PostWalletCreate(&nongui.WalletCreateRequest{})
 	if err != nil {
 		fmt.Println("Create wallet error: ", err.Error())
 	}
-
 	if walletInfo == nil {
 		ui.MsgBoxError(t.main.window, "Error", "Wallet Info is nil")
 		return
 	}
-
 	if !walletInfo.Success {
 		ui.MsgBoxError(t.main.window, "Error", "Response is not success")
 		return
@@ -239,7 +226,7 @@ func (t *WalletTab) onCreateWalletClicked(button *ui.Button) {
 	walletInfo.CpkZeroIndex = "0"
 
 	// save to wallet.json
-	err = saveWalletInfo(walletInfo)
+	err = nongui.SaveWalletInfo(walletInfo)
 	if err != nil {
 		//ui.MsgBoxError(t.main.window, "Error", "Save wallet error: "+err.Error())
 		fmt.Println("Save wallet error: ", err.Error())
@@ -249,13 +236,14 @@ func (t *WalletTab) onCreateWalletClicked(button *ui.Button) {
 	t.main.storageTab.buttonEnabled(true)
 
 	// update controls
-	t.updateWalletInfo(walletInfo)
+	t.updateWalletInfo()
 
 	// update table
 	//t.reloadWalletsView()
 	w := Wallet{
 		Index:   len(t.db.Wallets) + 1,
 		Address: walletInfo.Address,
+		Credit:  0,
 	}
 	t.db.Wallets = append(t.db.Wallets, w)
 	t.walletsModel.RowInserted(len(t.db.Wallets) - 1)
@@ -265,8 +253,7 @@ func (t *WalletTab) onCreateWalletClicked(button *ui.Button) {
 
 func (t *WalletTab) afterCreateWallet() {
 	// create single bucket (directory)
-	origin := BucketOriginName
-	cerr := nongui.RunCommand("create", origin)
+	cerr := nongui.CreateStorage(BucketOriginName)
 	if cerr != nil {
 		fmt.Println("Create bucket error:", cerr.Error())
 		//ui.MsgBoxError(t.main.window, "Error", fmt.Sprintf("%v", cerr))
@@ -274,44 +261,4 @@ func (t *WalletTab) afterCreateWallet() {
 
 	// mount?
 	t.main.MountStorage()
-}
-
-//
-
-func saveWalletInfo(wallet *nongui.WalletCreateInfo) (err error) {
-	// Marshal
-	walletJson, err := json.MarshalIndent(&wallet, "  ", "  ")
-	if err != nil {
-		return
-	}
-
-	// Write to file
-	if walletJson != nil {
-		err = ioutil.WriteFile(walletFilename, walletJson, 0644)
-		if err != nil {
-			fmt.Printf("Save %s: WriteFile: %#v\n", walletFilename, err)
-			return
-		}
-	}
-
-	return
-}
-
-func loadWalletInfo() (wallet *nongui.WalletCreateInfo, err error) {
-	// Read from file
-	js, err := ioutil.ReadFile(walletFilename)
-	if err != nil {
-		fmt.Printf("Load %s: ReadFile: %#v\n", walletFilename, err)
-		return nil, err
-	}
-
-	// Unmarshal
-	wallet = &nongui.WalletCreateInfo{}
-	err = json.Unmarshal(js, &wallet)
-	if err != nil {
-		fmt.Printf("Failed to unmarshal wallet file")
-		return nil, err
-	}
-
-	return wallet, nil
 }
