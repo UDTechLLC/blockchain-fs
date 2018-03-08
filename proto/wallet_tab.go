@@ -130,22 +130,21 @@ func (t *WalletTab) ApiTicker() {
 }
 
 func (t *WalletTab) Init() {
-	walletInfo, err := nongui.LoadWalletInfo()
+	t.main.walletInfo = &nongui.WalletCreateInfo{
+		Raft: t.main.raftApi,
+	}
+	err := t.main.walletInfo.Load()
 	if err != nil {
 		//fmt.Println("Load wallet error: ", err.Error())
-	}
-
-	// update controls
-	if walletInfo != nil {
-		t.main.walletInfo = walletInfo
+		//fmt.Println("walletInfo is nil")
+		t.main.storageTab.buttonEnabled(false)
+	} else {
+		// update controls
 		t.updateWalletInfo()
 
 		// mount!?
 		t.main.MountStorage()
 		t.main.storageTab.buttonEnabled(true)
-	} else {
-		//fmt.Println("walletInfo is nil")
-		t.main.storageTab.buttonEnabled(false)
 	}
 
 	// wallets list
@@ -161,7 +160,7 @@ func (t *WalletTab) Init() {
 }
 
 func (t *WalletTab) updateWalletInfo() {
-	if t.main.walletInfo == nil {
+	if t.main.walletInfo.IsEmpty() {
 		return
 	}
 
@@ -226,13 +225,13 @@ func (t *WalletTab) onCreateWalletClicked(button *ui.Button) {
 	walletInfo.CpkZeroIndex = "0"
 
 	// save to wallet.json
-	err = nongui.SaveWalletInfo(walletInfo)
+	err = walletInfo.Save()
 	if err != nil {
 		//ui.MsgBoxError(t.main.window, "Error", "Save wallet error: "+err.Error())
 		fmt.Println("Save wallet error: ", err.Error())
 	}
 
-	t.main.walletInfo = walletInfo
+	t.main.walletInfo.Update(walletInfo)
 	t.main.storageTab.buttonEnabled(true)
 
 	// update controls

@@ -23,7 +23,7 @@ type FileRaftValue struct {
 	CpkIndex  string
 }
 
-func EcdsaSignWithCSK(walletInfo *WalletCreateInfo, basename64 string) (string, error) {
+func (walletInfo *WalletCreateInfo) ecdsaSignWithCSK(basename64 string) (string, error) {
 	// TODO: check walletInfo and Keys
 	if walletInfo == nil {
 		return "", fmt.Errorf("Wallet Info is nil. We can't get Keys.")
@@ -67,7 +67,7 @@ func EcdsaSignWithCSK(walletInfo *WalletCreateInfo, basename64 string) (string, 
 	return signed64, nil
 }
 
-func EcdsaParseVerifyWithCPK(walletInfo *WalletCreateInfo, signed64 string) (string, error) {
+func (walletInfo *WalletCreateInfo) ecdsaParseVerifyWithCPK(signed64 string) (string, error) {
 	// TODO: check walletInfo and Keys
 	if walletInfo == nil {
 		return "", fmt.Errorf("Wallet Info is nil. We can't get Keys")
@@ -109,7 +109,7 @@ func EcdsaParseVerifyWithCPK(walletInfo *WalletCreateInfo, signed64 string) (str
 	return basename64, nil
 }
 
-func GetZeroIndex(walletInfo *WalletCreateInfo, raftApi *RaftApi) ([]byte, int64, error) {
+func (walletInfo *WalletCreateInfo) GetZeroIndex() ([]byte, int64, error) {
 	// get last CPKIndex = CPK + 0000000000000000 (8 bytes)
 	// prepare key for Get
 	cpkIndex0 := []byte(walletInfo.PubKey)
@@ -122,7 +122,10 @@ func GetZeroIndex(walletInfo *WalletCreateInfo, raftApi *RaftApi) ([]byte, int64
 
 	// Get last CPIIndex
 	// TODO: try to use wallet.CpkZeroIndex instead of this
-	cpkIndexLast, err := raftApi.GetKey(string(cpkIndex0))
+	if !walletInfo.Raft.Available {
+		return nil, -1, fmt.Errorf("Raft API is not available")
+	}
+	cpkIndexLast, err := walletInfo.Raft.GetKey(string(cpkIndex0))
 	if err != nil {
 		fmt.Printf("Try to get last CPKIndex was failed with error: %s\n", err.Error())
 		return nil, -1, err
@@ -147,7 +150,7 @@ func GetZeroIndex(walletInfo *WalletCreateInfo, raftApi *RaftApi) ([]byte, int64
 	return cpkIndex0, cpkIndexLastInt64, nil
 }
 
-func GetFileIndex(index int64, walletInfo *WalletCreateInfo, raftApi *RaftApi) (fileRaft *FileRaftValue, err error) {
+func (walletInfo *WalletCreateInfo) GetFileIndex(index int64) (fileRaft *FileRaftValue, err error) {
 	cpkIndex := []byte(walletInfo.PubKey)
 
 	cpkIndexNew := make([]byte, 8)
@@ -158,7 +161,10 @@ func GetFileIndex(index int64, walletInfo *WalletCreateInfo, raftApi *RaftApi) (
 	cpkIndex = append(cpkIndex, cpkIndexNew...)
 	//fmt.Printf("cpkIndex: %s\n", string(cpkIndex))
 
-	shaKeyString, err := raftApi.GetKey(string(cpkIndex))
+	if !walletInfo.Raft.Available {
+		return nil, fmt.Errorf("Raft API is not available")
+	}
+	shaKeyString, err := walletInfo.Raft.GetKey(string(cpkIndex))
 	if err != nil {
 		// TODO:
 		fmt.Println("Error when getting SHA256:", err)
@@ -171,7 +177,7 @@ func GetFileIndex(index int64, walletInfo *WalletCreateInfo, raftApi *RaftApi) (
 	}
 	//fmt.Printf("shaKeyString: %s\n", shaKeyString)
 
-	value, err := raftApi.GetKey(shaKeyString)
+	value, err := walletInfo.Raft.GetKey(shaKeyString)
 	if err != nil {
 		// TODO:
 		fmt.Println("Error when getting FileInfo:", err)
@@ -194,7 +200,7 @@ func GetFileIndex(index int64, walletInfo *WalletCreateInfo, raftApi *RaftApi) (
 	// TODO: Base64 signed with CSK - Parse & Verify with CPK
 	signed64 := info[0 : infoLen-16]
 	//fmt.Printf("signed64: %s\n", signed64)
-	basename64, err := EcdsaParseVerifyWithCPK(walletInfo, signed64)
+	basename64, err := walletInfo.ecdsaParseVerifyWithCPK(signed64)
 	if err != nil {
 		// if we got error then we don't add this file to list
 		return nil, err
@@ -228,7 +234,7 @@ func GetFileIndex(index int64, walletInfo *WalletCreateInfo, raftApi *RaftApi) (
 	return fileRaft, nil
 }
 
-func SaveFileToRaft(file string, walletInfo *WalletCreateInfo, raftApi *RaftApi) error {
+func (walletInfo *WalletCreateInfo) SaveFileToRaft(file string) error {
 	basename := filepath.Base(file)
 	//fmt.Printf("basename: %s\n", basename)
 	fi, err := os.Stat(file)
@@ -273,7 +279,7 @@ func SaveFileToRaft(file string, walletInfo *WalletCreateInfo, raftApi *RaftApi)
 
 	// TODO: Base64 signed with CSK
 	//fmt.Printf("basename64: %s\n", string(basename64))
-	signed64, err := EcdsaSignWithCSK(walletInfo, string(basename64))
+	signed64, err := walletInfo.ecdsaSignWithCSK(string(basename64))
 	if err != nil {
 		// if we got error then we don't save this file to Raft
 		return err
@@ -296,7 +302,7 @@ func SaveFileToRaft(file string, walletInfo *WalletCreateInfo, raftApi *RaftApi)
 	cpkIndex := []byte(walletInfo.PubKey)
 
 	// CHECKIT:
-	cpkIndex0, cpkIndexLastInt64, err := GetZeroIndex(walletInfo, raftApi)
+	cpkIndex0, cpkIndexLastInt64, err := walletInfo.GetZeroIndex()
 	if err != nil {
 		return err
 	}
@@ -310,12 +316,16 @@ func SaveFileToRaft(file string, walletInfo *WalletCreateInfo, raftApi *RaftApi)
 	cpkIndex = append(cpkIndex, cpkIndexNew...)
 	//fmt.Printf("cpkIndex: %s\n", string(cpkIndex))
 
+	if !walletInfo.Raft.Available {
+		return fmt.Errorf("Raft API is not available")
+	}
+
 	// Main Key/Value Store
-	raftApi.SetKey(shaKeyString, string(value))
+	walletInfo.Raft.SetKey(shaKeyString, string(value))
 
 	// CPKIndex Key/Value Store
-	raftApi.SetKey(string(cpkIndex), shaKeyString)
-	raftApi.SetKey(string(cpkIndex0), string(cpkIndexNew))
+	walletInfo.Raft.SetKey(string(cpkIndex), shaKeyString)
+	walletInfo.Raft.SetKey(string(cpkIndex0), string(cpkIndexNew))
 
 	// TODO: save last cpkIndex to wallet
 	walletInfo.CpkZeroIndex = string(cpkIndexNew)
@@ -323,12 +333,15 @@ func SaveFileToRaft(file string, walletInfo *WalletCreateInfo, raftApi *RaftApi)
 	return nil
 }
 
-func RemoveFileFromRaft(fileRaft *FileRaftValue, walletInfo *WalletCreateInfo, raftApi *RaftApi) {
+func (walletInfo *WalletCreateInfo) RemoveFileFromRaft(fileRaft *FileRaftValue) error {
 	fmt.Println("shaKey:", fileRaft.ShaKey)
 	fmt.Println("cpkIndex:", fileRaft.CpkIndex)
 
-	raftApi.DeleteKey(fileRaft.ShaKey)
-	raftApi.DeleteKey(fileRaft.CpkIndex)
+	if !walletInfo.Raft.Available {
+		return fmt.Errorf("Raft API is not available")
+	}
+	walletInfo.Raft.DeleteKey(fileRaft.ShaKey)
+	walletInfo.Raft.DeleteKey(fileRaft.CpkIndex)
 
 	// TODO: we can fix cpkIndex0 for last cpkIndex?
 	lastIndex := walletInfo.PubKey + walletInfo.CpkZeroIndex
@@ -340,4 +353,6 @@ func RemoveFileFromRaft(fileRaft *FileRaftValue, walletInfo *WalletCreateInfo, r
 	// TODO: or we can rebuild index, yeah!
 	// TODO: or we can save file count with cpkIndex!?
 	// so cpkIndex will have 2 values: last cpkIndex and file count
+
+	return nil
 }

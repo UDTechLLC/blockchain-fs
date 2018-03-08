@@ -14,11 +14,13 @@ type WalletCreateRequest struct {
 }
 
 type WalletCreateInfo struct {
-	Success      bool
-	Address      string
-	PrivKey      string
-	PubKey       string
-	CpkZeroIndex string
+	Success bool
+	Address string
+	PrivKey string
+	PubKey  string
+
+	CpkZeroIndex string   `json:"-"`
+	Raft         *RaftApi `json:"-"`
 }
 
 type WalletListResponse struct {
@@ -31,9 +33,9 @@ type WalletHashInfo struct {
 	Credit  int
 }
 
-func SaveWalletInfo(wallet *WalletCreateInfo) (err error) {
+func (walletInfo *WalletCreateInfo) Save() (err error) {
 	// Marshal
-	walletJson, err := json.MarshalIndent(&wallet, "  ", "  ")
+	walletJson, err := json.MarshalIndent(&walletInfo, "", "  ")
 	if err != nil {
 		return
 	}
@@ -50,21 +52,34 @@ func SaveWalletInfo(wallet *WalletCreateInfo) (err error) {
 	return
 }
 
-func LoadWalletInfo() (wallet *WalletCreateInfo, err error) {
+func (walletInfo *WalletCreateInfo) Load() error {
 	// Read from file
 	js, err := ioutil.ReadFile(walletFilename)
 	if err != nil {
 		fmt.Printf("Load %s: ReadFile: %#v\n", walletFilename, err)
-		return nil, err
+		return err
 	}
 
 	// Unmarshal
-	wallet = &WalletCreateInfo{}
-	err = json.Unmarshal(js, &wallet)
+	err = json.Unmarshal(js, &walletInfo)
 	if err != nil {
 		fmt.Printf("Failed to unmarshal wallet file")
-		return nil, err
+		return err
 	}
 
-	return wallet, nil
+	return nil
+}
+
+func (walletInfo *WalletCreateInfo) IsEmpty() bool {
+	if walletInfo.Address == "" {
+		return true
+	}
+	return false
+}
+
+func (walletInfo *WalletCreateInfo) Update(info *WalletCreateInfo) {
+	walletInfo.Success = info.Success
+	walletInfo.Address = info.Address
+	walletInfo.PrivKey = info.PrivKey
+	walletInfo.PubKey = info.PubKey
 }

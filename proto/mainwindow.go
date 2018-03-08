@@ -107,7 +107,7 @@ func (main *MainWindow) OnClosing(window *ui.Window) bool {
 	main.timeTicker.Stop()
 
 	if main.walletInfo != nil {
-		nongui.SaveWalletInfo(main.walletInfo)
+		main.walletInfo.Save()
 
 		main.UnmountStorage()
 	}

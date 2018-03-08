@@ -129,8 +129,8 @@ func (t *StorageTab) Init() {
 
 func (t *StorageTab) reloadFilesView() {
 	// check wallet info existing
-	if t.main.walletInfo == nil {
-		//fmt.Printf("walletInfo is nil\n")
+	if t.main.walletInfo.IsEmpty() {
+		//fmt.Printf("walletInfo is empty\n")
 		return
 	}
 
@@ -141,7 +141,7 @@ func (t *StorageTab) reloadFilesView() {
 	t.db.Files = nil
 
 	// CHECKIT:
-	_, cpkIndexLastInt64, err := nongui.GetZeroIndex(t.main.walletInfo, t.main.raftApi)
+	_, cpkIndexLastInt64, err := t.main.walletInfo.GetZeroIndex()
 	if err != nil {
 
 	}
@@ -152,7 +152,7 @@ func (t *StorageTab) reloadFilesView() {
 		index++
 
 		// CHECKIT:
-		fileRaft, err := nongui.GetFileIndex(index, t.main.walletInfo, t.main.raftApi)
+		fileRaft, err := t.main.walletInfo.GetFileIndex(index)
 		if err != nil {
 			continue
 		}
@@ -256,7 +256,7 @@ func (t *StorageTab) putFile(filename string) {
 	//}
 
 	if putSuccess {
-		nongui.SaveFileToRaft(filename, t.main.walletInfo, t.main.raftApi)
+		t.main.walletInfo.SaveFileToRaft(filename)
 		t.reloadFilesView()
 	}
 
@@ -379,7 +379,10 @@ func (t *StorageTab) removeFile(file File) {
 			CpkIndex:  file.cpkIndex,
 		}
 
-		nongui.RemoveFileFromRaft(fileRaft, t.main.walletInfo, t.main.raftApi)
+		err := t.main.walletInfo.RemoveFileFromRaft(fileRaft)
+		if err != nil {
+
+		}
 		t.reloadFilesView()
 	}
 
@@ -390,8 +393,8 @@ func (t *StorageTab) removeFile(file File) {
 
 func (t *StorageTab) onPutFileClicked(button *ui.Button) {
 	// check wallet info existing
-	if t.main.walletInfo == nil {
-		fmt.Printf("walletInfo is nil\n")
+	if t.main.walletInfo.IsEmpty() {
+		fmt.Printf("walletInfo is empty\n")
 		return
 	}
 
@@ -407,8 +410,8 @@ func (t *StorageTab) onPutFileClicked(button *ui.Button) {
 
 func (t *StorageTab) onGetFileClicked(button *ui.Button) {
 	// check wallet info existing
-	if t.main.walletInfo == nil {
-		fmt.Printf("walletInfo is nil\n")
+	if t.main.walletInfo.IsEmpty() {
+		fmt.Printf("walletInfo is empty\n")
 		return
 	}
 
@@ -435,8 +438,8 @@ func (t *StorageTab) onGetFileClicked(button *ui.Button) {
 
 func (t *StorageTab) onRemoveFileClicked(button *ui.Button) {
 	// check wallet info existing
-	if t.main.walletInfo == nil {
-		fmt.Printf("walletInfo is nil\n")
+	if t.main.walletInfo.IsEmpty() {
+		fmt.Printf("walletInfo is empty\n")
 		return
 	}
 
