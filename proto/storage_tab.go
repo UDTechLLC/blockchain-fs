@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"bitbucket.org/udt/wizefs/internal/util"
+	"bitbucket.org/udt/wizefs/proto/nongui"
 	jwt "github.com/dgrijalva/jwt-go"
 	"github.com/leedark/ui"
 )
@@ -27,7 +28,7 @@ type StorageTab struct {
 	putFileButton    *ui.Button
 	getFileButton    *ui.Button
 	removeFileButton *ui.Button
-	logBuffer        *StringBuffer
+	logBuffer        *nongui.StringBuffer
 	logBox           *ui.MultilineEntry
 
 	db         FileDB
@@ -81,7 +82,7 @@ func (t *StorageTab) buildGUI() {
 
 	hbox2b := ui.NewHorizontalBox()
 
-	t.logBuffer = NewStringBuffer()
+	t.logBuffer = nongui.NewStringBuffer()
 	t.logBox = ui.NewMultilineEntry()
 	t.logBox.SetReadOnly(true)
 	hbox2b.SetPadded(true)
@@ -332,7 +333,7 @@ func (t *StorageTab) putFile(filename string) {
 	//})
 
 	putSuccess := false
-	cerr := RunCommand("put", filename, origin)
+	cerr := nongui.RunCommand("put", filename, origin)
 	if cerr != nil {
 		ui.QueueMain(func() {
 			t.logMessage("Put error: " + cerr.Error())
@@ -601,7 +602,7 @@ func (t *StorageTab) getFile(source string, destination string) {
 	//	t.logMessage("Mount bucket " + origin)
 	//})
 
-	cerr := RunCommand("xget", source, origin, destination)
+	cerr := nongui.RunCommand("xget", source, origin, destination)
 	if cerr != nil {
 		//ui.MsgBoxError(t.main.window, "Error", fmt.Sprintf("%v", cerr))
 		ui.QueueMain(func() {
@@ -655,7 +656,7 @@ func (t *StorageTab) removeFile(file File) {
 	//})
 
 	removeSuccess := false
-	cerr := RunCommand("remove", file.Name, origin)
+	cerr := nongui.RunCommand("remove", file.Name, origin)
 	if cerr != nil {
 		//ui.MsgBoxError(t.main.window, "Error", fmt.Sprintf("%v", cerr))
 		ui.QueueMain(func() {

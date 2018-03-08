@@ -6,6 +6,7 @@ import (
 	"io/ioutil"
 	"time"
 
+	"bitbucket.org/udt/wizefs/proto/nongui"
 	"github.com/leedark/ui"
 )
 
@@ -172,7 +173,7 @@ func (t *WalletTab) Init() {
 	t.NewTimer(60, t.ApiTicker)
 }
 
-func (t *WalletTab) updateWalletInfo(wallet *WalletCreateInfo) {
+func (t *WalletTab) updateWalletInfo(wallet *nongui.WalletCreateInfo) {
 	if wallet == nil {
 		return
 	}
@@ -220,7 +221,7 @@ func (t *WalletTab) reloadWalletsView() {
 
 func (t *WalletTab) onCreateWalletClicked(button *ui.Button) {
 	// wizeBlockAPI: create wallet
-	walletInfo, err := t.main.blockApi.PostWalletCreate(&WalletCreateRequest{})
+	walletInfo, err := t.main.blockApi.PostWalletCreate(&nongui.WalletCreateRequest{})
 	if err != nil {
 		fmt.Println("Create wallet error: ", err.Error())
 	}
@@ -265,7 +266,7 @@ func (t *WalletTab) onCreateWalletClicked(button *ui.Button) {
 func (t *WalletTab) afterCreateWallet() {
 	// create single bucket (directory)
 	origin := BucketOriginName
-	cerr := RunCommand("create", origin)
+	cerr := nongui.RunCommand("create", origin)
 	if cerr != nil {
 		fmt.Println("Create bucket error:", cerr.Error())
 		//ui.MsgBoxError(t.main.window, "Error", fmt.Sprintf("%v", cerr))
@@ -277,7 +278,7 @@ func (t *WalletTab) afterCreateWallet() {
 
 //
 
-func saveWalletInfo(wallet *WalletCreateInfo) (err error) {
+func saveWalletInfo(wallet *nongui.WalletCreateInfo) (err error) {
 	// Marshal
 	walletJson, err := json.MarshalIndent(&wallet, "  ", "  ")
 	if err != nil {
@@ -296,7 +297,7 @@ func saveWalletInfo(wallet *WalletCreateInfo) (err error) {
 	return
 }
 
-func loadWalletInfo() (wallet *WalletCreateInfo, err error) {
+func loadWalletInfo() (wallet *nongui.WalletCreateInfo, err error) {
 	// Read from file
 	js, err := ioutil.ReadFile(walletFilename)
 	if err != nil {
@@ -305,7 +306,7 @@ func loadWalletInfo() (wallet *WalletCreateInfo, err error) {
 	}
 
 	// Unmarshal
-	wallet = &WalletCreateInfo{}
+	wallet = &nongui.WalletCreateInfo{}
 	err = json.Unmarshal(js, &wallet)
 	if err != nil {
 		fmt.Printf("Failed to unmarshal wallet file")

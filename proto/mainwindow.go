@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"bitbucket.org/udt/wizefs/internal/config"
+	"bitbucket.org/udt/wizefs/proto/nongui"
 	"github.com/leedark/ui"
 )
 
@@ -18,11 +19,11 @@ type MainWindow struct {
 	walletTab  *WalletTab
 	storageTab *StorageTab
 
-	blockApi   *BlockApi
-	raftApi    *RaftApi
+	blockApi   *nongui.BlockApi
+	raftApi    *nongui.RaftApi
 	timeTicker *time.Ticker
 
-	walletInfo *WalletCreateInfo
+	walletInfo *nongui.WalletCreateInfo
 }
 
 func NewMainWindow() *MainWindow {
@@ -52,7 +53,7 @@ func (main *MainWindow) MountStorage() {
 	origin := BucketOriginName
 
 	// mount
-	cerr := RunCommand("mount", origin)
+	cerr := nongui.RunCommand("mount", origin)
 	if cerr != nil {
 		ui.MsgBoxError(main.window, "Mount Storage Error", fmt.Sprintf("%v", cerr))
 		return
@@ -67,7 +68,7 @@ func (main *MainWindow) UnmountStorage() {
 	origin := BucketOriginName
 
 	// unmount
-	cerr := RunCommand("unmount", origin)
+	cerr := nongui.RunCommand("unmount", origin)
 	if cerr != nil {
 		ui.MsgBoxError(main.window, "Unmount Storage Error", fmt.Sprintf("%v", cerr))
 	}
@@ -78,8 +79,8 @@ func (main *MainWindow) Init() {
 	//	main.MountStorage()
 	//}
 
-	main.blockApi = NewBlockApi()
-	main.raftApi = NewRaftApi()
+	main.blockApi = nongui.NewBlockApi()
+	main.raftApi = nongui.NewRaftApi()
 
 	main.NewTimer(60, main.ApiTicker)
 }
