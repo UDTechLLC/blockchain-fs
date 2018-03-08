@@ -77,3 +77,15 @@ func MountStorage(origin string) (cerr error) {
 func UnmountStorage(origin string) error {
 	return RunCommand("unmount", origin)
 }
+
+func PutFile(filename, origin string) error {
+	return RunCommand("put", filename, origin)
+}
+
+func GetFile(source, origin, destination string) error {
+	return RunCommand("xget", source, origin, destination)
+}
+
+func RemoveFile(filename, origin string) error {
+	return RunCommand("remove", filename, origin)
+}

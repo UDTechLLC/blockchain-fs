@@ -322,3 +322,22 @@ func SaveFileToRaft(file string, walletInfo *WalletCreateInfo, raftApi *RaftApi)
 
 	return nil
 }
+
+func RemoveFileFromRaft(fileRaft *FileRaftValue, walletInfo *WalletCreateInfo, raftApi *RaftApi) {
+	fmt.Println("shaKey:", fileRaft.ShaKey)
+	fmt.Println("cpkIndex:", fileRaft.CpkIndex)
+
+	raftApi.DeleteKey(fileRaft.ShaKey)
+	raftApi.DeleteKey(fileRaft.CpkIndex)
+
+	// TODO: we can fix cpkIndex0 for last cpkIndex?
+	lastIndex := walletInfo.PubKey + walletInfo.CpkZeroIndex
+	if fileRaft.CpkIndex == lastIndex {
+		// we can update CpkZeroIndex here!
+		fmt.Println("We can update CpkZeroIndex here")
+	}
+
+	// TODO: or we can rebuild index, yeah!
+	// TODO: or we can save file count with cpkIndex!?
+	// so cpkIndex will have 2 values: last cpkIndex and file count
+}

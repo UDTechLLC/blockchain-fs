@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	"path/filepath"
 	"time"
 
 	"bitbucket.org/udt/wizefs/internal/util"
@@ -176,7 +175,6 @@ func (t *StorageTab) reloadFilesView() {
 	//}
 
 	//
-	//fmt.Println("len:", len(t.db.Files))
 	if len(t.db.Files) > 0 {
 		t.buttonEnabled(true)
 	} else {
@@ -205,6 +203,8 @@ func (t *StorageTab) logMessage(message string) {
 }
 
 func (t *StorageTab) putFile(filename string) {
+	var cerr error
+
 	ui.QueueMain(func() {
 		t.buttonEnabled(false)
 		t.logMessage("Open file: " + filename)
@@ -212,8 +212,8 @@ func (t *StorageTab) putFile(filename string) {
 
 	origin := BucketOriginName
 
-	// mount
-	//cerr := RunCommand("mount", origin)
+	// mount?!
+	//cerr = nongui.MountStorage(origin)
 	//if cerr != nil {
 	//	//ui.MsgBoxError(t.main.window, "Error", fmt.Sprintf("%v", cerr))
 	//	ui.QueueMain(func() {
@@ -221,17 +221,14 @@ func (t *StorageTab) putFile(filename string) {
 	//		t.logMessage("Mount error: " + cerr.Error())
 	//	})
 	//	return
+	//} else {
+	//	ui.QueueMain(func() {
+	//		t.logMessage("Mount bucket " + origin)
+	//	})
 	//}
 
-	// TODO: we must wait until mount finishes its actions
-	// TODO: check ORIGIN? every 100 milliseconds
-	//time.Sleep(500 * time.Millisecond)
-	//ui.QueueMain(func() {
-	//	t.logMessage("Mount bucket " + origin)
-	//})
-
 	putSuccess := false
-	cerr := nongui.RunCommand("put", filename, origin)
+	cerr = nongui.PutFile(filename, origin)
 	if cerr != nil {
 		ui.QueueMain(func() {
 			t.logMessage("Put error: " + cerr.Error())
@@ -245,19 +242,19 @@ func (t *StorageTab) putFile(filename string) {
 		})
 	}
 
-	// unmount
-	//cerr = RunCommand("unmount", origin)
+	// unmount?!
+	//cerr = nongui.UnmountStorage(origin)
 	//if cerr != nil {
 	//	ui.QueueMain(func() {
 	//		t.logMessage("Unmount error: " + cerr.Error())
 	//	})
+	//	return
+	//} else {
+	//	ui.QueueMain(func() {
+	//		t.logMessage("Unmount bucket " + origin)
+	//	})
 	//}
 
-	//ui.QueueMain(func() {
-	//	t.logMessage("Unmount bucket " + origin)
-	//})
-
-	// TODO: add Key/Value to Raft here
 	if putSuccess {
 		nongui.SaveFileToRaft(filename, t.main.walletInfo, t.main.raftApi)
 		t.reloadFilesView()
@@ -276,8 +273,8 @@ func (t *StorageTab) getFile(source string, destination string) {
 
 	origin := BucketOriginName
 
-	// mount
-	//cerr := RunCommand("mount", origin)
+	// mount?!
+	//cerr = nongui.MountStorage(origin)
 	//if cerr != nil {
 	//	//ui.MsgBoxError(t.main.window, "Error", fmt.Sprintf("%v", cerr))
 	//	ui.QueueMain(func() {
@@ -285,18 +282,17 @@ func (t *StorageTab) getFile(source string, destination string) {
 	//		t.logMessage("Mount error: " + cerr.Error())
 	//	})
 	//	return
+	//} else {
+	//	ui.QueueMain(func() {
+	//		t.logMessage("Mount bucket " + origin)
+	//	})
 	//}
 
-	//time.Sleep(500 * time.Millisecond)
-	//ui.QueueMain(func() {
-	//	t.logMessage("Mount bucket " + origin)
-	//})
-
-	cerr := nongui.RunCommand("xget", source, origin, destination)
+	cerr := nongui.GetFile(source, origin, destination)
 	if cerr != nil {
 		//ui.MsgBoxError(t.main.window, "Error", fmt.Sprintf("%v", cerr))
 		ui.QueueMain(func() {
-			t.logMessage("Put error: " + cerr.Error())
+			t.logMessage("Get error: " + cerr.Error())
 		})
 	} else {
 		//time.Sleep(500 * time.Millisecond)
@@ -306,17 +302,20 @@ func (t *StorageTab) getFile(source string, destination string) {
 		})
 	}
 
-	// unmount
-	//cerr = RunCommand("unmount", origin)
+	// unmount?!
+	//cerr = nongui.UnmountStorage(origin)
 	//if cerr != nil {
-	//	//ui.MsgBoxError(t.main.window, "Error", fmt.Sprintf("%v", cerr))
 	//	ui.QueueMain(func() {
 	//		t.logMessage("Unmount error: " + cerr.Error())
+	//	})
+	//	return
+	//} else {
+	//	ui.QueueMain(func() {
+	//		t.logMessage("Unmount bucket " + origin)
 	//	})
 	//}
 
 	ui.QueueMain(func() {
-		//t.logMessage("Unmount bucket " + origin)
 		t.buttonEnabled(true)
 	})
 }
@@ -329,8 +328,8 @@ func (t *StorageTab) removeFile(file File) {
 
 	origin := BucketOriginName
 
-	// mount
-	//cerr := RunCommand("mount", origin)
+	// mount?!
+	//cerr = nongui.MountStorage(origin)
 	//if cerr != nil {
 	//	//ui.MsgBoxError(t.main.window, "Error", fmt.Sprintf("%v", cerr))
 	//	ui.QueueMain(func() {
@@ -338,15 +337,14 @@ func (t *StorageTab) removeFile(file File) {
 	//		t.logMessage("Mount error: " + cerr.Error())
 	//	})
 	//	return
+	//} else {
+	//	ui.QueueMain(func() {
+	//		t.logMessage("Mount bucket " + origin)
+	//	})
 	//}
 
-	//time.Sleep(500 * time.Millisecond)
-	//ui.QueueMain(func() {
-	//	t.logMessage("Mount bucket " + origin)
-	//})
-
 	removeSuccess := false
-	cerr := nongui.RunCommand("remove", file.Name, origin)
+	cerr := nongui.RemoveFile(file.Name, origin)
 	if cerr != nil {
 		//ui.MsgBoxError(t.main.window, "Error", fmt.Sprintf("%v", cerr))
 		ui.QueueMain(func() {
@@ -360,22 +358,28 @@ func (t *StorageTab) removeFile(file File) {
 		})
 	}
 
-	// unmount
-	//cerr = RunCommand("unmount", origin)
+	// unmount?!
+	//cerr = nongui.UnmountStorage(origin)
 	//if cerr != nil {
-	//	//ui.MsgBoxError(t.main.window, "Error", fmt.Sprintf("%v", cerr))
 	//	ui.QueueMain(func() {
 	//		t.logMessage("Unmount error: " + cerr.Error())
 	//	})
+	//	return
+	//} else {
+	//	ui.QueueMain(func() {
+	//		t.logMessage("Unmount bucket " + origin)
+	//	})
 	//}
 
-	//ui.QueueMain(func() {
-	//	t.logMessage("Unmount bucket " + origin)
-	//})
-
-	// TODO: add Key/Value to Raft here
 	if removeSuccess {
-		t.removeFileFromRaft(file)
+		fileRaft := &nongui.FileRaftValue{
+			Filename:  file.Name,
+			TimeStamp: file.Timestamp,
+			ShaKey:    file.shaKey,
+			CpkIndex:  file.cpkIndex,
+		}
+
+		nongui.RemoveFileFromRaft(fileRaft, t.main.walletInfo, t.main.raftApi)
 		t.reloadFilesView()
 	}
 
@@ -384,36 +388,14 @@ func (t *StorageTab) removeFile(file File) {
 	})
 }
 
-func (t *StorageTab) removeFileFromRaft(file File) {
-	fmt.Println("shaKey:", file.shaKey)
-	fmt.Println("cpkIndex:", file.cpkIndex)
-
-	t.main.raftApi.DeleteKey(file.shaKey)
-	t.main.raftApi.DeleteKey(file.cpkIndex)
-
-	// TODO: we can fix cpkIndex0 for last cpkIndex?
-	lastIndex := t.main.walletInfo.PubKey + t.main.walletInfo.CpkZeroIndex
-	if file.cpkIndex == lastIndex {
-		// we can update CpkZeroIndex here!
-		fmt.Println("We can update CpkZeroIndex here")
-	}
-
-	// TODO: or we can rebuild index, yeah!
-
-	// TODO: or we can save file count with cpkIndex!?
-	// so cpkIndex will have 2 values: last cpkIndex and file count
-}
-
 func (t *StorageTab) onPutFileClicked(button *ui.Button) {
-	// chech wallet info existing
+	// check wallet info existing
 	if t.main.walletInfo == nil {
 		fmt.Printf("walletInfo is nil\n")
 		return
 	}
 
 	file := ui.OpenFile(t.main.window, util.UserHomeDir()+"/*.*")
-	//fmt.Println("file: ", file)
-
 	if file == "" {
 		ui.MsgBoxError(t.main.window, "Error",
 			fmt.Sprintf("Please, select file for putting it to storage"))
@@ -424,7 +406,7 @@ func (t *StorageTab) onPutFileClicked(button *ui.Button) {
 }
 
 func (t *StorageTab) onGetFileClicked(button *ui.Button) {
-	// chech wallet info existing
+	// check wallet info existing
 	if t.main.walletInfo == nil {
 		fmt.Printf("walletInfo is nil\n")
 		return
@@ -439,25 +421,20 @@ func (t *StorageTab) onGetFileClicked(button *ui.Button) {
 	idx := sel[0]
 	dbitem := t.db.Files[idx]
 	filename := dbitem.Name
-	fmt.Println("filename:", filename)
 
 	// save file to path
 	filenameSave := ui.SaveFile(t.main.window, util.UserHomeDir()+"/"+filename)
-	fmt.Println("filenameSave: ", filenameSave)
 	if filenameSave == "" {
 		ui.MsgBoxError(t.main.window, "Error",
 			fmt.Sprintf("Please, select file for gettig it from storage"))
 		return
 	}
 
-	filePath := filepath.Dir(filenameSave)
-	fmt.Println("filePath:", filePath)
-
 	go t.getFile(filename, filenameSave)
 }
 
 func (t *StorageTab) onRemoveFileClicked(button *ui.Button) {
-	// chech wallet info existing
+	// check wallet info existing
 	if t.main.walletInfo == nil {
 		fmt.Printf("walletInfo is nil\n")
 		return
