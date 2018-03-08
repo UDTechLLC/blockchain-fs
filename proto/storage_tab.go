@@ -426,10 +426,10 @@ func (t *StorageTab) onGetFileClicked(button *ui.Button) {
 	filename := dbitem.Name
 
 	// save file to path
-	filenameSave := ui.SaveFile(t.main.window, util.UserHomeDir()+"/"+filename)
+	filenameSave := ui.SaveFile(t.main.window, filename)
 	if filenameSave == "" {
-		ui.MsgBoxError(t.main.window, "Error",
-			fmt.Sprintf("Please, select file for gettig it from storage"))
+		//ui.MsgBoxError(t.main.window, "Error",
+		//	fmt.Sprintf("Please, select file for gettig it from storage"))
 		return
 	}
 
