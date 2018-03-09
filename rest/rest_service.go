@@ -1,12 +1,12 @@
 package main
 
 import (
-	"encoding/json"
-	"io"
 	"log"
 	"net"
 	"net/http"
-	"strings"
+
+	"github.com/gorilla/mux"
+	"github.com/urfave/negroni"
 )
 
 // Service provides HTTP service.
@@ -24,8 +24,17 @@ func NewService(addr string) *Service {
 
 // Start starts the service.
 func (s *Service) Start() error {
+	// Get the mux router object
+	router := mux.NewRouter().StrictSlash(false)
+	router.HandleFunc("/", Home)
+	router.HandleFunc("/bucket", Bucket).Methods("GET")
+
+	// Create a negroni instance
+	n := negroni.Classic()
+	n.UseHandler(router)
+
 	server := http.Server{
-		Handler: s,
+		Handler: n,
 	}
 
 	ln, err := net.Listen("tcp", s.addr)
@@ -33,8 +42,6 @@ func (s *Service) Start() error {
 		return err
 	}
 	s.ln = ln
-
-	http.Handle("/", s)
 
 	go func() {
 		err := server.Serve(s.ln)
@@ -49,30 +56,5 @@ func (s *Service) Start() error {
 // Close closes the service.
 func (s *Service) Close() {
 	s.ln.Close()
-	return
-}
-
-// ServeHTTP allows Service to serve HTTP requests.
-func (s *Service) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	if strings.HasPrefix(r.URL.Path, "/bucket") {
-		s.handleBucketRequest(w, r)
-	} else {
-		w.WriteHeader(http.StatusNotFound)
-	}
-}
-
-func (s *Service) handleBucketRequest(w http.ResponseWriter, r *http.Request) {
-	//w.WriteHeader(http.StatusOK)
-	k := "hello"
-	v := "rest"
-
-	b, err := json.Marshal(map[string]string{k: v})
-	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		return
-	}
-
-	io.WriteString(w, string(b))
-
 	return
 }
