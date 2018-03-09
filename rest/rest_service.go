@@ -28,6 +28,7 @@ func (s *Service) Start() error {
 	router := mux.NewRouter().StrictSlash(false)
 	router.HandleFunc("/", Home)
 	router.HandleFunc("/buckets", CreateBucket).Methods("POST")
+	router.HandleFunc("/buckets/{origin}", DeleteBucket).Methods("DELETE")
 
 	// Create a negroni instance
 	n := negroni.Classic()

@@ -2,11 +2,12 @@ package main
 
 import (
 	"encoding/json"
+	"fmt"
 	"log"
 	"net/http"
-	"strconv"
 
 	api "bitbucket.org/udt/wizefs/internal/command"
+	"github.com/gorilla/mux"
 )
 
 type BucketModel struct {
@@ -43,13 +44,30 @@ func CreateBucket(w http.ResponseWriter, r *http.Request) {
 	log.Println("bucketResource:", bucketResource)
 
 	if exitCode, err := api.ApiCreate(bucketResource.Data.Origin); err != nil {
-		displayAppError(w, err, err.Error()+" ExitCode: "+strconv.Itoa(exitCode), 500)
+		displayAppError(w, err,
+			fmt.Sprintf("Error: %s Exit code: %d", err.Error(), exitCode),
+			500)
 		return
 	}
 
 	respondWithJSON(w, http.StatusCreated, "CREATED")
 
 	return
+}
+
+func DeleteBucket(w http.ResponseWriter, r *http.Request) {
+	// Get origin from the incoming url
+	vars := mux.Vars(r)
+	origin := vars["origin"]
+	//Delete a bucket
+	if exitCode, err := api.ApiDelete(origin); err != nil {
+		displayAppError(w, err,
+			fmt.Sprintf("Error: %s Exit code: %d", err.Error(), exitCode),
+			500)
+		return
+	}
+
+	w.WriteHeader(http.StatusNoContent)
 }
 
 func displayAppError(w http.ResponseWriter, handlerError error, message string, code int) {
@@ -70,4 +88,5 @@ func respondWithJSON(w http.ResponseWriter, code int, payload interface{}) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(code)
 	w.Write(response)
+	w.Write([]byte("\n"))
 }
