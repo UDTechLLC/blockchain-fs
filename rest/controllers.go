@@ -5,10 +5,29 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"os/exec"
+	"runtime"
+	"strings"
+	"syscall"
 
 	api "bitbucket.org/udt/wizefs/internal/command"
 	"github.com/gorilla/mux"
 )
+
+const (
+	packagePath = "rest"
+	mountApp    = "cmd/wizefs_mount/wizefs_mount"
+)
+
+var (
+	projectPath = getProjectPath()
+)
+
+func getProjectPath() string {
+	_, testFilename, _, _ := runtime.Caller(0)
+	idx := strings.Index(testFilename, packagePath)
+	return testFilename[0:idx]
+}
 
 type BucketModel struct {
 	Origin string `json:"origin"`
@@ -36,13 +55,14 @@ func CreateBucket(w http.ResponseWriter, r *http.Request) {
 	var bucketResource BucketResource
 	// Decode the incoming Bucket json
 	err := json.NewDecoder(r.Body).Decode(&bucketResource)
-	if err != nil {
+	if err != nil ||
+		bucketResource.Data.Origin == "" {
+
 		displayAppError(w, err, "Invalid Bucket data", 500)
 		return
 	}
 
-	log.Println("bucketResource:", bucketResource)
-
+	// Create a Bucket
 	if exitCode, err := api.ApiCreate(bucketResource.Data.Origin); err != nil {
 		displayAppError(w, err,
 			fmt.Sprintf("Error: %s Exit code: %d", err.Error(), exitCode),
@@ -51,16 +71,63 @@ func CreateBucket(w http.ResponseWriter, r *http.Request) {
 	}
 
 	respondWithJSON(w, http.StatusCreated, "CREATED")
-
-	return
 }
 
 func DeleteBucket(w http.ResponseWriter, r *http.Request) {
 	// Get origin from the incoming url
 	vars := mux.Vars(r)
 	origin := vars["origin"]
-	//Delete a bucket
+	// Delete a Bucket
 	if exitCode, err := api.ApiDelete(origin); err != nil {
+		displayAppError(w, err,
+			fmt.Sprintf("Error: %s Exit code: %d", err.Error(), exitCode),
+			500)
+		return
+	}
+
+	w.WriteHeader(http.StatusNoContent)
+}
+
+func MountBucket(w http.ResponseWriter, r *http.Request) {
+	// Get origin from the incoming url
+	vars := mux.Vars(r)
+	origin := vars["origin"]
+
+	// Mount a Bucket via mount App
+	appPath := projectPath + mountApp
+	c := exec.Command(appPath, origin)
+	cerr := c.Start()
+	if cerr != nil {
+		displayAppError(w, cerr,
+			fmt.Sprintf("starting command failed: %v", cerr),
+			500)
+		return
+	}
+
+	cerr = c.Wait()
+	if cerr != nil {
+		if exiterr, ok := cerr.(*exec.ExitError); ok {
+			if waitstat, ok := exiterr.Sys().(syscall.WaitStatus); ok {
+				displayAppError(w, cerr,
+					fmt.Sprintf("wait returned an exit status: %d", waitstat.ExitStatus()),
+					500)
+			}
+		} else {
+			displayAppError(w, cerr,
+				fmt.Sprintf("wait returned an unknown error: %v", cerr),
+				500)
+		}
+	}
+
+	w.WriteHeader(http.StatusNoContent)
+}
+
+func UnmountBucket(w http.ResponseWriter, r *http.Request) {
+	// Get origin from the incoming url
+	vars := mux.Vars(r)
+	origin := vars["origin"]
+	// Unmount a Bucket
+	if exitCode, err := api.ApiUnmount(origin); err != nil {
 		displayAppError(w, err,
 			fmt.Sprintf("Error: %s Exit code: %d", err.Error(), exitCode),
 			500)
