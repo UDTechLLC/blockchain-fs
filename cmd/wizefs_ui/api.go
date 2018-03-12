@@ -10,7 +10,8 @@ import (
 )
 
 const (
-	packagePath = "ui"
+	packagePath = "cmd/wizefs_ui"
+	cliApp      = "cmd/wizefs_cli/wizefs_cli"
 )
 
 var (
@@ -24,7 +25,7 @@ func getProjectPath() string {
 }
 
 func RunCommand(arg ...string) (cerr error) {
-	appPath := projectPath + "wizefs"
+	appPath := projectPath + cliApp
 
 	var outbuf, errbuf bytes.Buffer
 	c := exec.Command(appPath, arg...)
