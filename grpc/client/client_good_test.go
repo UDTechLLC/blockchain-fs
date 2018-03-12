@@ -129,6 +129,8 @@ func TestFullCircle(t *testing.T) {
 		}
 		t.Logf("Response message: %s.", respPut.Message)
 		time.Sleep(3 * time.Second)
+	} else {
+		t.Fatalf("We have problem with read file: %v", err)
 	}
 
 	// Get
