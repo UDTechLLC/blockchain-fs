@@ -76,21 +76,22 @@ func (s *wizefsServer) Mount(ctx context.Context, request *FilesystemRequest) (r
 	cerr := c.Start()
 	if cerr != nil {
 		message = fmt.Sprintf("starting command failed: %v", cerr)
-	}
-	//tlog.Info.Printf("starting command...")
-	cerr = c.Wait()
-	if cerr != nil {
-		if exiterr, ok := cerr.(*exec.ExitError); ok {
-			if waitstat, ok := exiterr.Sys().(syscall.WaitStatus); ok {
-				response.Executed = true
-				response.Message = fmt.Sprintf("wait returned an exit status: %d", waitstat.ExitStatus())
+	} else {
+		//tlog.Info.Printf("starting command...")
+		cerr = c.Wait()
+		if cerr != nil {
+			if exiterr, ok := cerr.(*exec.ExitError); ok {
+				if waitstat, ok := exiterr.Sys().(syscall.WaitStatus); ok {
+					response.Executed = true
+					response.Message = fmt.Sprintf("wait returned an exit status: %d", waitstat.ExitStatus())
+				}
+			} else {
+				response.Executed = false
+				response.Message = fmt.Sprintf("wait returned an unknown error: %v", cerr)
 			}
-		} else {
-			response.Executed = false
-			response.Message = fmt.Sprintf("wait returned an unknown error: %v", cerr)
 		}
+		//tlog.Info.Printf("ending command...")
 	}
-	//tlog.Info.Printf("ending command...")
 
 	return
 }
