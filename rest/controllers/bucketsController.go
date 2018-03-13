@@ -1,51 +1,15 @@
-package main
+package controllers
 
 import (
 	"encoding/json"
 	"fmt"
-	"log"
 	"net/http"
 	"os/exec"
-	"runtime"
-	"strings"
 	"syscall"
 
 	api "bitbucket.org/udt/wizefs/internal/command"
 	"github.com/gorilla/mux"
 )
-
-const (
-	packagePath = "rest"
-	mountApp    = "cmd/wizefs_mount/wizefs_mount"
-)
-
-var (
-	projectPath = getProjectPath()
-)
-
-func getProjectPath() string {
-	_, testFilename, _, _ := runtime.Caller(0)
-	idx := strings.Index(testFilename, packagePath)
-	return testFilename[0:idx]
-}
-
-type BucketModel struct {
-	Origin string `json:"origin"`
-}
-
-type BucketResource struct {
-	Data BucketModel `json:"data"`
-}
-
-type appError struct {
-	Error      string `json:"error"`
-	Message    string `json:"message"`
-	HttpStatus int    `json:"status"`
-}
-
-type errorResource struct {
-	Data appError `json:"data"`
-}
 
 func Home(w http.ResponseWriter, r *http.Request) {
 	respondWithJSON(w, http.StatusOK, "HOME")
@@ -57,8 +21,7 @@ func CreateBucket(w http.ResponseWriter, r *http.Request) {
 	err := json.NewDecoder(r.Body).Decode(&bucketResource)
 	if err != nil ||
 		bucketResource.Data.Origin == "" {
-
-		displayAppError(w, err, "Invalid Bucket data", 500)
+		displayAppError(w, err, "Invalid Bucket data", http.StatusInternalServerError)
 		return
 	}
 
@@ -66,32 +29,58 @@ func CreateBucket(w http.ResponseWriter, r *http.Request) {
 	if exitCode, err := api.ApiCreate(bucketResource.Data.Origin); err != nil {
 		displayAppError(w, err,
 			fmt.Sprintf("Error: %s Exit code: %d", err.Error(), exitCode),
-			500)
+			http.StatusInternalServerError)
 		return
 	}
 
-	respondWithJSON(w, http.StatusCreated, "CREATED")
+	respondWithJSON(w, http.StatusCreated,
+		&BucketResponse{
+			Success: true,
+			Message: "Bucket was created!",
+			Bucket:  bucketResource,
+		})
 }
 
 func DeleteBucket(w http.ResponseWriter, r *http.Request) {
 	// Get origin from the incoming url
 	vars := mux.Vars(r)
 	origin := vars["origin"]
+
+	if origin == "" {
+		displayAppError(w, nil,
+			"Please check request URL!",
+			http.StatusInternalServerError)
+		return
+	}
+
 	// Delete a Bucket
 	if exitCode, err := api.ApiDelete(origin); err != nil {
 		displayAppError(w, err,
 			fmt.Sprintf("Error: %s Exit code: %d", err.Error(), exitCode),
-			500)
+			http.StatusInternalServerError)
 		return
 	}
 
-	w.WriteHeader(http.StatusNoContent)
+	//w.WriteHeader(http.StatusNoContent)
+	respondWithJSON(w, http.StatusOK,
+		&BucketResponse{
+			Success: true,
+			Message: "Bucket was deleted!",
+			Bucket:  BucketResource{Data: BucketModel{Origin: origin}},
+		})
 }
 
 func MountBucket(w http.ResponseWriter, r *http.Request) {
 	// Get origin from the incoming url
 	vars := mux.Vars(r)
 	origin := vars["origin"]
+
+	if origin == "" {
+		displayAppError(w, nil,
+			"Please check request URL!",
+			http.StatusInternalServerError)
+		return
+	}
 
 	// Mount a Bucket via mount App
 	appPath := projectPath + mountApp
@@ -100,7 +89,7 @@ func MountBucket(w http.ResponseWriter, r *http.Request) {
 	if cerr != nil {
 		displayAppError(w, cerr,
 			fmt.Sprintf("starting command failed: %v", cerr),
-			500)
+			http.StatusInternalServerError)
 		return
 	}
 
@@ -110,50 +99,49 @@ func MountBucket(w http.ResponseWriter, r *http.Request) {
 			if waitstat, ok := exiterr.Sys().(syscall.WaitStatus); ok {
 				displayAppError(w, cerr,
 					fmt.Sprintf("wait returned an exit status: %d", waitstat.ExitStatus()),
-					500)
+					http.StatusInternalServerError)
 			}
 		} else {
 			displayAppError(w, cerr,
 				fmt.Sprintf("wait returned an unknown error: %v", cerr),
-				500)
+				http.StatusInternalServerError)
 		}
 	}
 
-	w.WriteHeader(http.StatusNoContent)
+	//w.WriteHeader(http.StatusNoContent)
+	respondWithJSON(w, http.StatusOK,
+		&BucketResponse{
+			Success: true,
+			Message: "Bucket was mounted!",
+			Bucket:  BucketResource{Data: BucketModel{Origin: origin}},
+		})
 }
 
 func UnmountBucket(w http.ResponseWriter, r *http.Request) {
 	// Get origin from the incoming url
 	vars := mux.Vars(r)
 	origin := vars["origin"]
+
+	if origin == "" {
+		displayAppError(w, nil,
+			"Please check request URL!",
+			http.StatusInternalServerError)
+		return
+	}
+
 	// Unmount a Bucket
 	if exitCode, err := api.ApiUnmount(origin); err != nil {
 		displayAppError(w, err,
 			fmt.Sprintf("Error: %s Exit code: %d", err.Error(), exitCode),
-			500)
+			http.StatusInternalServerError)
 		return
 	}
 
-	w.WriteHeader(http.StatusNoContent)
-}
-
-func displayAppError(w http.ResponseWriter, handlerError error, message string, code int) {
-	errObj := appError{
-		Error:      handlerError.Error(),
-		Message:    message,
-		HttpStatus: code,
-	}
-
-	log.Printf("[AppError]: %s\n", handlerError)
-
-	respondWithJSON(w, code, errorResource{Data: errObj})
-}
-
-func respondWithJSON(w http.ResponseWriter, code int, payload interface{}) {
-	response, _ := json.Marshal(payload)
-
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(code)
-	w.Write(response)
-	w.Write([]byte("\n"))
+	//w.WriteHeader(http.StatusNoContent)
+	respondWithJSON(w, http.StatusOK,
+		&BucketResponse{
+			Success: true,
+			Message: "Bucket was unmounted!",
+			Bucket:  BucketResource{Data: BucketModel{Origin: origin}},
+		})
 }
