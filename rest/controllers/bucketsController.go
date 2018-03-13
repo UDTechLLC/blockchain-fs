@@ -84,6 +84,7 @@ func MountBucket(w http.ResponseWriter, r *http.Request) {
 
 	// Mount a Bucket via mount App
 	appPath := projectPath + mountApp
+	fmt.Println("appPath:", appPath)
 	c := exec.Command(appPath, origin)
 	cerr := c.Start()
 	if cerr != nil {
@@ -100,11 +101,13 @@ func MountBucket(w http.ResponseWriter, r *http.Request) {
 				displayAppError(w, cerr,
 					fmt.Sprintf("wait returned an exit status: %d", waitstat.ExitStatus()),
 					http.StatusInternalServerError)
+				return
 			}
 		} else {
 			displayAppError(w, cerr,
 				fmt.Sprintf("wait returned an unknown error: %v", cerr),
 				http.StatusInternalServerError)
+			return
 		}
 	}
 
