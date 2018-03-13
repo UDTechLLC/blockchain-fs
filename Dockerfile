@@ -19,6 +19,7 @@ WORKDIR /go/src/bitbucket.org/udt/wizefs
 
 # Just build CLI App and REST API Service
 RUN go build -o ./cmd/wizefs_cli/wizefs_cli -v ./cmd/wizefs_cli
+RUN go build -o ./cmd/wizefs_mount/wizefs_mount -v ./cmd/wizefs_mount
 RUN go build -o ./rest/rest_service -v ./rest
 
 # if dev setting will use pilu/fresh for code reloading via docker-compose volume sharing with local machine
