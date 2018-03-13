@@ -27,12 +27,13 @@ import (
 // Called from main.
 func DoMount(fstype config.FSType,
 	origin, originPath, mountpoint, mountpointPath string,
-	notifypid int) int {
-
-	var err error
+	notifypid int) (exitCode int, err error) {
 
 	// Initialize FUSE server
-	srv := initFuseFrontend(fstype, originPath, mountpointPath)
+	srv, exitCode, err := initFuseFrontend(fstype, originPath, mountpointPath)
+	if exitCode != 0 || err != nil {
+
+	}
 	tlog.Debug.Println("Filesystem mounted and ready.")
 
 	// We have been forked into the background, as evidenced by the set
@@ -90,7 +91,7 @@ func DoMount(fstype config.FSType,
 
 	// Jump into server loop. Returns when it gets an umount request from the kernel.
 	srv.Serve()
-	return 0
+	return 0, nil
 }
 
 // DoUnmount tries to umount "dir" and panics on error.
@@ -138,7 +139,7 @@ func setOpenFileLimit() {
 
 // initFuseFrontend - initialize wizefs/fusefrontend
 // Calls os.Exit on errors
-func initFuseFrontend(fstype config.FSType, originPath, mountpointPath string) *fuse.Server {
+func initFuseFrontend(fstype config.FSType, originPath, mountpointPath string) (*fuse.Server, int, error) {
 	// Reconciliate CLI and config file arguments into a fusefrontend.Args struct
 	// that is passed to the filesystem implementation
 	frontendArgs := fusefrontend.Args{
@@ -152,7 +153,8 @@ func initFuseFrontend(fstype config.FSType, originPath, mountpointPath string) *
 	// Prepare root
 	root := prepareRoot(frontendArgs)
 	if root == nil {
-		os.Exit(globals.ExitType)
+		//os.Exit(globals.ExitType)
+		return nil, globals.ExitType, nil
 	}
 
 	fuseOpts := &nodefs.Options{
@@ -196,6 +198,7 @@ func initFuseFrontend(fstype config.FSType, originPath, mountpointPath string) *
 			tlog.Warn.Println("Maybe you should run: /Library/Filesystems/osxfuse.fs/Contents/Resources/load_osxfuse")
 		}
 		os.Exit(globals.ExitFuseNewServer)
+		//return nil, globals.ExitFuseNewServer, err
 	}
 
 	// All FUSE file and directory create calls carry explicit permission
@@ -203,7 +206,7 @@ func initFuseFrontend(fstype config.FSType, originPath, mountpointPath string) *
 	// directories with the requested permissions.
 	syscall.Umask(0000)
 
-	return srv
+	return srv, 0, nil
 }
 
 // TODO: move to fusefrontend?

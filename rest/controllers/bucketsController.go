@@ -1,6 +1,7 @@
 package controllers
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -82,10 +83,16 @@ func MountBucket(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// FIXME: clean/reset buffer memory?
+	var outbuf, errbuf bytes.Buffer
+
 	// Mount a Bucket via mount App
 	appPath := projectPath + mountApp
 	fmt.Println("appPath:", appPath)
 	c := exec.Command(appPath, origin)
+	c.Stdout = &outbuf
+	c.Stderr = &errbuf
+
 	cerr := c.Start()
 	if cerr != nil {
 		displayAppError(w, cerr,
@@ -99,13 +106,13 @@ func MountBucket(w http.ResponseWriter, r *http.Request) {
 		if exiterr, ok := cerr.(*exec.ExitError); ok {
 			if waitstat, ok := exiterr.Sys().(syscall.WaitStatus); ok {
 				displayAppError(w, cerr,
-					fmt.Sprintf("wait returned an exit status: %d", waitstat.ExitStatus()),
+					fmt.Sprintf("wait returned an exit status: %d [%s]", waitstat.ExitStatus(), errbuf.String()[:errbuf.Len()-1]),
 					http.StatusInternalServerError)
 				return
 			}
 		} else {
 			displayAppError(w, cerr,
-				fmt.Sprintf("wait returned an unknown error: %v", cerr),
+				fmt.Sprintf("wait returned an unknown error: %v [%s]", cerr, errbuf.String()[:errbuf.Len()-1]),
 				http.StatusInternalServerError)
 			return
 		}

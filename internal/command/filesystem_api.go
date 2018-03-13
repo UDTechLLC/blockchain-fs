@@ -272,10 +272,10 @@ func ApiMount(origin string, notifypid int) (exitCode int, err error) {
 	tlog.Debug.Printf("Mount Filesystem %s into %s", originPath, mountpointPath)
 
 	// Do mounting with options
-	ret := util.DoMount(fstype, origin, originPath, mountpoint, mountpointPath, notifypid)
-	if ret != 0 {
-		//os.Exit(ret)
-		return ret, nil
+	exitCode, err = util.DoMount(fstype, origin, originPath, mountpoint, mountpointPath, notifypid)
+	if exitCode != 0 || err != nil {
+		//os.Exit(exitCode)
+		return exitCode, err
 	}
 
 	// Don't call os.Exit on success to give deferred functions a chance to

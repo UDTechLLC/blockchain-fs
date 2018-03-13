@@ -27,6 +27,7 @@ func getProjectPath() string {
 func RunCommand(arg ...string) (cerr error) {
 	appPath := projectPath + cliApp
 
+	// FIXME: clean/reset buffer memory?
 	var outbuf, errbuf bytes.Buffer
 	c := exec.Command(appPath, arg...)
 	c.Stdout = &outbuf
