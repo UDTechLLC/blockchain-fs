@@ -39,6 +39,12 @@ func ApiCreate(origin string) (exitCode int, err error) {
 	//	return
 	//}
 
+	if origin == "" {
+		// TEST: TestCreateInvalidOrigin
+		return globals.ExitOrigin,
+			fmt.Errorf("Invalid origin: ['%s'].", origin)
+	}
+
 	originPath := globals.OriginDirPath + origin
 	fstype, err := checkOriginType(originPath)
 	if err != nil {

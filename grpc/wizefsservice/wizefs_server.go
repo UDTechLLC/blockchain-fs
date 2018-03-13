@@ -3,7 +3,9 @@ package wizefsservice
 import (
 	"fmt"
 	"os/exec"
+	"runtime"
 	"strconv"
+	"strings"
 	"syscall"
 
 	"golang.org/x/net/context"
@@ -11,6 +13,21 @@ import (
 	api "bitbucket.org/udt/wizefs/internal/command"
 	_ "bitbucket.org/udt/wizefs/internal/tlog"
 )
+
+const (
+	packagePath = "grpc"
+	mountApp    = "cmd/wizefs_mount/wizefs_mount"
+)
+
+var (
+	projectPath = getProjectPath()
+)
+
+func getProjectPath() string {
+	_, testFilename, _, _ := runtime.Caller(0)
+	idx := strings.Index(testFilename, packagePath)
+	return testFilename[0:idx]
+}
 
 type wizefsServer struct {
 }
@@ -54,25 +71,27 @@ func (s *wizefsServer) Mount(ctx context.Context, request *FilesystemRequest) (r
 		Message:  message,
 	}
 
-	c := exec.Command("../mount/mount", origin)
+	appPath := projectPath + mountApp
+	c := exec.Command(appPath, origin)
 	cerr := c.Start()
 	if cerr != nil {
 		message = fmt.Sprintf("starting command failed: %v", cerr)
-	}
-	//tlog.Info.Printf("starting command...")
-	cerr = c.Wait()
-	if cerr != nil {
-		if exiterr, ok := cerr.(*exec.ExitError); ok {
-			if waitstat, ok := exiterr.Sys().(syscall.WaitStatus); ok {
-				response.Executed = true
-				response.Message = fmt.Sprintf("wait returned an exit status: %d", waitstat.ExitStatus())
+	} else {
+		//tlog.Info.Printf("starting command...")
+		cerr = c.Wait()
+		if cerr != nil {
+			if exiterr, ok := cerr.(*exec.ExitError); ok {
+				if waitstat, ok := exiterr.Sys().(syscall.WaitStatus); ok {
+					response.Executed = true
+					response.Message = fmt.Sprintf("wait returned an exit status: %d", waitstat.ExitStatus())
+				}
+			} else {
+				response.Executed = false
+				response.Message = fmt.Sprintf("wait returned an unknown error: %v", cerr)
 			}
-		} else {
-			response.Executed = false
-			response.Message = fmt.Sprintf("wait returned an unknown error: %v", cerr)
 		}
+		//tlog.Info.Printf("ending command...")
 	}
-	//tlog.Info.Printf("ending command...")
 
 	return
 }
