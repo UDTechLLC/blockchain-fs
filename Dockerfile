@@ -1,6 +1,9 @@
 # Golang image where workspace (GOPATH) configured at /go.
 FROM golang:1.9
 
+# FUSE
+RUN apt-get update && apt-get install fuse -y
+
 # Copy the local package files to the container’s workspace.
 ADD . /go/src/bitbucket.org/udt/wizefs
 

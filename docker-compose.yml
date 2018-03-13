@@ -3,5 +3,14 @@ services:
   
   rest:
     build: .
+
+# FUSE inside Docker: https://stackoverflow.com/questions/48402218/fuse-inside-docker
+    devices:
+      - "/dev/fuse:/dev/fuse"
+#    privileged: true
+    cap_add:
+      - SYS_ADMIN
+    security_opt:
+      - apparmor:unconfined
     ports:
       - "13000:13000"
