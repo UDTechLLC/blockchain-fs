@@ -24,7 +24,7 @@ or you can build it right in the root directory:
 ### gRPC Server and Client
 
 
-gRPC applications are located at the grpc directory:
+gRPC applications are located at the **grpc** directory:
 `$GOPATH/src/bitbucket.org/udt/wizefs/grpc`
 
 You should build **wizefs_mount application** before building gRPC Server and gRPC Client.
@@ -39,6 +39,19 @@ Also you can run from root directory `$GOPATH/src/bitbucket.org/udt/wizefs` this
 `go build -o ./cmd/wizefs_mount/wizefs_mount -v ./cmd/wizefs_mount`
 
 Then you should build 2 commands independently by going to the appropriate folder in advance: `grpc/server` and `grpc/client`.
+
+### REST Service
+
+REST Service is located at the **rest** directory:
+`$GOPATH/src/bitbucket.org/udt/wizefs/rest`
+
+You should go to this directory and run `go build`.
+
+Also you should build **wizefs_mount application** before REST Service. See more details in topic **gRPC Server and Client**.
+
+### WizeFS Docker node (with REST Service running inside)
+
+You can start WizeFS Docker node with `./start.sh`
 
 ### GUI application
 
@@ -71,7 +84,11 @@ ORIGIN is single name of bucket. It is not directory with full path, just name o
 
 `Bucket`
 
-Bucket for WizeFS is a synonym of FUSE-based filesystem. Currently there are 3 basic types of filesystems (and buckets): Loopback Filesystem (or simply LoopbackFS), Zipped Filesystem (or simply ZipFS) (read-only, in-memory) and Loopback Zipped Filesystem (or simply LZFS).
+Bucket for WizeFS is a synonym of FUSE-based filesystem. Currently there are 3 basic types of filesystems (and buckets):
+
+1.  Loopback Filesystem (or simply LoopbackFS)
+2.  Zipped Filesystem (or simply ZipFS) (read-only, in-memory)
+3.  Loopback Zipped Filesystem (or simply LZFS).
 
 
 ## API (Command-line interface)
@@ -125,7 +142,7 @@ Remove FILE (you should use only filename) from existing and mounted bucket with
 * Add Internal API: `verify`, `integrity`
 
 
-## gRPC methods
+## gRPC API methods
 
 
 gRPC methods are identical to CLI commands, just first symbol is capitalized.
@@ -265,6 +282,56 @@ type GetResponse struct {
 	Message  string `protobuf:"bytes,2,opt,name=message" json:"message,omitempty"`
 	Content  []byte `protobuf:"bytes,3,opt,name=content,proto3" json:"content,omitempty"`
 }
+```
+
+
+
+## REST API
+
+
+
+REST Service is listen on port 13000: `localhost:13000`
+
+### Create bucket ORIGIN
+
+```
+curl -X POST localhost:13000/buckets -d '{"data":{"origin":"ORIGIN"}}'
+```
+
+### Delete bucket ORIGIN
+
+```
+curl -X DELETE localhost:13000/buckets/ORIGIN
+```
+
+### Mount bucket ORIGIN
+
+```
+curl -X POST localhost:13000/buckets/ORIGIN/mount
+```
+
+### Unmount bucket ORIGIN
+
+```
+curl -X POST localhost:13000/buckets/ORIGIN/unmount
+```
+
+### Put file /PATH/FILE to bucket ORIGIN
+
+```
+curl -F "filename=@/PATH/FILE" -X POST localhost:13000/buckets/ORIGIN/putfile
+```
+
+### Get file FILE from bucket ORIGIN
+
+```
+curl -X GET localhost:13000/buckets/ORIGIN/files/FILE --output /PATH/FILE
+```
+
+### Remove file FILE from bucket ORIGIN
+
+```
+curl -X DELETE localhost:13000/buckets/ORIGIN/files/FILE
 ```
 
 
