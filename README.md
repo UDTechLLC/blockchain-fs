@@ -7,19 +7,38 @@ go version go1.9.2
 ### CLI application
 
 
-CLI application is located at the root project directory:
-[$GOPATH/src/bitbucket.org/udt/wizefs]
+wizefs_cli application is located here:
+`$GOPATH/src/bitbucket.org/udt/wizefs/cmd/wizefs_cli`
 
 You should go to this directory and run `go build`.
+
+Also you can run from root directory `$GOPATH/src/bitbucket.org/udt/wizefs` this command:
+
+`go build -o ./cmd/wizefs_cli/wizefs_cli -v ./cmd/wizefs_cli`
+
+or you can build it right in the root directory:
+
+`go build -v ./cmd/wizefs_cli`
 
 
 ### gRPC Server and Client
 
 
 gRPC applications are located at the grpc directory:
-[$GOPATH/src/bitbucket.org/udt/wizefs/grpc]
+`$GOPATH/src/bitbucket.org/udt/wizefs/grpc`
 
-You should build 3 commands independently by going to the appropriate folder in advance: grpc/mount, grpc/server and grpc/client.
+You should build **wizefs_mount application** before building gRPC Server and gRPC Client.
+
+wizefs_mount application is located here:
+`$GOPATH/src/bitbucket.org/udt/wizefs/cmd/wizefs_mount`
+
+You should go to this directory and run `go build`.
+
+Also you can run from root directory `$GOPATH/src/bitbucket.org/udt/wizefs` this command:
+
+`go build -o ./cmd/wizefs_mount/wizefs_mount -v ./cmd/wizefs_mount`
+
+Then you should build 2 commands independently by going to the appropriate folder in advance: `grpc/server` and `grpc/client`.
 
 ### GUI application
 
