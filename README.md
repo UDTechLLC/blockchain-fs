@@ -42,7 +42,7 @@ Then you should build 2 commands independently by going to the appropriate folde
 
 ### GUI application
 
-See [GUI README](ui/README.md)
+See [GUI README](cmd/wizefs_ui/README.md)
 
 
 ## Flags
@@ -67,7 +67,11 @@ It used internally for daemonization.
 
 `ORIGIN`
 
-ORIGIN is single name of filesystem. It is not directory with full path, just name or label for one of the many WizeFS filesystem.
+ORIGIN is single name of bucket. It is not directory with full path, just name or label for one of the many WizeFS buckets.
+
+`Bucket`
+
+Bucket for WizeFS is a synonym of FUSE-based filesystem. Currently there are 3 basic types of filesystems (and buckets): Loopback Filesystem (or simply LoopbackFS), Zipped Filesystem (or simply ZipFS) (read-only, in-memory) and Loopback Zipped Filesystem (or simply LZFS).
 
 
 ## API (Command-line interface)
@@ -75,45 +79,49 @@ ORIGIN is single name of filesystem. It is not directory with full path, just na
 
 `create ORIGIN`
 
-Create a new filesystem. 
-Now this command only checks if ORIGIN directory exists and create it if it is not exist. Also this command create config file for this filesystem (wizefs.conf).
+Create a new bucket. 
+Now this command only checks if ORIGIN directory exists and create it if it is not exist. Also this command create config file for this bucket (wizefs.conf) and add this bucket to `created` map of common config (wizedb.conf).
 
 ### create Issues
 
-* Check if filesystem is (isn't) mounted. Perhaps should add flag for auto-mounting after creating
+* Check if bucket is (isn't) mounted. Perhaps should add flag for auto-mounting after creating
 
 `delete ORIGIN`
 
-Delete an existing filesystem.
-Now this command only checks if ORIGIN directory exists and delete it in this case with config file.
+Delete an existing bucket.
+Now this command only checks if ORIGIN directory exists and delete it in this case with config file. Also this command delete bucket from `created` map of common config.
 
 ### delete Issues
 
-* Check if filesystem is mounted. Perhaps should add flag for auto-unmounting before deleting
+* Check if bucket is mounted. Perhaps should add flag for auto-unmounting before deleting
 
 `mount ORIGIN`
 
 Mount an existing ORIGIN (directory or zip file) into MOUNTPOINT (this directory now is creating by application in the WizeFS root directory).
-Also this command add filesystem (with all needed data) to common config (wizedb.conf).
+Also this command add bucket (with all needed data) to `mounted` map of common config (wizedb.conf).
 
 `unmount ORIGIN`
 
-Unmount an existing MOUNTPOINT (application can search it self by ORIGIN).
-Also this command delete filesystem from common config.
+Unmount an existing ORIGIN (application can search MOUNTPOINT by ORIGIN).
+Also this command delete bucket from `mounted` map of common config.
 
 `put FILE ORIGIN`
 
-Upload FILE (you can use full path to the file here) to existing and mounted filesystem with name (label) ORIGIN. Now it work only with directory-based filesystem.
+Upload FILE (you can use full path to the file here) to existing and mounted bucket with name (label) ORIGIN. Now it work only with directory-based bucket, but also you can experiment with LZFS bucket (zipped directory, with ORIGIN like archive.zip, currently only zip archive supported).
 
 `get FILE ORIGIN`
 
-Download FILE (you should use only filename now) from existing and mounted filesystem with name (label) ORIGIN to the current directory. Now it work only with directory-based filesystem.
+Download FILE (you should use only filename now) from existing and mounted bucket with name (label) ORIGIN to the current directory. Now it work only with directory-based bucket, but also you can experiment with LZFS bucket (zipped directory, with ORIGIN like archive.zip, currently only zip archive supported).
+
+`remove FILE ORIGIN`
+
+Remove FILE (you should use only filename) from existing and mounted bucket with name (label) ORIGIN. Now it work only with directory-based bucket, but also you can experiment with LZFS bucket (zipped directory, with ORIGIN like archive.zip, currently only zip archive supported).
 
 
 ### API Commands Issues
 
 * Add some other Filesystems API, like `check`, `list`
-* Add Files API: `remove`, `search`
+* Add Files API:  `search`
 * Add Internal API: `verify`, `integrity`
 
 
