@@ -23,8 +23,7 @@ type StorageApi interface {
 }
 
 type Storage struct {
-	DirPath string // globals.OriginDirPath
-	//Config        *config.WizeConfig //
+	DirPath string
 	buckets map[string]*Bucket
 }
 

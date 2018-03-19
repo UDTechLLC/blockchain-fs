@@ -5,7 +5,6 @@ import (
 	"os"
 	"runtime"
 
-	//api "bitbucket.org/udt/wizefs/internal/command"
 	"bitbucket.org/udt/wizefs/internal/config"
 	"bitbucket.org/udt/wizefs/internal/core"
 	"bitbucket.org/udt/wizefs/internal/tlog"
@@ -92,7 +91,6 @@ func main() {
 		os.Exit(1)
 	}
 
-	//exitCode, err := api.ApiMount(origin, args.notifypid)
 	exitCode, err := core.NewStorage().Mount(origin, args.notifypid)
 	if err != nil {
 		tlog.Warn.Println("Error with ApiMount: [%d] %v", exitCode, err)

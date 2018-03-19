@@ -6,7 +6,6 @@ import (
 	"io"
 	"net/http"
 
-	//api "bitbucket.org/udt/wizefs/internal/command"
 	"github.com/gorilla/mux"
 )
 
@@ -47,7 +46,6 @@ func PutFile(w http.ResponseWriter, r *http.Request) {
 	io.Copy(&buf, file)
 	defer buf.Reset()
 
-	//if exitCode, err := api.ApiPut(filename, origin, buf.Bytes()); err != nil {
 	bucket, ok := storage.Bucket(origin)
 	if !ok {
 		displayAppError(w, nil,
@@ -85,7 +83,6 @@ func GetFile(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Get a File
-	//content, exitCode, err := api.ApiGet(filename, origin, "", true)
 	bucket, ok := storage.Bucket(origin)
 	if !ok {
 		displayAppError(w, nil,
@@ -126,7 +123,6 @@ func RemoveFile(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Remove a File
-	//if exitCode, err := api.ApiRemove(filename, origin); err != nil {
 	bucket, ok := storage.Bucket(origin)
 	if !ok {
 		displayAppError(w, nil,

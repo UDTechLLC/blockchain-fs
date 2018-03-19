@@ -8,7 +8,6 @@ import (
 	"os/exec"
 	"syscall"
 
-	//api "bitbucket.org/udt/wizefs/internal/command"
 	"bitbucket.org/udt/wizefs/internal/core"
 	"github.com/gorilla/mux"
 )
@@ -17,6 +16,7 @@ var storage *core.Storage
 
 func init() {
 	storage = core.NewStorage()
+	fmt.Println("storage: %v", storage)
 }
 
 func Home(w http.ResponseWriter, r *http.Request) {
@@ -34,7 +34,6 @@ func CreateBucket(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Create a Bucket
-	//if exitCode, err := api.ApiCreate(bucketResource.Data.Origin); err != nil {
 	if exitCode, err := storage.Create(bucketResource.Data.Origin); err != nil {
 		displayAppError(w, err,
 			fmt.Sprintf("Error: %s Exit code: %d", err.Error(), exitCode),
@@ -63,7 +62,6 @@ func DeleteBucket(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Delete a Bucket
-	//if exitCode, err := api.ApiDelete(origin); err != nil {
 	if exitCode, err := storage.Delete(origin); err != nil {
 		displayAppError(w, err,
 			fmt.Sprintf("Error: %s Exit code: %d", err.Error(), exitCode),
@@ -149,7 +147,6 @@ func UnmountBucket(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Unmount a Bucket
-	//if exitCode, err := api.ApiUnmount(origin); err != nil {
 	if exitCode, err := storage.Unmount(origin); err != nil {
 		displayAppError(w, err,
 			fmt.Sprintf("Error: %s Exit code: %d", err.Error(), exitCode),
