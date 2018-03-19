@@ -22,7 +22,6 @@ func CmdCreateFilesystem(c *cli.Context) (err error) {
 	}
 
 	origin := c.Args()[0]
-
 	exitCode, err := core.NewStorage().Create(origin)
 	if err != nil {
 		//tlog.Warn.Println(err)
@@ -42,8 +41,6 @@ func CmdDeleteFilesystem(c *cli.Context) (err error) {
 	}
 
 	origin := c.Args()[0]
-
-	//exitCode, err := ApiDelete(origin)
 	exitCode, err := core.NewStorage().Delete(origin)
 	if err != nil {
 		//tlog.Warn.Println(err)

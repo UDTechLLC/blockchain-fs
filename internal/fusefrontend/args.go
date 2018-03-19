@@ -1,7 +1,7 @@
 package fusefrontend
 
 import (
-	"bitbucket.org/udt/wizefs/internal/config"
+	"bitbucket.org/udt/wizefs/internal/globals"
 )
 
 // Args is a container for arguments that are passed from main() to fusefrontend
@@ -12,5 +12,5 @@ type Args struct {
 	// Type of Origin:
 	// 1 - directory (LoopbackFS)
 	// 2 - zip file (ZipFS)
-	Type config.FSType
+	Type globals.FSType
 }

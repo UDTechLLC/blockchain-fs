@@ -17,7 +17,6 @@ import (
 	"github.com/hanwen/go-fuse/fuse/pathfs"
 	"github.com/hanwen/go-fuse/zipfs"
 
-	"bitbucket.org/udt/wizefs/internal/config"
 	"bitbucket.org/udt/wizefs/internal/fusefrontend"
 	"bitbucket.org/udt/wizefs/internal/globals"
 	"bitbucket.org/udt/wizefs/internal/syscallcompat"
@@ -26,7 +25,7 @@ import (
 
 // DoMount mounts an directory.
 // Called from main.
-func (s *Storage) doMount(fstype config.FSType,
+func (s *Storage) doMount(fstype globals.FSType,
 	origin, originPath, mountpoint, mountpointPath string,
 	notifypid int) (exitCode int, err error) {
 
@@ -140,7 +139,7 @@ func (s *Storage) setOpenFileLimit() {
 
 // initFuseFrontend - initialize wizefs/fusefrontend
 // Calls os.Exit on errors
-func (s *Storage) initFuseFrontend(fstype config.FSType, originPath, mountpointPath string) (*fuse.Server, int, error) {
+func (s *Storage) initFuseFrontend(fstype globals.FSType, originPath, mountpointPath string) (*fuse.Server, int, error) {
 	// Reconciliate CLI and config file arguments into a fusefrontend.Args struct
 	// that is passed to the filesystem implementation
 	frontendArgs := fusefrontend.Args{
@@ -213,7 +212,7 @@ func (s *Storage) initFuseFrontend(fstype config.FSType, originPath, mountpointP
 // TODO: move to fusefrontend?
 func (s *Storage) prepareRoot(args fusefrontend.Args) (root nodefs.Node) {
 	switch args.Type {
-	case config.LoopbackFS, config.LZFS:
+	case globals.LoopbackFS, globals.LZFS:
 		var finalFs pathfs.FileSystem
 
 		// pathFsOpts are passed into go-fuse/pathfs
@@ -228,7 +227,7 @@ func (s *Storage) prepareRoot(args fusefrontend.Args) (root nodefs.Node) {
 
 		root = pathFs.Root()
 
-	case config.ZipFS:
+	case globals.ZipFS:
 		// TODO: move to fusefrontend
 		var err error
 		root, err = zipfs.NewArchiveFileSystem(args.OriginDir)

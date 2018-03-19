@@ -5,15 +5,15 @@ import (
 
 	"github.com/urfave/cli"
 
-	"bitbucket.org/udt/wizefs/internal/config"
+	"bitbucket.org/udt/wizefs/internal/globals"
 	_ "bitbucket.org/udt/wizefs/internal/util"
 )
 
 func main() {
 	app := cli.NewApp()
-	//app.Name = config.ProgramName
-	app.Version = config.ProgramVersion
-	app.Usage = "Internal API for Storage System"
+	app.Name = globals.ProjectName
+	app.Version = globals.ProjectVersion
+	app.Usage = "Command-line API for WizeFS Storage"
 
 	app.Flags = GlobalFlags
 	app.Commands = Commands

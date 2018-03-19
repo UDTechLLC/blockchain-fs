@@ -67,7 +67,7 @@ func (app *App) updateModelItem(idx int) {
 	time.Sleep(200 * time.Millisecond)
 
 	filesystem := &app.db.Filesystems[idx]
-	fsinfo, _, _ := app.storage.Config.GetMountpointInfoByOrigin(filesystem.Origin)
+	fsinfo, _, _ := app.storage.Config.GetInfoByOrigin(filesystem.Origin)
 	filesystem.Mountpoint = fsinfo.MountpointKey
 }
 
@@ -218,7 +218,7 @@ func (app *App) OnGetFileClicked(button *ui.Button) {
 	origin = dbitem.Origin
 
 	// get mountpoint path
-	_, mpinfo, _ := app.storage.Config.GetMountpointInfoByOrigin(origin)
+	_, mpinfo, _ := app.storage.Config.GetInfoByOrigin(origin)
 	if mpinfo.MountpointPath == "" {
 		return
 	}

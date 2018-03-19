@@ -21,21 +21,27 @@ type Bucket struct {
 	storage    *Storage
 	Origin     string
 	MountPoint string
+	Config     *BucketConfig
 	mounted    bool
 }
 
-func NewBucket(s *Storage, origin string) *Bucket {
-	return &Bucket{
+func NewBucket(s *Storage, origin, originPath string, fstype globals.FSType) *Bucket {
+	bucket := &Bucket{
 		storage:    s,
 		Origin:     origin,
 		MountPoint: "",
 		mounted:    false,
 	}
+
+	bucket.Config = NewBucketConfig(origin, originPath, fstype)
+	bucket.Config.Save()
+
+	return bucket
 }
 
 func (b *Bucket) PutFile(originalFile string, content []byte) (exitCode int, err error) {
 	// TEST: TestPutNotExistingOrigin, TestPutNotMounted
-	exitCode, err = b.storage.Config.CheckConfig(b.Origin, false, false)
+	exitCode, err = b.storage.Config.Check(b.Origin, false, false)
 	if err != nil {
 		return
 	}
@@ -104,7 +110,7 @@ func (b *Bucket) PutFile(originalFile string, content []byte) (exitCode int, err
 
 func (b *Bucket) GetFile(originalFile, destinationFilePath string, getContentOnly bool) (content []byte, exitCode int, err error) {
 	// TEST: TestGetNotExistingOrigin, TestGettNotMounted
-	exitCode, err = b.storage.Config.CheckConfig(b.Origin, false, false)
+	exitCode, err = b.storage.Config.Check(b.Origin, false, false)
 	if err != nil {
 		return
 	}
@@ -175,7 +181,7 @@ func (b *Bucket) GetFile(originalFile, destinationFilePath string, getContentOnl
 
 func (b *Bucket) RemoveFile(originalFile string) (exitCode int, err error) {
 	// TEST: TestRemoveNotExistingOrigin, TestRemoveNotMounted
-	exitCode, err = b.storage.Config.CheckConfig(b.Origin, false, false)
+	exitCode, err = b.storage.Config.Check(b.Origin, false, false)
 	if err != nil {
 		return
 	}

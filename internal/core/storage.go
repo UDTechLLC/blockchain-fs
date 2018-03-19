@@ -3,9 +3,10 @@ package core
 import (
 	"fmt"
 	"os"
+	"path/filepath"
+	"runtime"
 	"strings"
 
-	"bitbucket.org/udt/wizefs/internal/config"
 	"bitbucket.org/udt/wizefs/internal/globals"
 	"bitbucket.org/udt/wizefs/internal/tlog"
 	"bitbucket.org/udt/wizefs/internal/util"
@@ -24,28 +25,25 @@ type StorageApi interface {
 
 type Storage struct {
 	DirPath string
-	Config  *config.WizeConfig
+	Config  *StorageConfig
 	buckets map[string]*Bucket
 }
 
 func NewStorage() *Storage {
 	storage := &Storage{
-		DirPath: util.UserHomeDir() + storageDirPath,
 		buckets: make(map[string]*Bucket),
 	}
 
-	storage.Config = config.NewWizeConfig(storage.DirPath)
+	storage.DirPath = storage.userHomeDir() + storageDirPath
+	storage.Config = NewStorageConfig(storage.DirPath)
 	err := storage.Config.Load()
 	if err != nil {
 		storage.Config.Save()
 	}
 
 	// Now we just read WizeConfig and set Storate info and buckets
-	//if s.Config == nil {
-	//	config.InitWizeConfigWithPath(storage.DirPath)
-	//}
 	for origin, fsinfo := range storage.Config.Filesystems {
-		storage.buckets[origin] = NewBucket(storage, origin)
+		storage.buckets[origin] = NewBucket(storage, origin, fsinfo.OriginPath, fsinfo.Type)
 		if fsinfo.MountpointKey != "" {
 			storage.buckets[origin].MountPoint = fsinfo.MountpointKey
 			storage.buckets[origin].mounted = true
@@ -53,9 +51,6 @@ func NewStorage() *Storage {
 	}
 	//for origin, fsinfo := range s.config.Mountpoints {
 	//}
-
-	fmt.Printf("Storage: %v\n", storage)
-	fmt.Printf("Config: %v\n", storage.Config)
 
 	return storage
 }
@@ -86,12 +81,12 @@ func (s *Storage) Create(origin string) (exitCode int, err error) {
 	}
 
 	// TODO: create zip files
-	if fstype == config.ZipFS {
+	if fstype == globals.ZipFS {
 		// TEST: TestCreateZipFS (like _archive.zip)
 		return globals.ExitOrigin,
 			fmt.Errorf("Creating zip files are not supported now")
 	}
-	if fstype == config.LZFS {
+	if fstype == globals.LZFS {
 		originPath = s.DirPath +
 			"temp/" + strings.Replace(origin, ".", "_", -1)
 	}
@@ -108,11 +103,8 @@ func (s *Storage) Create(origin string) (exitCode int, err error) {
 			fmt.Errorf("Directory %s is exist already!", originPath)
 	}
 
-	// do something with Filesystem configuration
-	config.NewFilesystemConfig(origin, originPath, config.LoopbackFS).Save()
-
 	// create LZFS archive
-	if fstype == config.LZFS {
+	if fstype == globals.LZFS {
 		targetFile := s.DirPath + origin
 		err = util.ZipFile(originPath, targetFile)
 		if err != nil {
@@ -142,14 +134,14 @@ func (s *Storage) Create(origin string) (exitCode int, err error) {
 	}
 
 	// Adding to Buckets
-	s.buckets[origin] = NewBucket(s, origin)
+	s.buckets[origin] = NewBucket(s, origin, originPath, fstype)
 
 	return 0, nil
 }
 
 func (s *Storage) Delete(origin string) (exitCode int, err error) {
 	// TEST: TestDeleteNotExistingOrigin, TestDeleteAlreadyMounted
-	exitCode, err = s.Config.CheckConfig(origin, false, true)
+	exitCode, err = s.Config.Check(origin, false, true)
 	if err != nil {
 		return
 	}
@@ -163,7 +155,7 @@ func (s *Storage) Delete(origin string) (exitCode int, err error) {
 	}
 
 	// TODO: Delete zip files
-	if fstype == config.ZipFS {
+	if fstype == globals.ZipFS {
 		// TEST: TestDeleteZipFS
 		return globals.ExitOrigin,
 			fmt.Errorf("Deleting zip files are not support now")
@@ -227,7 +219,7 @@ func (s *Storage) Mount(origin string, notifypid int) (exitCode int, err error) 
 			fmt.Errorf("Invalid origin: %v", err)
 	}
 
-	if fstype == config.LZFS {
+	if fstype == globals.LZFS {
 		// unzip to temp directory - s.DirPath + "temp/" + filename (. -> _)
 		tempPath := s.DirPath +
 			"temp/" + strings.Replace(origin, ".", "_", -1)
@@ -274,7 +266,7 @@ func (s *Storage) Mount(origin string, notifypid int) (exitCode int, err error) 
 
 func (s *Storage) Unmount(origin string) (exitCode int, err error) {
 	// TEST: TestUnmountNotExistingOrigin, TestUnmountNotMounted
-	exitCode, err = s.Config.CheckConfig(origin, false, false)
+	exitCode, err = s.Config.Check(origin, false, false)
 	if err != nil {
 		return
 	}
@@ -296,7 +288,7 @@ func (s *Storage) Unmount(origin string) (exitCode int, err error) {
 
 	s.doUnmount(mountpointPath)
 
-	if fstype == config.LZFS {
+	if fstype == globals.LZFS {
 		// zip temp directory
 		tempPath := s.DirPath +
 			"temp/" + strings.Replace(origin, ".", "_", -1)
@@ -345,12 +337,12 @@ func (s *Storage) Unmount(origin string) (exitCode int, err error) {
 	return 0, nil
 }
 
-func (s Storage) checkOriginType(origin string) (fstype config.FSType, err error) {
-	fstype, err = util.CheckDirOrZip(origin)
+func (s Storage) checkOriginType(origin string) (fstype globals.FSType, err error) {
+	fstype, err = s.checkDirOrZip(origin)
 	if err != nil {
-		// HACK: if fstype = config.HackFS
-		if fstype == config.HackFS {
-			return config.LoopbackFS, nil
+		// HACK: if fstype = globals.HackFS
+		if fstype == globals.HackFS {
+			return globals.LoopbackFS, nil
 		}
 		return fstype, err
 	}
@@ -358,12 +350,76 @@ func (s Storage) checkOriginType(origin string) (fstype config.FSType, err error
 	return fstype, nil
 }
 
-func (s Storage) getMountpoint(origin string, fstype config.FSType) string {
+func (s Storage) getMountpoint(origin string, fstype globals.FSType) string {
 	mountpoint := origin
-	if fstype == config.ZipFS || fstype == config.LZFS {
+	if fstype == globals.ZipFS || fstype == globals.LZFS {
 		mountpoint = strings.Replace(mountpoint, ".", "_", -1)
 	}
 	mountpoint = "_mount" + mountpoint
 
 	return mountpoint
+}
+
+func (s Storage) userHomeDir() string {
+	if runtime.GOOS == "windows" {
+		home := os.Getenv("HOMEDRIVE") + os.Getenv("HOMEPATH")
+		if home == "" {
+			home = os.Getenv("USERPROFILE")
+		}
+		return home
+	}
+	return os.Getenv("HOME")
+}
+
+// TEST: TestUtilCheckDirOrZip
+func (s Storage) checkDirOrZip(dirOrZip string) (globals.FSType, error) {
+	// check on zip/tar archive
+	zips := map[string]int{
+		".zip":     0,
+		".tar":     1,
+		".tar.gz":  2,
+		".tar.bz2": 3,
+	}
+
+	getExt := func(file string) string {
+		base := filepath.Base(file)
+		idx := strings.Index(base, ".")
+		if idx == -1 {
+			return ""
+		}
+		return base[idx:]
+	}
+	ext := getExt(dirOrZip)
+	_, ok := zips[ext]
+	if ok {
+		isZipFS := func(file string) bool {
+			base := filepath.Base(file)
+			return base[0] == '_'
+		}
+		if isZipFS(dirOrZip) {
+			return globals.ZipFS, nil
+		}
+		return globals.LZFS, nil
+	}
+
+	// check for existing another extension
+	if ext != "" {
+		return globals.NoneFS,
+			fmt.Errorf("%s isn't a directory and isn't a zip file",
+				dirOrZip)
+	}
+
+	fi, err := os.Stat(dirOrZip)
+	if err != nil {
+		// HACK: if directory doesn't exist yet
+		return globals.HackFS, err
+	}
+
+	if !fi.IsDir() {
+		return globals.NoneFS,
+			fmt.Errorf("%s isn't a directory and isn't a zip file",
+				dirOrZip)
+	}
+
+	return globals.LoopbackFS, nil
 }
