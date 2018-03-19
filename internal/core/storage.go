@@ -24,6 +24,7 @@ type StorageApi interface {
 
 type Storage struct {
 	DirPath string
+	Config  *config.WizeConfig
 	buckets map[string]*Bucket
 }
 
@@ -33,20 +34,28 @@ func NewStorage() *Storage {
 		buckets: make(map[string]*Bucket),
 	}
 
-	// TODO: insert WizeConfig to Storage implementation
-	// Now we just read WizeConfig and set Storate info and buckets
-	if config.CommonConfig == nil {
-		config.InitWizeConfigWithPath(storage.DirPath)
+	storage.Config = config.NewWizeConfig(storage.DirPath)
+	err := storage.Config.Load()
+	if err != nil {
+		storage.Config.Save()
 	}
-	for origin, fsinfo := range config.CommonConfig.Filesystems {
-		storage.buckets[origin] = NewBucket(origin)
+
+	// Now we just read WizeConfig and set Storate info and buckets
+	//if s.Config == nil {
+	//	config.InitWizeConfigWithPath(storage.DirPath)
+	//}
+	for origin, fsinfo := range storage.Config.Filesystems {
+		storage.buckets[origin] = NewBucket(storage, origin)
 		if fsinfo.MountpointKey != "" {
 			storage.buckets[origin].MountPoint = fsinfo.MountpointKey
 			storage.buckets[origin].mounted = true
 		}
 	}
-	//for origin, fsinfo := range config.CommonConfig.Mountpoints {
+	//for origin, fsinfo := range s.config.Mountpoints {
 	//}
+
+	fmt.Printf("Storage: %v\n", storage)
+	fmt.Printf("Config: %v\n", storage.Config)
 
 	return storage
 }
@@ -116,15 +125,16 @@ func (s *Storage) Create(origin string) (exitCode int, err error) {
 	}
 
 	// TODO: HACK for gRPC methods
-	if config.CommonConfig == nil {
-		config.InitWizeConfig()
+	if s.Config == nil {
+		fmt.Println("CommonConfig == nil")
+		//config.InitWizeConfig()
 	}
-	err = config.CommonConfig.CreateFilesystem(origin, originPath, fstype)
+	err = s.Config.CreateFilesystem(origin, originPath, fstype)
 	if err != nil {
 		return globals.ExitChangeConf,
 			fmt.Errorf("Problem with adding Filesystem to Config: %v", err)
 	} else {
-		err = config.CommonConfig.Save()
+		err = s.Config.Save()
 		if err != nil {
 			return globals.ExitSaveConf,
 				fmt.Errorf("Problem with saving Config: %v", err)
@@ -132,14 +142,14 @@ func (s *Storage) Create(origin string) (exitCode int, err error) {
 	}
 
 	// Adding to Buckets
-	s.buckets[origin] = NewBucket(origin)
+	s.buckets[origin] = NewBucket(s, origin)
 
 	return 0, nil
 }
 
 func (s *Storage) Delete(origin string) (exitCode int, err error) {
 	// TEST: TestDeleteNotExistingOrigin, TestDeleteAlreadyMounted
-	exitCode, err = s.checkConfig(origin, false, true)
+	exitCode, err = s.Config.CheckConfig(origin, false, true)
 	if err != nil {
 		return
 	}
@@ -183,15 +193,16 @@ func (s *Storage) Delete(origin string) (exitCode int, err error) {
 	}
 
 	// TODO: HACK for gRPC methods
-	if config.CommonConfig == nil {
-		config.InitWizeConfig()
+	if s.Config == nil {
+		fmt.Println("CommonConfig == nil")
+		//config.InitWizeConfig()
 	}
-	err = config.CommonConfig.DeleteFilesystem(origin)
+	err = s.Config.DeleteFilesystem(origin)
 	if err != nil {
 		return globals.ExitChangeConf,
 			fmt.Errorf("Problem with deleting Filesystem from Config: %v", err)
 	} else {
-		err = config.CommonConfig.Save()
+		err = s.Config.Save()
 		if err != nil {
 			return globals.ExitSaveConf,
 				fmt.Errorf("Problem with saving Config: %v", err)
@@ -246,7 +257,7 @@ func (s *Storage) Mount(origin string, notifypid int) (exitCode int, err error) 
 	tlog.Debug.Printf("Mount Filesystem %s into %s", originPath, mountpointPath)
 
 	// Do mounting with options
-	exitCode, err = util.DoMount(fstype, origin, originPath, mountpoint, mountpointPath, notifypid)
+	exitCode, err = s.doMount(fstype, origin, originPath, mountpoint, mountpointPath, notifypid)
 	if exitCode != 0 || err != nil {
 		//os.Exit(exitCode)
 		return exitCode, err
@@ -263,7 +274,7 @@ func (s *Storage) Mount(origin string, notifypid int) (exitCode int, err error) 
 
 func (s *Storage) Unmount(origin string) (exitCode int, err error) {
 	// TEST: TestUnmountNotExistingOrigin, TestUnmountNotMounted
-	exitCode, err = s.checkConfig(origin, false, false)
+	exitCode, err = s.Config.CheckConfig(origin, false, false)
 	if err != nil {
 		return
 	}
@@ -283,7 +294,7 @@ func (s *Storage) Unmount(origin string) (exitCode int, err error) {
 
 	tlog.Debug.Printf("Unmount Filesystem %s", mountpointPath)
 
-	util.DoUnmount(mountpointPath)
+	s.doUnmount(mountpointPath)
 
 	if fstype == config.LZFS {
 		// zip temp directory
@@ -311,15 +322,16 @@ func (s *Storage) Unmount(origin string) (exitCode int, err error) {
 	}
 
 	// TODO: HACK for gRPC methods
-	if config.CommonConfig == nil {
-		config.InitWizeConfig()
+	if s.Config == nil {
+		fmt.Println("CommonConfig == nil")
+		//config.InitWizeConfig()
 	}
-	err = config.CommonConfig.UnmountFilesystem(mountpoint)
+	err = s.Config.UnmountFilesystem(mountpoint)
 	if err != nil {
 		return globals.ExitChangeConf,
 			fmt.Errorf("Problem with unmounting Filesystem from Config: %v", err)
 	} else {
-		err = config.CommonConfig.Save()
+		err = s.Config.Save()
 		if err != nil {
 			return globals.ExitSaveConf,
 				fmt.Errorf("Problem with saving Config: %v", err)
@@ -354,39 +366,4 @@ func (s Storage) getMountpoint(origin string, fstype config.FSType) string {
 	mountpoint = "_mount" + mountpoint
 
 	return mountpoint
-}
-
-func (s Storage) checkConfig(origin string, shouldFindOrigin, shouldMounted bool) (extCode int, err error) {
-	if config.CommonConfig == nil {
-		config.InitWizeConfig()
-	}
-
-	existOrigin, existMountpoint := config.CommonConfig.CheckFilesystem(origin)
-
-	if shouldFindOrigin {
-		if existOrigin {
-			return globals.ExitOrigin,
-				fmt.Errorf("ORIGIN: %s is already exist in common config.", origin)
-		}
-	} else {
-		if !existOrigin {
-			return globals.ExitOrigin,
-				fmt.Errorf("Did not find ORIGIN: %s in common config.", origin)
-		}
-	}
-
-	if shouldMounted {
-		if existMountpoint {
-			return globals.ExitMountPoint,
-				fmt.Errorf("This ORIGIN: %s is already mounted", origin)
-		}
-	} else {
-		if !existMountpoint {
-			// TEST: TestUnmountNotMounted
-			return globals.ExitMountPoint,
-				fmt.Errorf("This ORIGIN: %s is not mounted yet", origin)
-		}
-	}
-
-	return 0, nil
 }

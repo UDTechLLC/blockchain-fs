@@ -9,7 +9,6 @@ import (
 	"syscall"
 
 	"bitbucket.org/udt/wizefs/internal/globals"
-	"bitbucket.org/udt/wizefs/internal/syscallcompat"
 	"bitbucket.org/udt/wizefs/internal/tlog"
 )
 
@@ -68,62 +67,4 @@ func exitOnUsr1() {
 		<-c
 		os.Exit(0)
 	}()
-}
-
-// Send signal USR1 to "pid" (usually our parent process). This notifies it
-// that the mounting has completed successfully.
-func sendUsr1(pid int) {
-	p, err := os.FindProcess(pid)
-	if err != nil {
-		tlog.Warn.Printf("sendUsr1: FindProcess: %v", err)
-		return
-	}
-	err = p.Signal(syscall.SIGUSR1)
-	if err != nil {
-		tlog.Warn.Printf("sendUsr1: Signal: %v", err)
-	}
-}
-
-// redirectStdFds redirects stderr and stdout to syslog; stdin to /dev/null
-func redirectStdFds() {
-	// Create a pipe pair "pw" -> "pr" and start logger reading from "pr".
-	// We do it ourselves instead of using StdinPipe() because we need access
-	// to the fd numbers.
-	pr, pw, err := os.Pipe()
-	if err != nil {
-		tlog.Warn.Printf("redirectStdFds: could not create pipe: %v", err)
-		return
-	}
-	tag := fmt.Sprintf("%s-%d-logger", tlog.ProgramName, os.Getpid())
-	cmd := exec.Command("/usr/bin/logger", "-t", tag)
-	cmd.Stdin = pr
-	err = cmd.Start()
-	if err != nil {
-		tlog.Warn.Printf("redirectStdFds: could not start logger: %v", err)
-		return
-	}
-	// The logger now reads on "pr". We can close it.
-	pr.Close()
-	// Redirect stout and stderr to "pw".
-	err = syscallcompat.Dup3(int(pw.Fd()), 1, 0)
-	if err != nil {
-		tlog.Warn.Printf("redirectStdFds: stdout dup error: %v", err)
-	}
-	syscallcompat.Dup3(int(pw.Fd()), 2, 0)
-	if err != nil {
-		tlog.Warn.Printf("redirectStdFds: stderr dup error: %v", err)
-	}
-	// Our stout and stderr point to "pw". We can close the extra copy.
-	pw.Close()
-	// Redirect stdin to /dev/null
-	nullFd, err := os.Open("/dev/null")
-	if err != nil {
-		tlog.Warn.Printf("redirectStdFds: could not open /dev/null: %v", err)
-		return
-	}
-	err = syscallcompat.Dup3(int(nullFd.Fd()), 0, 0)
-	if err != nil {
-		tlog.Warn.Printf("redirectStdFds: stdin dup error: %v", err)
-	}
-	nullFd.Close()
 }

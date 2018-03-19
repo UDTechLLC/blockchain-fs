@@ -7,7 +7,6 @@ import (
 	"os"
 	"path/filepath"
 
-	"bitbucket.org/udt/wizefs/internal/config"
 	"bitbucket.org/udt/wizefs/internal/globals"
 	"bitbucket.org/udt/wizefs/internal/tlog"
 )
@@ -19,13 +18,15 @@ type BucketApi interface {
 }
 
 type Bucket struct {
+	storage    *Storage
 	Origin     string
 	MountPoint string
 	mounted    bool
 }
 
-func NewBucket(origin string) *Bucket {
+func NewBucket(s *Storage, origin string) *Bucket {
 	return &Bucket{
+		storage:    s,
 		Origin:     origin,
 		MountPoint: "",
 		mounted:    false,
@@ -34,7 +35,7 @@ func NewBucket(origin string) *Bucket {
 
 func (b *Bucket) PutFile(originalFile string, content []byte) (exitCode int, err error) {
 	// TEST: TestPutNotExistingOrigin, TestPutNotMounted
-	exitCode, err = b.checkConfig(b.Origin, false, false)
+	exitCode, err = b.storage.Config.CheckConfig(b.Origin, false, false)
 	if err != nil {
 		return
 	}
@@ -46,11 +47,12 @@ func (b *Bucket) PutFile(originalFile string, content []byte) (exitCode int, err
 	// TODO: auto-mount if (Filesystem is not mounted!)?
 
 	// TODO: HACK for gRPC methods
-	if config.CommonConfig == nil {
-		config.InitWizeConfig()
+	if b.storage.Config == nil {
+		fmt.Println("CommonConfig == nil")
+		//config.InitWizeConfig()
 	}
 
-	mountpointPath, err = config.CommonConfig.CheckOriginGetMountpoint(b.Origin)
+	mountpointPath, err = b.storage.Config.CheckOriginGetMountpoint(b.Origin)
 	if err != nil {
 		// TEST: TestPutFailedMountpointPath
 		return globals.ExitMountPoint,
@@ -102,7 +104,7 @@ func (b *Bucket) PutFile(originalFile string, content []byte) (exitCode int, err
 
 func (b *Bucket) GetFile(originalFile, destinationFilePath string, getContentOnly bool) (content []byte, exitCode int, err error) {
 	// TEST: TestGetNotExistingOrigin, TestGettNotMounted
-	exitCode, err = b.checkConfig(b.Origin, false, false)
+	exitCode, err = b.storage.Config.CheckConfig(b.Origin, false, false)
 	if err != nil {
 		return
 	}
@@ -114,11 +116,12 @@ func (b *Bucket) GetFile(originalFile, destinationFilePath string, getContentOnl
 	// TODO: auto-mount if (Filesystem is not mounted!)?
 
 	// TODO: HACK for gRPC methods
-	if config.CommonConfig == nil {
-		config.InitWizeConfig()
+	if b.storage.Config == nil {
+		fmt.Println("CommonConfig == nil")
+		//config.InitWizeConfig()
 	}
 
-	mountpointPath, err = config.CommonConfig.CheckOriginGetMountpoint(b.Origin)
+	mountpointPath, err = b.storage.Config.CheckOriginGetMountpoint(b.Origin)
 	if err != nil {
 		// TEST: TestGetFailedMountpointPath
 		return nil, globals.ExitMountPoint,
@@ -172,7 +175,7 @@ func (b *Bucket) GetFile(originalFile, destinationFilePath string, getContentOnl
 
 func (b *Bucket) RemoveFile(originalFile string) (exitCode int, err error) {
 	// TEST: TestRemoveNotExistingOrigin, TestRemoveNotMounted
-	exitCode, err = b.checkConfig(b.Origin, false, false)
+	exitCode, err = b.storage.Config.CheckConfig(b.Origin, false, false)
 	if err != nil {
 		return
 	}
@@ -184,11 +187,12 @@ func (b *Bucket) RemoveFile(originalFile string) (exitCode int, err error) {
 	// TODO: auto-mount if (Filesystem is not mounted!)?
 
 	// TODO: HACK for gRPC methods
-	if config.CommonConfig == nil {
-		config.InitWizeConfig()
+	if b.storage.Config == nil {
+		fmt.Println("CommonConfig == nil")
+		//config.InitWizeConfig()
 	}
 
-	mountpointPath, err = config.CommonConfig.CheckOriginGetMountpoint(b.Origin)
+	mountpointPath, err = b.storage.Config.CheckOriginGetMountpoint(b.Origin)
 	if err != nil {
 		// TEST: TestRemoveFailedMountpointPath
 		return globals.ExitMountPoint,
@@ -299,39 +303,4 @@ func (b Bucket) copyFile(origFile, destFile string, origContent []byte) (destCon
 	tlog.Debug.Printf("Copied %d bytes.", bytesWritten)
 
 	return
-}
-
-func (b Bucket) checkConfig(origin string, shouldFindOrigin, shouldMounted bool) (extCode int, err error) {
-	if config.CommonConfig == nil {
-		config.InitWizeConfig()
-	}
-
-	existOrigin, existMountpoint := config.CommonConfig.CheckFilesystem(origin)
-
-	if shouldFindOrigin {
-		if existOrigin {
-			return globals.ExitOrigin,
-				fmt.Errorf("ORIGIN: %s is already exist in common config.", origin)
-		}
-	} else {
-		if !existOrigin {
-			return globals.ExitOrigin,
-				fmt.Errorf("Did not find ORIGIN: %s in common config.", origin)
-		}
-	}
-
-	if shouldMounted {
-		if existMountpoint {
-			return globals.ExitMountPoint,
-				fmt.Errorf("This ORIGIN: %s is already mounted", origin)
-		}
-	} else {
-		if !existMountpoint {
-			// TEST: TestUnmountNotMounted
-			return globals.ExitMountPoint,
-				fmt.Errorf("This ORIGIN: %s is not mounted yet", origin)
-		}
-	}
-
-	return 0, nil
 }

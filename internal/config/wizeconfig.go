@@ -38,13 +38,13 @@ type WizeConfig struct {
 	filename string
 }
 
-var CommonConfig *WizeConfig
-
-func init() {
-	//
-}
+//var CommonConfig *WizeConfig
+//func init() {
+//	//
+//}
 
 // TEST: TestWizeConfigInit
+/*
 func InitWizeConfig() {
 	// create Directory if it's not exist
 	if _, err := os.Stat(globals.OriginDirPath); os.IsNotExist(err) {
@@ -54,7 +54,9 @@ func InitWizeConfig() {
 
 	InitWizeConfigWithPath(globals.OriginDirPath)
 }
+*/
 
+/*
 func InitWizeConfigWithPath(path string) {
 	CommonConfig = NewWizeConfig(path)
 	err := CommonConfig.Load()
@@ -62,6 +64,7 @@ func InitWizeConfigWithPath(path string) {
 		CommonConfig.Save()
 	}
 }
+*/
 
 // TEST: TestWizeConfigMake
 func NewWizeConfig(path string) *WizeConfig {
@@ -259,7 +262,7 @@ func (wc *WizeConfig) CheckOriginGetMountpoint(origin string) (mountpointPath st
 	return mountpointPath, nil
 }
 
-func (wc *WizeConfig) CheckFilesystem(origin string) (existOrigin bool, existMountpoint bool) {
+func (wc *WizeConfig) checkFilesystem(origin string) (existOrigin bool, existMountpoint bool) {
 	// HACK: this fixed problems with gRPC methods (and GUI?)
 	wc.Load()
 
@@ -271,6 +274,39 @@ func (wc *WizeConfig) CheckFilesystem(origin string) (existOrigin bool, existMou
 		}
 	}
 	return
+}
+
+func (wc *WizeConfig) CheckConfig(origin string, shouldFindOrigin, shouldMounted bool) (extCode int, err error) {
+	wc.Load()
+
+	existOrigin, existMountpoint := wc.checkFilesystem(origin)
+
+	if shouldFindOrigin {
+		if existOrigin {
+			return globals.ExitOrigin,
+				fmt.Errorf("ORIGIN: %s is already exist in common config.", origin)
+		}
+	} else {
+		if !existOrigin {
+			return globals.ExitOrigin,
+				fmt.Errorf("Did not find ORIGIN: %s in common config.", origin)
+		}
+	}
+
+	if shouldMounted {
+		if existMountpoint {
+			return globals.ExitMountPoint,
+				fmt.Errorf("This ORIGIN: %s is already mounted", origin)
+		}
+	} else {
+		if !existMountpoint {
+			// TEST: TestUnmountNotMounted
+			return globals.ExitMountPoint,
+				fmt.Errorf("This ORIGIN: %s is not mounted yet", origin)
+		}
+	}
+
+	return 0, nil
 }
 
 func (wc *WizeConfig) GetMountpointInfoByOrigin(origin string) (fsinfo FilesystemInfo, mpinfo MountpointInfo, err error) {
