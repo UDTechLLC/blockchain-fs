@@ -14,7 +14,6 @@ import (
 	"testing"
 	"time"
 
-	"bitbucket.org/udt/wizefs/internal/globals"
 	co "bitbucket.org/udt/wizefs/rest/controllers"
 )
 
@@ -173,7 +172,7 @@ func TestFullCircle(t *testing.T) {
 
 	// PUT FILE
 	// TODO: HACK - just for local testing
-	path := globals.OriginDirPath + "TESTDIR1/test.txt"
+	path := "test.txt"
 	file, err := os.Open(path)
 	if err != nil {
 		t.Fatalf("Error4: %v", err)
