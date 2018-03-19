@@ -1,41 +1,32 @@
-package command
+package core
 
 import (
 	"fmt"
 	"os"
 	"strings"
 
-	"github.com/urfave/cli"
-
 	"bitbucket.org/udt/wizefs/internal/config"
-	"bitbucket.org/udt/wizefs/internal/core"
 	"bitbucket.org/udt/wizefs/internal/globals"
 	"bitbucket.org/udt/wizefs/internal/tlog"
 	"bitbucket.org/udt/wizefs/internal/util"
 )
 
-// USECASE: wizefs create ORIGIN
-func CmdCreateFilesystem(c *cli.Context) (err error) {
-	if c.NArg() != 1 {
-		// TEST: TestCreateUsage
-		return cli.NewExitError(
-			fmt.Sprintf("Wrong number of arguments (have %d, want 1)."+
-				" You passed: %s.", c.NArg(), c.Args()),
-			globals.ExitUsage)
-	}
+const (
+	storageDirPath = "/.local/share/wize/fs/"
+)
 
-	origin := c.Args()[0]
-
-	//exitCode, err := ApiCreate(origin)
-	exitCode, err := core.NewStorage().Create(origin)
-	if err != nil {
-		//tlog.Warn.Println(err)
-		return cli.NewExitError(err, exitCode)
-	}
-	return nil
+type Storage struct {
+	DirPath string // globals.OriginDirPath
+	//Config        *config.WizeConfig //
 }
 
-func ApiCreate(origin string) (exitCode int, err error) {
+func NewStorage() *Storage {
+	return &Storage{
+		DirPath: util.UserHomeDir() + storageDirPath,
+	}
+}
+
+func (s *Storage) Create(origin string) (exitCode int, err error) {
 	//exitCode, err = checkConfig(origin, true, false)
 	//if err != nil {
 	//	return
@@ -47,8 +38,8 @@ func ApiCreate(origin string) (exitCode int, err error) {
 			fmt.Errorf("Invalid origin: ['%s'].", origin)
 	}
 
-	originPath := globals.OriginDirPath + origin
-	fstype, err := checkOriginType(originPath)
+	originPath := s.DirPath + origin
+	fstype, err := s.checkOriginType(originPath)
 	if err != nil {
 		// TEST: TestCreateInvalidOrigin
 		return globals.ExitOrigin,
@@ -62,7 +53,7 @@ func ApiCreate(origin string) (exitCode int, err error) {
 			fmt.Errorf("Creating zip files are not supported now")
 	}
 	if fstype == config.LZFS {
-		originPath = globals.OriginDirPath +
+		originPath = s.DirPath +
 			"temp/" + strings.Replace(origin, ".", "_", -1)
 	}
 
@@ -83,7 +74,7 @@ func ApiCreate(origin string) (exitCode int, err error) {
 
 	// create LZFS archive
 	if fstype == config.LZFS {
-		targetFile := globals.OriginDirPath + origin
+		targetFile := s.DirPath + origin
 		err = util.ZipFile(originPath, targetFile)
 		if err != nil {
 			// TEST: TestCreateLZFS (like archive.zip)
@@ -113,36 +104,15 @@ func ApiCreate(origin string) (exitCode int, err error) {
 	return 0, nil
 }
 
-// USECASE: wizefs delete ORIGIN
-func CmdDeleteFilesystem(c *cli.Context) (err error) {
-	if c.NArg() != 1 {
-		// TEST: TestDeleteUsage
-		return cli.NewExitError(
-			fmt.Sprintf("Wrong number of arguments (have %d, want 1)."+
-				" You passed: %s.", c.NArg(), c.Args()),
-			globals.ExitUsage)
-	}
-
-	origin := c.Args()[0]
-
-	//exitCode, err := ApiDelete(origin)
-	exitCode, err := core.NewStorage().Delete(origin)
-	if err != nil {
-		//tlog.Warn.Println(err)
-		return cli.NewExitError(err, exitCode)
-	}
-	return nil
-}
-
-func ApiDelete(origin string) (exitCode int, err error) {
+func (s *Storage) Delete(origin string) (exitCode int, err error) {
 	// TEST: TestDeleteNotExistingOrigin, TestDeleteAlreadyMounted
-	exitCode, err = checkConfig(origin, false, true)
+	exitCode, err = s.checkConfig(origin, false, true)
 	if err != nil {
 		return
 	}
 
-	originPath := globals.OriginDirPath + origin
-	fstype, err := checkOriginType(originPath)
+	originPath := s.DirPath + origin
+	fstype, err := s.checkOriginType(originPath)
 	if err != nil {
 		// TEST: TestDeleteInvalidOrigin
 		return globals.ExitOrigin,
@@ -169,8 +139,8 @@ func ApiDelete(origin string) (exitCode int, err error) {
 	}
 
 	// TODO: HACK - get mountpoint internally
-	mountpoint := getMountpoint(origin, fstype)
-	mountpointPath := globals.OriginDirPath + mountpoint
+	mountpoint := s.getMountpoint(origin, fstype)
+	mountpointPath := s.DirPath + mountpoint
 
 	if _, err := os.Stat(mountpointPath); os.IsNotExist(err) {
 		//tlog.Warn.Printf("Directory %s is not exist!", mountpointPath)
@@ -198,48 +168,9 @@ func ApiDelete(origin string) (exitCode int, err error) {
 	return 0, nil
 }
 
-// USECASE: wizefs mount ORIGIN
-func CmdMountFilesystem(c *cli.Context) (err error) {
-	if c.NArg() != 1 {
-		// TEST: TestMountUsage
-		return cli.NewExitError(
-			fmt.Sprintf("Wrong number of arguments (have %d, want 1)."+
-				" You passed: %s.", c.NArg(), c.Args()),
-			globals.ExitUsage)
-	}
-
-	// TODO: check permissions
-	origin := c.Args()[0]
-
-	// TEST: TestMountNotExistingOrigin, TestMountAlreadyMounted
-	exitCode, err := checkConfig(origin, false, true)
-	if err != nil {
-		return cli.NewExitError(err, exitCode)
-	}
-
-	// Fork a child into the background if "-fg" is not set AND we are mounting
-	// a filesystem. The child will do all the work.
-	// TODO: think about ForkChild function
-	fg := c.GlobalBool("fg")
-	if !fg && c.NArg() == 1 {
-		ret := util.ForkChild()
-		os.Exit(ret)
-	}
-
-	notifypid := c.GlobalInt("notifypid")
-
-	//exitCode, err = ApiMount(origin, notifypid)
-	exitCode, err = core.NewStorage().Mount(origin, notifypid)
-	if err != nil {
-		//tlog.Warn.Println(err)
-		return cli.NewExitError(err, exitCode)
-	}
-	return nil
-}
-
-func ApiMount(origin string, notifypid int) (exitCode int, err error) {
-	originPath := globals.OriginDirPath + origin
-	fstype, err := checkOriginType(originPath)
+func (s *Storage) Mount(origin string, notifypid int) (exitCode int, err error) {
+	originPath := s.DirPath + origin
+	fstype, err := s.checkOriginType(originPath)
 	if err != nil {
 		// TEST: TestMountInvalidOrigin
 		return globals.ExitOrigin,
@@ -247,8 +178,8 @@ func ApiMount(origin string, notifypid int) (exitCode int, err error) {
 	}
 
 	if fstype == config.LZFS {
-		// unzip to temp directory - OriginDirPath + "temp/" + filename (. -> _)
-		tempPath := globals.OriginDirPath +
+		// unzip to temp directory - s.DirPath + "temp/" + filename (. -> _)
+		tempPath := s.DirPath +
 			"temp/" + strings.Replace(origin, ".", "_", -1)
 
 		err = util.UnzipFile(originPath, tempPath)
@@ -263,8 +194,8 @@ func ApiMount(origin string, notifypid int) (exitCode int, err error) {
 
 	// TODO: check mountpoint
 	// TODO: HACK - create/get mountpoint internally
-	mountpoint := getMountpoint(origin, fstype)
-	mountpointPath := globals.OriginDirPath + mountpoint
+	mountpoint := s.getMountpoint(origin, fstype)
+	mountpointPath := s.DirPath + mountpoint
 
 	if _, err := os.Stat(mountpointPath); os.IsNotExist(err) {
 		tlog.Debug.Printf("Create new directory: %s", mountpointPath)
@@ -287,36 +218,15 @@ func ApiMount(origin string, notifypid int) (exitCode int, err error) {
 	return 0, nil
 }
 
-// USECASE: wizefs unmount ORIGIN
-func CmdUnmountFilesystem(c *cli.Context) (err error) {
-	if c.NArg() != 1 {
-		// TEST: TestUnmountUsage
-		return cli.NewExitError(
-			fmt.Sprintf("Wrong number of arguments (have %d, want 1)."+
-				" You passed: %s.", c.NArg(), c.Args()),
-			globals.ExitUsage)
-	}
-
-	origin := c.Args()[0]
-
-	//exitCode, err := ApiUnmount(origin)
-	exitCode, err := core.NewStorage().Unmount(origin)
-	if err != nil {
-		//tlog.Warn.Println(err)
-		return cli.NewExitError(err, exitCode)
-	}
-	return nil
-}
-
-func ApiUnmount(origin string) (exitCode int, err error) {
+func (s *Storage) Unmount(origin string) (exitCode int, err error) {
 	// TEST: TestUnmountNotExistingOrigin, TestUnmountNotMounted
-	exitCode, err = checkConfig(origin, false, false)
+	exitCode, err = s.checkConfig(origin, false, false)
 	if err != nil {
 		return
 	}
 
-	originPath := globals.OriginDirPath + origin
-	fstype, err := checkOriginType(originPath)
+	originPath := s.DirPath + origin
+	fstype, err := s.checkOriginType(originPath)
 	if err != nil {
 		// TEST: TestUnmountInvalidOrigin
 		return globals.ExitOrigin,
@@ -325,8 +235,8 @@ func ApiUnmount(origin string) (exitCode int, err error) {
 
 	// TODO: check mountpoint
 	// TODO: HACK - create/get mountpoint internally
-	mountpoint := getMountpoint(origin, fstype)
-	mountpointPath := globals.OriginDirPath + mountpoint
+	mountpoint := s.getMountpoint(origin, fstype)
+	mountpointPath := s.DirPath + mountpoint
 
 	tlog.Debug.Printf("Unmount Filesystem %s", mountpointPath)
 
@@ -334,7 +244,7 @@ func ApiUnmount(origin string) (exitCode int, err error) {
 
 	if fstype == config.LZFS {
 		// zip temp directory
-		tempPath := globals.OriginDirPath +
+		tempPath := s.DirPath +
 			"temp/" + strings.Replace(origin, ".", "_", -1)
 
 		os.Remove(originPath)
@@ -376,7 +286,7 @@ func ApiUnmount(origin string) (exitCode int, err error) {
 	return 0, nil
 }
 
-func checkOriginType(origin string) (fstype config.FSType, err error) {
+func (s Storage) checkOriginType(origin string) (fstype config.FSType, err error) {
 	fstype, err = util.CheckDirOrZip(origin)
 	if err != nil {
 		// HACK: if fstype = config.HackFS
@@ -389,7 +299,7 @@ func checkOriginType(origin string) (fstype config.FSType, err error) {
 	return fstype, nil
 }
 
-func getMountpoint(origin string, fstype config.FSType) string {
+func (s Storage) getMountpoint(origin string, fstype config.FSType) string {
 	mountpoint := origin
 	if fstype == config.ZipFS || fstype == config.LZFS {
 		mountpoint = strings.Replace(mountpoint, ".", "_", -1)
@@ -399,7 +309,7 @@ func getMountpoint(origin string, fstype config.FSType) string {
 	return mountpoint
 }
 
-func checkConfig(origin string, shouldFindOrigin, shouldMounted bool) (extCode int, err error) {
+func (s Storage) checkConfig(origin string, shouldFindOrigin, shouldMounted bool) (extCode int, err error) {
 	if config.CommonConfig == nil {
 		config.InitWizeConfig()
 	}
