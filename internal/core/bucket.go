@@ -1,4 +1,4 @@
-package command
+package core
 
 import (
 	"fmt"
@@ -7,49 +7,34 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/urfave/cli"
-
 	"bitbucket.org/udt/wizefs/internal/config"
-	"bitbucket.org/udt/wizefs/internal/core"
 	"bitbucket.org/udt/wizefs/internal/globals"
 	"bitbucket.org/udt/wizefs/internal/tlog"
 )
 
-// wizefs load FILE ORIGIN -> load FILE [ORIGIN]
-// TODO: output result: stdout, JSON
-// TODO: check permissions
-func CmdPutFile(c *cli.Context) (err error) {
-	if c.NArg() != 2 {
-		// TEST: TestPutUsage
-		return cli.NewExitError(
-			fmt.Sprintf("Wrong number of arguments (have %d, want 2)."+
-				" You passed: %s.", c.NArg(), c.Args()),
-			globals.ExitUsage)
-	}
-
-	originalFile := c.Args()[0]
-	origin := c.Args()[1]
-
-	//exitCode, err := ApiPut(originalFile, origin, nil)
-	var exitCode int
-	bucket, ok := core.NewStorage().Bucket(origin)
-	if ok {
-		exitCode, err = bucket.PutFile(originalFile, nil)
-	} else {
-		err = fmt.Errorf("Bucket with ORIGIN: %s is not exist", origin)
-		exitCode = globals.ExitOrigin
-	}
-	if err != nil {
-		//tlog.Warn.Println(err)
-		return cli.NewExitError(err, exitCode)
-	}
-	return nil
+type BucketApi interface {
+	PutFile(originalFile string, content []byte) (exitCode int, err error)
+	GetFile(originalFile, destinationFilePath string, getContentOnly bool) (content []byte, exitCode int, err error)
+	RemoveFile(originalFile string) (exitCode int, err error)
 }
 
-// TODO: check MD5, size, type, etc
-func ApiPut(originalFile, origin string, content []byte) (exitCode int, err error) {
+type Bucket struct {
+	Origin     string
+	MountPoint string
+	mounted    bool
+}
+
+func NewBucket(origin string) *Bucket {
+	return &Bucket{
+		Origin:     origin,
+		MountPoint: "",
+		mounted:    false,
+	}
+}
+
+func (b *Bucket) PutFile(originalFile string, content []byte) (exitCode int, err error) {
 	// TEST: TestPutNotExistingOrigin, TestPutNotMounted
-	exitCode, err = checkConfig(origin, false, false)
+	exitCode, err = b.checkConfig(b.Origin, false, false)
 	if err != nil {
 		return
 	}
@@ -65,7 +50,7 @@ func ApiPut(originalFile, origin string, content []byte) (exitCode int, err erro
 		config.InitWizeConfig()
 	}
 
-	mountpointPath, err = config.CommonConfig.CheckOriginGetMountpoint(origin)
+	mountpointPath, err = config.CommonConfig.CheckOriginGetMountpoint(b.Origin)
 	if err != nil {
 		// TEST: TestPutFailedMountpointPath
 		return globals.ExitMountPoint,
@@ -105,7 +90,7 @@ func ApiPut(originalFile, origin string, content []byte) (exitCode int, err erro
 	}
 
 	// copy (replace?) file to mountpointPath
-	_, err = copyFile(originalFile, destinationFile, content)
+	_, err = b.copyFile(originalFile, destinationFile, content)
 	if err != nil {
 		// TEST: TestPutFailedCopyFile
 		return globals.ExitFile,
@@ -115,73 +100,9 @@ func ApiPut(originalFile, origin string, content []byte) (exitCode int, err erro
 	return 0, nil
 }
 
-// wizefs get FILE ORIGIN
-// TODO: output result: stdout, JSON + file content []byte, size
-// TODO: check permissions
-func CmdGetFile(c *cli.Context) (err error) {
-	if c.NArg() != 2 {
-		// TEST: TestGetUsage
-		return cli.NewExitError(
-			fmt.Sprintf("Wrong number of arguments (have %d, want 2)."+
-				" You passed: %s.", c.NArg(), c.Args()),
-			globals.ExitUsage)
-	}
-
-	originalFile := c.Args()[0]
-	origin := c.Args()[1]
-
-	// we don't need content, it's only for gRPC methods
-	//_, exitCode, err := ApiGet(originalFile, origin, "", false)
-	var exitCode int
-	bucket, ok := core.NewStorage().Bucket(origin)
-	if ok {
-		_, exitCode, err = bucket.GetFile(originalFile, "", false)
-	} else {
-		err = fmt.Errorf("Bucket with ORIGIN: %s is not exist", origin)
-		exitCode = globals.ExitOrigin
-	}
-	if err != nil {
-		//tlog.Warn.Println(err)
-		return cli.NewExitError(err, exitCode)
-	}
-	return nil
-}
-
-// wizefs xget FILE ORIGIN [DESTINATIONFILEPATH]
-func CmdXGetFile(c *cli.Context) (err error) {
-	if c.NArg() != 3 {
-		// TEST: TestXGetUsage
-		return cli.NewExitError(
-			fmt.Sprintf("Wrong number of arguments (have %d, want 3)."+
-				" You passed: %s.", c.NArg(), c.Args()),
-			globals.ExitUsage)
-	}
-
-	originalFile := c.Args()[0]
-	origin := c.Args()[1]
-	destinationFilePath := c.Args()[2]
-
-	// we don't need content, it's only for gRPC methods
-	//_, exitCode, err := ApiGet(originalFile, origin, destinationFilePath, false)
-	var exitCode int
-	bucket, ok := core.NewStorage().Bucket(origin)
-	if ok {
-		_, exitCode, err = bucket.GetFile(originalFile, destinationFilePath, false)
-	} else {
-		err = fmt.Errorf("Bucket with ORIGIN: %s is not exist", origin)
-		exitCode = globals.ExitOrigin
-	}
-	if err != nil {
-		//tlog.Warn.Println(err)
-		return cli.NewExitError(err, exitCode)
-	}
-	return nil
-}
-
-// TODO: check MD5, size, type, etc
-func ApiGet(originalFile, origin, destinationFilePath string, getContentOnly bool) (content []byte, exitCode int, err error) {
+func (b *Bucket) GetFile(originalFile, destinationFilePath string, getContentOnly bool) (content []byte, exitCode int, err error) {
 	// TEST: TestGetNotExistingOrigin, TestGettNotMounted
-	exitCode, err = checkConfig(origin, false, false)
+	exitCode, err = b.checkConfig(b.Origin, false, false)
 	if err != nil {
 		return
 	}
@@ -197,7 +118,7 @@ func ApiGet(originalFile, origin, destinationFilePath string, getContentOnly boo
 		config.InitWizeConfig()
 	}
 
-	mountpointPath, err = config.CommonConfig.CheckOriginGetMountpoint(origin)
+	mountpointPath, err = config.CommonConfig.CheckOriginGetMountpoint(b.Origin)
 	if err != nil {
 		// TEST: TestGetFailedMountpointPath
 		return nil, globals.ExitMountPoint,
@@ -239,7 +160,7 @@ func ApiGet(originalFile, origin, destinationFilePath string, getContentOnly boo
 	}
 
 	// copy (replace?) file to mountpointPath
-	content, err = copyFile(originalFile, destinationFile, nil)
+	content, err = b.copyFile(originalFile, destinationFile, nil)
 	if err != nil {
 		// TEST: TestGetFailedCopyFile
 		return nil, globals.ExitFile,
@@ -249,39 +170,9 @@ func ApiGet(originalFile, origin, destinationFilePath string, getContentOnly boo
 	return content, 0, nil
 }
 
-// wizefs remove FILE ORIGIN
-// TODO: check permissions
-func CmdRemoveFile(c *cli.Context) (err error) {
-	if c.NArg() != 2 {
-		// TEST: TestRemoveUsage
-		return cli.NewExitError(
-			fmt.Sprintf("Wrong number of arguments (have %d, want 2)."+
-				" You passed: %s.", c.NArg(), c.Args()),
-			globals.ExitUsage)
-	}
-
-	originalFile := c.Args()[0]
-	origin := c.Args()[1]
-
-	//exitCode, err := ApiRemove(originalFile, origin)
-	var exitCode int
-	bucket, ok := core.NewStorage().Bucket(origin)
-	if ok {
-		exitCode, err = bucket.RemoveFile(originalFile)
-	} else {
-		err = fmt.Errorf("Bucket with ORIGIN: %s is not exist", origin)
-		exitCode = globals.ExitOrigin
-	}
-	if err != nil {
-		//tlog.Warn.Println(err)
-		return cli.NewExitError(err, exitCode)
-	}
-	return nil
-}
-
-func ApiRemove(originalFile, origin string) (exitCode int, err error) {
+func (b *Bucket) RemoveFile(originalFile string) (exitCode int, err error) {
 	// TEST: TestRemoveNotExistingOrigin, TestRemoveNotMounted
-	exitCode, err = checkConfig(origin, false, false)
+	exitCode, err = b.checkConfig(b.Origin, false, false)
 	if err != nil {
 		return
 	}
@@ -297,7 +188,7 @@ func ApiRemove(originalFile, origin string) (exitCode int, err error) {
 		config.InitWizeConfig()
 	}
 
-	mountpointPath, err = config.CommonConfig.CheckOriginGetMountpoint(origin)
+	mountpointPath, err = config.CommonConfig.CheckOriginGetMountpoint(b.Origin)
 	if err != nil {
 		// TEST: TestRemoveFailedMountpointPath
 		return globals.ExitMountPoint,
@@ -333,14 +224,9 @@ func ApiRemove(originalFile, origin string) (exitCode int, err error) {
 	return 0, nil
 }
 
-// wizefs search FILE
-func CmdSearchFile(c *cli.Context) {
-
-}
-
 // TODO: add replace
 // TEST: TestCopyFile (several tests)
-func copyFile(origFile, destFile string, origContent []byte) (destContent []byte, err error) {
+func (b Bucket) copyFile(origFile, destFile string, origContent []byte) (destContent []byte, err error) {
 	var oldFile, newFile *os.File
 	var bytes64 int64
 	var bytesWritten int
@@ -413,4 +299,39 @@ func copyFile(origFile, destFile string, origContent []byte) (destContent []byte
 	tlog.Debug.Printf("Copied %d bytes.", bytesWritten)
 
 	return
+}
+
+func (b Bucket) checkConfig(origin string, shouldFindOrigin, shouldMounted bool) (extCode int, err error) {
+	if config.CommonConfig == nil {
+		config.InitWizeConfig()
+	}
+
+	existOrigin, existMountpoint := config.CommonConfig.CheckFilesystem(origin)
+
+	if shouldFindOrigin {
+		if existOrigin {
+			return globals.ExitOrigin,
+				fmt.Errorf("ORIGIN: %s is already exist in common config.", origin)
+		}
+	} else {
+		if !existOrigin {
+			return globals.ExitOrigin,
+				fmt.Errorf("Did not find ORIGIN: %s in common config.", origin)
+		}
+	}
+
+	if shouldMounted {
+		if existMountpoint {
+			return globals.ExitMountPoint,
+				fmt.Errorf("This ORIGIN: %s is already mounted", origin)
+		}
+	} else {
+		if !existMountpoint {
+			// TEST: TestUnmountNotMounted
+			return globals.ExitMountPoint,
+				fmt.Errorf("This ORIGIN: %s is not mounted yet", origin)
+		}
+	}
+
+	return 0, nil
 }

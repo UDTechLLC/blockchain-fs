@@ -25,12 +25,36 @@ type StorageApi interface {
 type Storage struct {
 	DirPath string // globals.OriginDirPath
 	//Config        *config.WizeConfig //
+	buckets map[string]*Bucket
 }
 
 func NewStorage() *Storage {
-	return &Storage{
+	storage := &Storage{
 		DirPath: util.UserHomeDir() + storageDirPath,
+		buckets: make(map[string]*Bucket),
 	}
+
+	// TODO: insert WizeConfig to Storage implementation
+	// Now we just read WizeConfig and set Storate info and buckets
+	if config.CommonConfig == nil {
+		config.InitWizeConfigWithPath(storage.DirPath)
+	}
+	for origin, fsinfo := range config.CommonConfig.Filesystems {
+		storage.buckets[origin] = NewBucket(origin)
+		if fsinfo.MountpointKey != "" {
+			storage.buckets[origin].MountPoint = fsinfo.MountpointKey
+			storage.buckets[origin].mounted = true
+		}
+	}
+	//for origin, fsinfo := range config.CommonConfig.Mountpoints {
+	//}
+
+	return storage
+}
+
+func (s *Storage) Bucket(origin string) (*Bucket, bool) {
+	bucket, ok := s.buckets[origin]
+	return bucket, ok
 }
 
 func (s *Storage) Create(origin string) (exitCode int, err error) {
@@ -108,6 +132,9 @@ func (s *Storage) Create(origin string) (exitCode int, err error) {
 		}
 	}
 
+	// Adding to Buckets
+	s.buckets[origin] = NewBucket(origin)
+
 	return 0, nil
 }
 
@@ -172,6 +199,12 @@ func (s *Storage) Delete(origin string) (exitCode int, err error) {
 		}
 	}
 
+	// Removing from Buckets
+	_, ok := s.buckets[origin]
+	if ok {
+		delete(s.buckets, origin)
+	}
+
 	return 0, nil
 }
 
@@ -219,6 +252,10 @@ func (s *Storage) Mount(origin string, notifypid int) (exitCode int, err error) 
 		//os.Exit(exitCode)
 		return exitCode, err
 	}
+
+	// Mounting the Bucket
+	s.buckets[origin].mounted = true
+	s.buckets[origin].MountPoint = mountpoint
 
 	// Don't call os.Exit on success to give deferred functions a chance to
 	// run
@@ -289,6 +326,10 @@ func (s *Storage) Unmount(origin string) (exitCode int, err error) {
 				fmt.Errorf("Problem with saving Config: %v", err)
 		}
 	}
+
+	// Unmounting the Bucket
+	s.buckets[origin].mounted = false
+	s.buckets[origin].MountPoint = ""
 
 	return 0, nil
 }
