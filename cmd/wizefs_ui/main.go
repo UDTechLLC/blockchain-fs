@@ -2,8 +2,6 @@ package main
 
 import (
 	"github.com/leedark/ui"
-
-	"bitbucket.org/udt/wizefs/internal/config"
 )
 
 var window *ui.Window
@@ -15,7 +13,7 @@ func main() {
 
 		gui := app.buildGUI()
 
-		window = ui.NewWindow("Wize Client "+config.ProgramVersion, 700, 500, false)
+		window = ui.NewWindow("Wize Client 0.0.7", 900, 600, false)
 		window.SetMargined(true)
 		window.Center()
 

@@ -6,12 +6,14 @@ import (
 	"sort"
 	"time"
 
-	"bitbucket.org/udt/wizefs/internal/config"
+	//"bitbucket.org/udt/wizefs/internal/config"
+	"bitbucket.org/udt/wizefs/internal/core"
 	"bitbucket.org/udt/wizefs/internal/util"
 	"github.com/leedark/ui"
 )
 
 type App struct {
+	storage      *core.Storage
 	db           FilesystemDB
 	createDialog *CreateDialog
 
@@ -26,10 +28,12 @@ type App struct {
 }
 
 func (app *App) Init() {
-	if config.CommonConfig == nil {
-		config.InitWizeConfig()
-	}
-	for origin, filesystem := range config.CommonConfig.Filesystems {
+	app.storage = core.NewStorage()
+
+	//if config.CommonConfig == nil {
+	//	config.InitWizeConfig()
+	//}
+	for origin, filesystem := range app.storage.Config.Filesystems {
 		fs := Filesystem{
 			Index:      len(app.db.Filesystems) + 1,
 			Origin:     origin,
@@ -42,8 +46,8 @@ func (app *App) Init() {
 }
 
 func (app *App) updateModel() {
-	config.CommonConfig.Load()
-	for origin, filesystem := range config.CommonConfig.Filesystems {
+	app.storage.Config.Load()
+	for origin, filesystem := range app.storage.Config.Filesystems {
 		// TODO: HACK simple update by checking all map - is not quick solution
 		if !app.db.HasOrigin(origin) {
 			fs := Filesystem{
@@ -63,7 +67,7 @@ func (app *App) updateModelItem(idx int) {
 	time.Sleep(200 * time.Millisecond)
 
 	filesystem := &app.db.Filesystems[idx]
-	fsinfo, _, _ := config.CommonConfig.GetMountpointInfoByOrigin(filesystem.Origin)
+	fsinfo, _, _ := app.storage.Config.GetMountpointInfoByOrigin(filesystem.Origin)
 	filesystem.Mountpoint = fsinfo.MountpointKey
 }
 
@@ -214,7 +218,7 @@ func (app *App) OnGetFileClicked(button *ui.Button) {
 	origin = dbitem.Origin
 
 	// get mountpoint path
-	_, mpinfo, _ := config.CommonConfig.GetMountpointInfoByOrigin(origin)
+	_, mpinfo, _ := app.storage.Config.GetMountpointInfoByOrigin(origin)
 	if mpinfo.MountpointPath == "" {
 		return
 	}
