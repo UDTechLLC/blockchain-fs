@@ -2,6 +2,7 @@ package controllers
 
 import (
 	"bytes"
+	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
@@ -65,6 +66,43 @@ func PutFile(w http.ResponseWriter, r *http.Request) {
 		&BucketResponse{
 			Success: true,
 			Message: "File " + filename + " was upload to Bucket!",
+			Bucket:  BucketResource{Data: BucketModel{Origin: origin}},
+		})
+}
+
+func Put(w http.ResponseWriter, r *http.Request) {
+	// Get origin from the incoming url
+	vars := mux.Vars(r)
+	origin := vars["origin"]
+
+	if origin == "" {
+		displayAppError(w, nil,
+			"Please check request URL!",
+			http.StatusInternalServerError)
+		return
+	}
+
+	var putResource PutResource
+	// Decode the incoming Put json
+	err := json.NewDecoder(r.Body).Decode(&putResource)
+	if err != nil ||
+		putResource.Data.Filename == "" {
+		displayAppError(w, err, "Invalid Put data", http.StatusInternalServerError)
+		return
+	}
+
+	if exitCode, err := api.ApiPut(putResource.Data.Filename, origin, []byte(putResource.Data.Content)); err != nil {
+		displayAppError(w, err,
+			fmt.Sprintf("Error: %s. Exit code: %d", err.Error(), exitCode),
+			http.StatusInternalServerError)
+		return
+	}
+
+	//w.WriteHeader(http.StatusNoContent)
+	respondWithJSON(w, http.StatusOK,
+		&BucketResponse{
+			Success: true,
+			Message: "File " + putResource.Data.Filename + " was upload to Bucket!",
 			Bucket:  BucketResource{Data: BucketModel{Origin: origin}},
 		})
 }

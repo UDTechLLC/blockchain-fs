@@ -31,6 +31,15 @@ type BucketResponse struct {
 	Bucket  BucketResource `json:"bucket"`
 }
 
+type PutModel struct {
+	Filename string `json:"name"`
+	Content  string `json:"content"`
+}
+
+type PutResource struct {
+	Data PutModel `json:"data"`
+}
+
 type appError struct {
 	Error      string `json:"error"`
 	Message    string `json:"message"`

@@ -42,6 +42,8 @@ func (s *Service) Start() error {
 
 	// curl -F "filename=@/home/sergey/test.txt" -X POST localhost:13000/buckets/REST1/putfile
 	router.HandleFunc("/buckets/{origin}/putfile", controllers.PutFile).Methods("POST")
+	// curl -X POST localhost:13000/buckets/REST1/put -d '{"data":{"name":"...","content":"..."}}'
+	router.HandleFunc("/buckets/{origin}/put", controllers.Put).Methods("POST")
 	// curl -X GET localhost:13000/buckets/REST1/files/test.txt --output test.txt
 	router.HandleFunc("/buckets/{origin}/files/{filename}", controllers.GetFile).Methods("GET")
 	// curl -X DELETE localhost:13000/buckets/REST1/files/test.txt
