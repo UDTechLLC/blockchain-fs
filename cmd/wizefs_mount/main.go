@@ -5,7 +5,6 @@ import (
 	"os"
 	"runtime"
 
-	"bitbucket.org/udt/wizefs/internal/config"
 	"bitbucket.org/udt/wizefs/internal/core"
 	"bitbucket.org/udt/wizefs/internal/tlog"
 	"bitbucket.org/udt/wizefs/internal/util"
@@ -57,13 +56,14 @@ func main() {
 
 	origin := flagSet.Arg(0)
 
+	storage := core.NewStorage()
 	// HACK for gRPC methods
-	if config.CommonConfig == nil {
-		config.InitWizeConfig()
-	}
+	//if config.CommonConfig == nil {
+	//	config.InitWizeConfig()
+	//}
 
 	// Check that ORIGIN exists
-	fsinfo, ok := config.CommonConfig.Filesystems[origin]
+	fsinfo, ok := storage.Config.Filesystems[origin]
 	if !ok {
 		tlog.Warn.Printf("Did not find ORIGIN: %s in common config.", origin)
 	}
@@ -91,7 +91,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	exitCode, err := core.NewStorage().Mount(origin, args.notifypid)
+	exitCode, err := storage.Mount(origin, args.notifypid)
 	if err != nil {
 		tlog.Warn.Println("Error with ApiMount: [%d] %v", exitCode, err)
 	}
