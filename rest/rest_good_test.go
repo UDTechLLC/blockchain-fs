@@ -8,11 +8,13 @@ import (
 	"io/ioutil"
 	"log"
 	"net/http"
-	//"os"
+	"os"
 	//"os/signal"
+	"mime/multipart"
 	"testing"
 	"time"
 
+	"bitbucket.org/udt/wizefs/internal/globals"
 	co "bitbucket.org/udt/wizefs/rest/controllers"
 )
 
@@ -69,12 +71,31 @@ func (c *Client) doRequest(req *http.Request) ([]byte, error) {
 	return body, nil
 }
 
-func (c *Client) Get() {
-	// TODO
+func (c *Client) Get(api string) ([]byte, error) {
+	req, err := http.NewRequest("GET", baseURL+api, nil)
+	if err != nil {
+		fmt.Printf("ErrorP1: %v\n", err)
+		return nil, err
+	}
+	bytes, err := c.doRequest(req)
+	if err != nil {
+		fmt.Printf("ErrorP2: %v\n", err)
+		return nil, err
+	}
+	//var data map[string]interface{}
+	//err = json.Unmarshal(bytes, &data)
+	//if err != nil {
+	//	fmt.Printf("ErrorP3: %v\n", err)
+	//	return nil, err
+	//}
+	return bytes, nil
 }
 
-func (c *Client) Post(api string, body io.Reader) (map[string]interface{}, error) {
+func (c *Client) Post(api string, body io.Reader, contentType string) (map[string]interface{}, error) {
 	req, err := http.NewRequest("POST", baseURL+api, body)
+	if contentType != "" {
+		req.Header.Add("Content-Type", contentType)
+	}
 	if err != nil {
 		fmt.Printf("ErrorP1: %v\n", err)
 		return nil, err
@@ -134,7 +155,7 @@ func TestFullCircle(t *testing.T) {
 	if err := json.NewEncoder(body).Encode(&bucketResource); err != nil {
 		t.Fatalf("Error1: %v", err)
 	}
-	resp, err := client.Post("/buckets", body)
+	resp, err := client.Post("/buckets", body, "")
 	if err != nil {
 		t.Fatalf("Error2: %v", err)
 	}
@@ -142,17 +163,86 @@ func TestFullCircle(t *testing.T) {
 
 	// MOUNT
 	t.Logf("Request Mount Bucket %s", origin)
-	resp, err = client.Post("/buckets/"+origin+"/mount", nil)
+	resp, err = client.Post("/buckets/"+origin+"/mount", nil, "")
 	if err != nil {
-		t.Fatalf("Error2: %v", err)
+		t.Fatalf("Error3: %v", err)
 	}
 	t.Logf("Response: %v", resp)
 
 	time.Sleep(1000 * time.Millisecond)
 
+	// PUT FILE
+	// TODO: HACK - just for local testing
+	path := globals.OriginDirPath + "TESTDIR1/test.txt"
+	file, err := os.Open(path)
+	if err != nil {
+		t.Fatalf("Error4: %v", err)
+	}
+	content, err := ioutil.ReadAll(file)
+	if err != nil {
+		t.Fatalf("Error4: %v", err)
+	}
+	fi, err := file.Stat()
+	if err != nil {
+		t.Fatalf("Error4: %v", err)
+	}
+	file.Close()
+
+	if err == nil {
+		t.Logf("Request content: \n%s\n", content)
+
+		t.Logf("Request: Put File. Origin: %s", origin)
+
+		body := new(bytes.Buffer)
+		writer := multipart.NewWriter(body)
+		part, err := writer.CreateFormFile("filename", fi.Name())
+		if err != nil {
+			t.Fatalf("Error5: %v", err)
+		}
+		part.Write(content)
+		contentType := writer.FormDataContentType()
+		err = writer.Close()
+		if err != nil {
+			t.Fatalf("Error5: %v", err)
+		}
+
+		respPut, err := client.Post("/buckets/"+origin+"/putfile", body, contentType)
+		if err != nil {
+			t.Fatalf("Fail to execute Put method: %v", err)
+		}
+		//if !respPut.Executed {
+		//	t.Fatalf("Bad response from Put method: %s", respPut.Message)
+		//}
+		t.Logf("Response message: %v.", respPut)
+		time.Sleep(1 * time.Second)
+	} else {
+		t.Fatalf("We have problem with read file: %v", err)
+	}
+
+	// GET FILE
+	t.Logf("Request: Get File. Origin: %s", origin)
+	respGet, err := client.Get("/buckets/" + origin + "/files/" + "test.txt")
+	if err != nil {
+		t.Fatalf("Fail to execute Get method: %v", err)
+	}
+	//if !respGet.Executed {
+	//	t.Fatalf("Bad response from Get method: %s", respGet.Message)
+	//}
+	t.Logf("Response message: \n%s\n", string(respGet))
+	//t.Logf("Response content: \n%s\n", respGet.Content)
+	time.Sleep(1 * time.Second)
+
+	// DELETE
+	t.Logf("Request Remove File. Origin: %s", origin)
+	resp, err = client.Delete("/buckets/" + origin + "/files/" + "test.txt")
+	if err != nil {
+		t.Fatalf("Error2: %v", err)
+	}
+	t.Logf("Response: %v", resp)
+
 	// UNMOUNT
 	t.Logf("Request Unmount Bucket %s", origin)
-	resp, err = client.Post("/buckets/"+origin+"/unmount", nil)
+	resp, err = client.Post("/buckets/"+origin+"/unmount", nil, "")
 	if err != nil {
 		t.Fatalf("Error2: %v", err)
 	}
