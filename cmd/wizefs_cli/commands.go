@@ -31,7 +31,7 @@ var Commands = []cli.Command{
 	{
 		Name:    "create",
 		Aliases: []string{"c"},
-		Usage:   "Create new Filesystem into directory",
+		Usage:   "Create new Bucket to Storage",
 		Before: func(c *cli.Context) error {
 			tlog.Debug.Printf("Before create...")
 			return nil
@@ -45,13 +45,13 @@ var Commands = []cli.Command{
 	{
 		Name:    "delete",
 		Aliases: []string{"d"},
-		Usage:   "Delete existing Filesystem from directory",
+		Usage:   "Delete existing Bucket from Storage",
 		Action:  command.CmdDeleteFilesystem,
 	},
 	{
 		Name:    "mount",
 		Aliases: []string{"m"},
-		Usage:   "Mount Filesystem into directory",
+		Usage:   "Mount Bucket",
 		Before: func(c *cli.Context) error {
 			tlog.Debug.Printf("Before mount...")
 			return nil
@@ -65,31 +65,25 @@ var Commands = []cli.Command{
 	{
 		Name:    "unmount",
 		Aliases: []string{"u"},
-		Usage:   "Unmount Filesystem from directory",
+		Usage:   "Unmount Bucket",
 		Action:  command.CmdUnmountFilesystem,
 	},
 	{
 		Name:    "put",
 		Aliases: []string{"p"},
-		Usage:   "",
+		Usage:   "Put file to Bucket",
 		Action:  command.CmdPutFile,
 	},
 	{
 		Name:    "get",
 		Aliases: []string{"g"},
-		Usage:   "",
+		Usage:   "Get file from Bucket",
 		Action:  command.CmdGetFile,
-	},
-	{
-		Name:    "xget",
-		Aliases: []string{"x"},
-		Usage:   "",
-		Action:  command.CmdXGetFile,
 	},
 	{
 		Name:    "remove",
 		Aliases: []string{"r"},
-		Usage:   "",
+		Usage:   "Remove file from Bucket",
 		Action:  command.CmdRemoveFile,
 	},
 }
