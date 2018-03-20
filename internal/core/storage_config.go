@@ -178,7 +178,7 @@ func (wc *StorageConfig) Load() error {
 	// Read from disk
 	js, err := ioutil.ReadFile(wc.filename)
 	if err != nil {
-		tlog.Warn.Printf("Load config file: ReadFile: %#v\n", err)
+		tlog.Warn.Printf("Load config file: ReadFile: %v, %s\n", err, err.Error())
 		return err
 	}
 

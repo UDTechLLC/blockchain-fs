@@ -16,7 +16,7 @@ var storage *core.Storage
 
 func init() {
 	storage = core.NewStorage()
-	fmt.Println("storage: %v", storage)
+	fmt.Printf("storage: %v\n", storage)
 }
 
 func Home(w http.ResponseWriter, r *http.Request) {

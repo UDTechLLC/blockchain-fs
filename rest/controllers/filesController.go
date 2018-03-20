@@ -91,7 +91,14 @@ func Put(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if exitCode, err := api.ApiPut(putResource.Data.Filename, origin, []byte(putResource.Data.Content)); err != nil {
+	bucket, ok := storage.Bucket(origin)
+	if !ok {
+		displayAppError(w, nil,
+			fmt.Sprintf("Bucket with ORIGIN: %s is not exist", origin),
+			http.StatusInternalServerError)
+		return
+	}
+	if exitCode, err := bucket.PutFile(putResource.Data.Filename, []byte(putResource.Data.Content)); err != nil {
 		displayAppError(w, err,
 			fmt.Sprintf("Error: %s. Exit code: %d", err.Error(), exitCode),
 			http.StatusInternalServerError)
