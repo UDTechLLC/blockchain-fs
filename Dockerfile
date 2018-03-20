@@ -15,18 +15,14 @@ WORKDIR /go/src/bitbucket.org/udt/wizefs
 # Get all dependencies
 #RUN go get -v ./...
 
-# Build the taskmanager command inside the container.
-#RUN go install bitbucket.org/udt/wizefs
-# Run the taskmanager command when the container starts.
-#ENTRYPOINT /go/bin/wizefs
-
 # Just build CLI App and REST API Service
 RUN go build -o ./cmd/wizefs_cli/wizefs_cli -v ./cmd/wizefs_cli
 RUN go build -o ./cmd/wizefs_mount/wizefs_mount -v ./cmd/wizefs_mount
 RUN go build -o ./rest/rest_service -v ./rest
 
 # if dev setting will use pilu/fresh for code reloading via docker-compose volume sharing with local machine
-CMD ./rest/rest_service
- 
+#CMD ["./rest/rest_service"]
+ENTRYPOINT ["./rest/rest_service"]
+
 # REST API Service listens on port 13000.
 EXPOSE 13000
