@@ -20,4 +20,6 @@ func main() {
 	signal.Notify(terminate, os.Interrupt)
 	<-terminate
 	log.Println("rest exiting")
+
+	h.Close()
 }

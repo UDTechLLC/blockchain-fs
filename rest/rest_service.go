@@ -8,6 +8,7 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/urfave/negroni"
 
+	"bitbucket.org/udt/wizefs/internal/core"
 	"bitbucket.org/udt/wizefs/rest/controllers"
 )
 
@@ -75,6 +76,17 @@ func (s *Service) Start() error {
 
 // Close closes the service.
 func (s *Service) Close() {
+	log.Println("rest closing")
+
+	storage := core.NewStorage()
+	for origin, bucket := range storage.MountedBuckets() {
+		log.Printf("Unmounting Bucket: %s [%s]", origin, bucket.MountPoint)
+		// Unmount a Bucket
+		if exitCode, err := storage.Unmount(origin); err != nil {
+			log.Printf("Error: %s Exit code: %d", err.Error(), exitCode)
+		}
+	}
+
 	s.ln.Close()
 	return
 }

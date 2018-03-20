@@ -60,6 +60,16 @@ func (s *Storage) Bucket(origin string) (*Bucket, bool) {
 	return bucket, ok
 }
 
+func (s *Storage) MountedBuckets() map[string]*Bucket {
+	buckets := make(map[string]*Bucket)
+	for origin, bucket := range s.buckets {
+		if bucket.mounted {
+			buckets[origin] = bucket
+		}
+	}
+	return buckets
+}
+
 func (s *Storage) Create(origin string) (exitCode int, err error) {
 	//exitCode, err = checkConfig(origin, true, false)
 	//if err != nil {
