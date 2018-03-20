@@ -54,7 +54,7 @@ func (b *Bucket) PutFile(originalFile string, content []byte) (exitCode int, err
 
 	// TODO: HACK for gRPC methods
 	if b.storage.Config == nil {
-		fmt.Println("CommonConfig == nil")
+		tlog.Info.Println("CommonConfig == nil")
 		//config.InitWizeConfig()
 	}
 
@@ -123,7 +123,7 @@ func (b *Bucket) GetFile(originalFile, destinationFilePath string, getContentOnl
 
 	// TODO: HACK for gRPC methods
 	if b.storage.Config == nil {
-		fmt.Println("CommonConfig == nil")
+		tlog.Info.Println("CommonConfig == nil")
 		//config.InitWizeConfig()
 	}
 
@@ -194,7 +194,7 @@ func (b *Bucket) RemoveFile(originalFile string) (exitCode int, err error) {
 
 	// TODO: HACK for gRPC methods
 	if b.storage.Config == nil {
-		fmt.Println("CommonConfig == nil")
+		tlog.Info.Println("CommonConfig == nil")
 		//config.InitWizeConfig()
 	}
 

@@ -118,7 +118,7 @@ func (s *Storage) Create(origin string) (exitCode int, err error) {
 
 	// TODO: HACK for gRPC methods
 	if s.Config == nil {
-		fmt.Println("CommonConfig == nil")
+		tlog.Info.Println("CommonConfig == nil")
 		//config.InitWizeConfig()
 	}
 	err = s.Config.CreateFilesystem(origin, originPath, fstype)
@@ -186,7 +186,7 @@ func (s *Storage) Delete(origin string) (exitCode int, err error) {
 
 	// TODO: HACK for gRPC methods
 	if s.Config == nil {
-		fmt.Println("CommonConfig == nil")
+		tlog.Info.Println("CommonConfig == nil")
 		//config.InitWizeConfig()
 	}
 	err = s.Config.DeleteFilesystem(origin)
@@ -315,7 +315,7 @@ func (s *Storage) Unmount(origin string) (exitCode int, err error) {
 
 	// TODO: HACK for gRPC methods
 	if s.Config == nil {
-		fmt.Println("CommonConfig == nil")
+		tlog.Info.Println("CommonConfig == nil")
 		//config.InitWizeConfig()
 	}
 	err = s.Config.UnmountFilesystem(mountpoint)
