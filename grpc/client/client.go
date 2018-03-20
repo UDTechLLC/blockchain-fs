@@ -10,7 +10,6 @@ import (
 	"google.golang.org/grpc"
 
 	pb "bitbucket.org/udt/wizefs/grpc/wizefsservice"
-	"bitbucket.org/udt/wizefs/internal/globals"
 	"bitbucket.org/udt/wizefs/internal/tlog"
 )
 
@@ -66,7 +65,7 @@ func main() {
 
 	// Put
 	// TODO: HACK - just for local testing
-	filepath := globals.OriginDirPath + "TESTDIR1/test.txt"
+	filepath := "test.txt"
 	content, err := readFile(filepath)
 	if err == nil {
 		tlog.Info.Printf("Request content: \n%s\n", content)
