@@ -164,3 +164,26 @@ func (s *wizefsServer) Get(ctx context.Context, request *GetRequest) (response *
 	}
 	return
 }
+
+func (s *wizefsServer) Remove(ctx context.Context, request *RemoveRequest) (response *RemoveResponse, err error) {
+	filename := request.GetFilename()
+	origin := request.GetOrigin()
+
+	// TODO: check all request's data
+
+	response = &RemoveResponse{
+		Executed: true,
+		Message:  "OK",
+	}
+	bucket, ok := s.storage.Bucket(origin)
+	if !ok {
+		response.Executed = false
+		response.Message = fmt.Sprintf("Bucket with ORIGIN: %s is not exist", origin)
+		return
+	}
+	if exitCode, err := bucket.RemoveFile(filename); err != nil {
+		response.Executed = false
+		response.Message = fmt.Sprintf("Error: %s. Exit code: %d", err.Error(), exitCode)
+	}
+	return
+}

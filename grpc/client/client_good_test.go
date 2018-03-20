@@ -151,6 +151,23 @@ func TestFullCircle(t *testing.T) {
 
 	time.Sleep(500 * time.Millisecond)
 
+	// Remove
+	t.Logf("Request: Remove. Origin: %s", origin)
+	respRemove, err := client.Remove(context.Background(),
+		&pb.RemoveRequest{
+			Filename: "test.txt",
+			Origin:   origin,
+		})
+	if err != nil {
+		t.Fatalf("Fail to execute Remove method: %v", err)
+	}
+	if !respRemove.Executed {
+		t.Fatalf("Bad response from Remove method: %s", respRemove.Message)
+	}
+	t.Logf("Response message: %s.", respRemove.Message)
+
+	time.Sleep(500 * time.Millisecond)
+
 	// Unmount
 	t.Logf("Request: Unmount. Origin: %s", origin)
 	resp, err = client.Unmount(context.Background(), &pb.FilesystemRequest{Origin: origin})
