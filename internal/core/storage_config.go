@@ -1,4 +1,4 @@
-package config
+package core
 
 import (
 	"encoding/json"
@@ -13,14 +13,14 @@ import (
 )
 
 const (
-	WizeCurrentVersion = 1
-	WizeConfigFilename = "wizedb.conf"
+	StorageConfigVersion  = 1
+	StorageConfigFilename = "wizedb.conf"
 )
 
 type FilesystemInfo struct {
-	OriginPath    string `json:"originpath"`
-	Type          FSType `json:"type"`
-	MountpointKey string `json:"mountpoint"`
+	OriginPath    string         `json:"originpath"`
+	Type          globals.FSType `json:"type"`
+	MountpointKey string         `json:"mountpoint"`
 }
 
 type MountpointInfo struct {
@@ -28,7 +28,7 @@ type MountpointInfo struct {
 	OriginKey      string `json:"origin"`
 }
 
-type WizeConfig struct {
+type StorageConfig struct {
 	// header
 
 	// filesystems
@@ -38,33 +38,8 @@ type WizeConfig struct {
 	filename string
 }
 
-var CommonConfig *WizeConfig
-
-func init() {
-	//
-}
-
-// TEST: TestWizeConfigInit
-func InitWizeConfig() {
-	// create Directory if it's not exist
-	if _, err := os.Stat(globals.OriginDirPath); os.IsNotExist(err) {
-		tlog.Warn.Printf("Create ORIGIN DIR directory: %s", globals.OriginDirPath)
-		os.MkdirAll(globals.OriginDirPath, 0755)
-	}
-
-	InitWizeConfigWithPath(globals.OriginDirPath)
-}
-
-func InitWizeConfigWithPath(path string) {
-	CommonConfig = NewWizeConfig(path)
-	err := CommonConfig.Load()
-	if err != nil {
-		CommonConfig.Save()
-	}
-}
-
 // TEST: TestWizeConfigMake
-func NewWizeConfig(path string) *WizeConfig {
+func NewStorageConfig(path string) *StorageConfig {
 	if path == "" {
 		exe, err := os.Executable()
 		if err != nil {
@@ -73,15 +48,15 @@ func NewWizeConfig(path string) *WizeConfig {
 		path = filepath.Dir(exe)
 	}
 
-	return &WizeConfig{
+	return &StorageConfig{
 		Filesystems: make(map[string]FilesystemInfo),
 		Mountpoints: make(map[string]MountpointInfo),
-		filename:    filepath.Join(path, WizeConfigFilename),
+		filename:    filepath.Join(path, StorageConfigFilename),
 	}
 }
 
 // TESTS: TestWizeConfig* (several tests)
-func (wc *WizeConfig) CreateFilesystem(origin, originPath string, itype FSType) error {
+func (wc *StorageConfig) CreateFilesystem(origin, originPath string, itype globals.FSType) error {
 	// HACK: this fixed problems with gRPC methods (and GUI?)
 	wc.Load()
 
@@ -101,7 +76,7 @@ func (wc *WizeConfig) CreateFilesystem(origin, originPath string, itype FSType) 
 	return nil
 }
 
-func (wc *WizeConfig) DeleteFilesystem(origin string) error {
+func (wc *StorageConfig) DeleteFilesystem(origin string) error {
 	// HACK: this fixed problems with gRPC methods (and GUI?)
 	wc.Load()
 
@@ -117,7 +92,7 @@ func (wc *WizeConfig) DeleteFilesystem(origin string) error {
 	return nil
 }
 
-func (wc *WizeConfig) MountFilesystem(origin, mountpoint, mountpointpath string) error {
+func (wc *StorageConfig) MountFilesystem(origin, mountpoint, mountpointpath string) error {
 	// HACK: this fixed problems with gRPC methods (and GUI?)
 	// HACK2: for gRPC/Mount we don't need to Load() config, because it works via mount CLI app
 	//wc.Load()
@@ -144,7 +119,7 @@ func (wc *WizeConfig) MountFilesystem(origin, mountpoint, mountpointpath string)
 	return nil
 }
 
-func (wc *WizeConfig) UnmountFilesystem(mountpoint string) error {
+func (wc *StorageConfig) UnmountFilesystem(mountpoint string) error {
 	// HACK: this fixed problems with gRPC methods (and GUI?)
 	wc.Load()
 
@@ -168,7 +143,7 @@ func (wc *WizeConfig) UnmountFilesystem(mountpoint string) error {
 	return nil
 }
 
-func (wc *WizeConfig) Save() error {
+func (wc *StorageConfig) Save() error {
 	tmp := wc.filename + ".tmp"
 	// 0400 permissions: wizefs.conf should be kept secret and never be written to.
 	//fd, err := os.OpenFile(tmp, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0400)
@@ -199,7 +174,7 @@ func (wc *WizeConfig) Save() error {
 	return err
 }
 
-func (wc *WizeConfig) Load() error {
+func (wc *StorageConfig) Load() error {
 	// Read from disk
 	js, err := ioutil.ReadFile(wc.filename)
 	if err != nil {
@@ -219,17 +194,7 @@ func (wc *WizeConfig) Load() error {
 	return nil
 }
 
-func (wc *WizeConfig) clear() {
-	// Just clear WizeConfig maps
-	for k := range wc.Filesystems {
-		delete(wc.Filesystems, k)
-	}
-	for k := range wc.Mountpoints {
-		delete(wc.Mountpoints, k)
-	}
-}
-
-func (wc *WizeConfig) CheckOriginGetMountpoint(origin string) (mountpointPath string, err error) {
+func (wc *StorageConfig) CheckOriginGetMountpoint(origin string) (mountpointPath string, err error) {
 	// HACK: this fixed problems with gRPC methods (and GUI?)
 	wc.Load()
 
@@ -259,21 +224,41 @@ func (wc *WizeConfig) CheckOriginGetMountpoint(origin string) (mountpointPath st
 	return mountpointPath, nil
 }
 
-func (wc *WizeConfig) CheckFilesystem(origin string) (existOrigin bool, existMountpoint bool) {
-	// HACK: this fixed problems with gRPC methods (and GUI?)
+func (wc *StorageConfig) Check(origin string, shouldFindOrigin, shouldMounted bool) (extCode int, err error) {
 	wc.Load()
 
-	existMountpoint = false
-	fsinfo, existOrigin := wc.Filesystems[origin]
-	if existOrigin {
-		if fsinfo.MountpointKey != "" {
-			existMountpoint = true
+	existOrigin, existMountpoint := wc.checkFilesystem(origin)
+
+	if shouldFindOrigin {
+		if existOrigin {
+			return globals.ExitOrigin,
+				fmt.Errorf("ORIGIN: %s is already exist in common config.", origin)
+		}
+	} else {
+		if !existOrigin {
+			return globals.ExitOrigin,
+				fmt.Errorf("Did not find ORIGIN: %s in common config.", origin)
 		}
 	}
-	return
+
+	if shouldMounted {
+		if existMountpoint {
+			return globals.ExitMountPoint,
+				fmt.Errorf("This ORIGIN: %s is already mounted", origin)
+		}
+	} else {
+		if !existMountpoint {
+			// TEST: TestUnmountNotMounted
+			return globals.ExitMountPoint,
+				fmt.Errorf("This ORIGIN: %s is not mounted yet", origin)
+		}
+	}
+
+	return 0, nil
 }
 
-func (wc *WizeConfig) GetMountpointInfoByOrigin(origin string) (fsinfo FilesystemInfo, mpinfo MountpointInfo, err error) {
+// just for WizeFS UI app
+func (wc *StorageConfig) GetInfoByOrigin(origin string) (fsinfo FilesystemInfo, mpinfo MountpointInfo, err error) {
 	// HACK: this fixed problems with gRPC methods (and GUI?)
 	wc.Load()
 
@@ -290,4 +275,25 @@ func (wc *WizeConfig) GetMountpointInfoByOrigin(origin string) (fsinfo Filesyste
 	}
 
 	return fsinfo, mpinfo, nil
+}
+
+func (wc *StorageConfig) clear() {
+	// Just clear WizeConfig maps
+	for k := range wc.Filesystems {
+		delete(wc.Filesystems, k)
+	}
+	for k := range wc.Mountpoints {
+		delete(wc.Mountpoints, k)
+	}
+}
+
+func (wc *StorageConfig) checkFilesystem(origin string) (existOrigin bool, existMountpoint bool) {
+	existMountpoint = false
+	fsinfo, existOrigin := wc.Filesystems[origin]
+	if existOrigin {
+		if fsinfo.MountpointKey != "" {
+			existMountpoint = true
+		}
+	}
+	return
 }

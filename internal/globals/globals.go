@@ -5,10 +5,19 @@ import (
 	"runtime"
 )
 
-// TODO: HACK - temporary solution is:
-// to store all ORIGINs and MOUNTPOINTs in one place
-var (
-	OriginDirPath = userHomeDir() + "/.local/share/wize/fs/"
+const (
+	ProjectName    = "WizeFS"
+	ProjectVersion = "0.0.8"
+)
+
+type FSType int
+
+const (
+	HackFS FSType = iota - 1 // -1
+	NoneFS
+	LoopbackFS
+	ZipFS
+	LZFS
 )
 
 func userHomeDir() string {

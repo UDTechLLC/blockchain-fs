@@ -1,4 +1,4 @@
-package util
+package core
 
 import (
 	"encoding/json"
@@ -17,20 +17,20 @@ import (
 	"github.com/hanwen/go-fuse/fuse/pathfs"
 	"github.com/hanwen/go-fuse/zipfs"
 
-	"bitbucket.org/udt/wizefs/internal/config"
 	"bitbucket.org/udt/wizefs/internal/fusefrontend"
 	"bitbucket.org/udt/wizefs/internal/globals"
+	"bitbucket.org/udt/wizefs/internal/syscallcompat"
 	"bitbucket.org/udt/wizefs/internal/tlog"
 )
 
 // DoMount mounts an directory.
 // Called from main.
-func DoMount(fstype config.FSType,
+func (s *Storage) doMount(fstype globals.FSType,
 	origin, originPath, mountpoint, mountpointPath string,
 	notifypid int) (exitCode int, err error) {
 
 	// Initialize FUSE server
-	srv, exitCode, err := initFuseFrontend(fstype, originPath, mountpointPath)
+	srv, exitCode, err := s.initFuseFrontend(fstype, originPath, mountpointPath)
 	if exitCode != 0 || err != nil {
 
 	}
@@ -43,7 +43,7 @@ func DoMount(fstype config.FSType,
 		os.Chdir("/")
 
 		// Daemons should redirect stdin, stdout and stderr
-		redirectStdFds()
+		s.redirectStdFds()
 
 		// Disconnect from the controlling terminal by creating a new session.
 		// This prevents us from getting SIGINT when the user presses Ctrl-C
@@ -53,18 +53,18 @@ func DoMount(fstype config.FSType,
 			tlog.Warn.Printf("Setsid: %v", err)
 		}
 		// Send SIGUSR1 to our parent
-		sendUsr1(notifypid)
+		s.sendUsr1(notifypid)
 	}
 
 	// TODO: understand for what is it
 	// Increase the open file limit to 4096. This is not essential, so do it after
 	// we have switched to syslog and don't bother the user with warnings.
-	setOpenFileLimit()
+	s.setOpenFileLimit()
 
 	// Wait for SIGINT in the background and unmount ourselves if we get it.
 	// This prevents a dangling "Transport endpoint is not connected"
 	// mountpoint if the user hits CTRL-C.
-	handleSigint(srv, mountpointPath)
+	s.handleSigint(srv, mountpointPath)
 
 	// TODO: remove this?
 	// Return memory that was allocated for scrypt (64M by default!) and other
@@ -72,16 +72,16 @@ func DoMount(fstype config.FSType,
 	debug.FreeOSMemory()
 
 	// TODO: do something with configuration
-	if config.CommonConfig == nil {
-		config.InitWizeConfig()
+	if s.Config == nil {
+		//config.InitWizeConfig()
 		//} else {
 		//	config.CommonConfig.Load()
 	}
-	err = config.CommonConfig.MountFilesystem(origin, mountpoint, mountpointPath)
+	err = s.Config.MountFilesystem(origin, mountpoint, mountpointPath)
 	if err != nil {
 		tlog.Warn.Printf("Problem with adding Filesystem to Config: %v", err)
 	} else {
-		err = config.CommonConfig.Save()
+		err = s.Config.Save()
 		if err != nil {
 			tlog.Warn.Printf("Problem with saving Config: %v", err)
 		}
@@ -95,8 +95,8 @@ func DoMount(fstype config.FSType,
 }
 
 // DoUnmount tries to umount "dir" and panics on error.
-func DoUnmount(dir string) {
-	err := unmountErr(dir)
+func (s *Storage) doUnmount(dir string) {
+	err := s.unmountErr(dir)
 	if err != nil {
 		tlog.Warn.Println(err)
 		panic(err)
@@ -104,7 +104,7 @@ func DoUnmount(dir string) {
 }
 
 // unmountErr tries to unmount "dir" and returns the resulting error.
-func unmountErr(dir string) error {
+func (s *Storage) unmountErr(dir string) error {
 	var cmd *exec.Cmd
 	if runtime.GOOS == "linux" {
 		cmd = exec.Command("fusermount", "-u", dir)
@@ -119,7 +119,7 @@ func unmountErr(dir string) error {
 
 // setOpenFileLimit tries to increase the open file limit to 4096 (the default hard
 // limit on Linux).
-func setOpenFileLimit() {
+func (s *Storage) setOpenFileLimit() {
 	var lim syscall.Rlimit
 	err := syscall.Getrlimit(syscall.RLIMIT_NOFILE, &lim)
 	if err != nil {
@@ -139,7 +139,7 @@ func setOpenFileLimit() {
 
 // initFuseFrontend - initialize wizefs/fusefrontend
 // Calls os.Exit on errors
-func initFuseFrontend(fstype config.FSType, originPath, mountpointPath string) (*fuse.Server, int, error) {
+func (s *Storage) initFuseFrontend(fstype globals.FSType, originPath, mountpointPath string) (*fuse.Server, int, error) {
 	// Reconciliate CLI and config file arguments into a fusefrontend.Args struct
 	// that is passed to the filesystem implementation
 	frontendArgs := fusefrontend.Args{
@@ -151,7 +151,7 @@ func initFuseFrontend(fstype config.FSType, originPath, mountpointPath string) (
 	tlog.Debug.Printf("frontendArgs: %s", string(jsonBytes))
 
 	// Prepare root
-	root := prepareRoot(frontendArgs)
+	root := s.prepareRoot(frontendArgs)
 	if root == nil {
 		//os.Exit(globals.ExitType)
 		return nil, globals.ExitType, nil
@@ -210,9 +210,9 @@ func initFuseFrontend(fstype config.FSType, originPath, mountpointPath string) (
 }
 
 // TODO: move to fusefrontend?
-func prepareRoot(args fusefrontend.Args) (root nodefs.Node) {
+func (s *Storage) prepareRoot(args fusefrontend.Args) (root nodefs.Node) {
 	switch args.Type {
-	case config.LoopbackFS, config.LZFS:
+	case globals.LoopbackFS, globals.LZFS:
 		var finalFs pathfs.FileSystem
 
 		// pathFsOpts are passed into go-fuse/pathfs
@@ -227,7 +227,7 @@ func prepareRoot(args fusefrontend.Args) (root nodefs.Node) {
 
 		root = pathFs.Root()
 
-	case config.ZipFS:
+	case globals.ZipFS:
 		// TODO: move to fusefrontend
 		var err error
 		root, err = zipfs.NewArchiveFileSystem(args.OriginDir)
@@ -244,7 +244,7 @@ func prepareRoot(args fusefrontend.Args) (root nodefs.Node) {
 	return root
 }
 
-func handleSigint(srv *fuse.Server, mountpoint string) {
+func (s *Storage) handleSigint(srv *fuse.Server, mountpoint string) {
 	ch := make(chan os.Signal, 1)
 	signal.Notify(ch, os.Interrupt)
 	signal.Notify(ch, syscall.SIGTERM)
@@ -264,4 +264,62 @@ func handleSigint(srv *fuse.Server, mountpoint string) {
 		}
 		os.Exit(globals.ExitSigInt)
 	}()
+}
+
+// redirectStdFds redirects stderr and stdout to syslog; stdin to /dev/null
+func (s *Storage) redirectStdFds() {
+	// Create a pipe pair "pw" -> "pr" and start logger reading from "pr".
+	// We do it ourselves instead of using StdinPipe() because we need access
+	// to the fd numbers.
+	pr, pw, err := os.Pipe()
+	if err != nil {
+		tlog.Warn.Printf("redirectStdFds: could not create pipe: %v", err)
+		return
+	}
+	tag := fmt.Sprintf("%s-%d-logger", tlog.ProgramName, os.Getpid())
+	cmd := exec.Command("/usr/bin/logger", "-t", tag)
+	cmd.Stdin = pr
+	err = cmd.Start()
+	if err != nil {
+		tlog.Warn.Printf("redirectStdFds: could not start logger: %v", err)
+		return
+	}
+	// The logger now reads on "pr". We can close it.
+	pr.Close()
+	// Redirect stout and stderr to "pw".
+	err = syscallcompat.Dup3(int(pw.Fd()), 1, 0)
+	if err != nil {
+		tlog.Warn.Printf("redirectStdFds: stdout dup error: %v", err)
+	}
+	syscallcompat.Dup3(int(pw.Fd()), 2, 0)
+	if err != nil {
+		tlog.Warn.Printf("redirectStdFds: stderr dup error: %v", err)
+	}
+	// Our stout and stderr point to "pw". We can close the extra copy.
+	pw.Close()
+	// Redirect stdin to /dev/null
+	nullFd, err := os.Open("/dev/null")
+	if err != nil {
+		tlog.Warn.Printf("redirectStdFds: could not open /dev/null: %v", err)
+		return
+	}
+	err = syscallcompat.Dup3(int(nullFd.Fd()), 0, 0)
+	if err != nil {
+		tlog.Warn.Printf("redirectStdFds: stdin dup error: %v", err)
+	}
+	nullFd.Close()
+}
+
+// Send signal USR1 to "pid" (usually our parent process). This notifies it
+// that the mounting has completed successfully.
+func (s *Storage) sendUsr1(pid int) {
+	p, err := os.FindProcess(pid)
+	if err != nil {
+		tlog.Warn.Printf("sendUsr1: FindProcess: %v", err)
+		return
+	}
+	err = p.Signal(syscall.SIGUSR1)
+	if err != nil {
+		tlog.Warn.Printf("sendUsr1: Signal: %v", err)
+	}
 }

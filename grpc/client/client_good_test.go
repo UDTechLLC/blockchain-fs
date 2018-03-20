@@ -9,7 +9,6 @@ import (
 	"google.golang.org/grpc"
 
 	pb "bitbucket.org/udt/wizefs/grpc/wizefsservice"
-	"bitbucket.org/udt/wizefs/internal/globals"
 )
 
 var (
@@ -109,7 +108,7 @@ func TestFullCircle(t *testing.T) {
 	// TODO: add Put/Get tests
 	// Put
 	// TODO: HACK - just for local testing
-	filepath := globals.OriginDirPath + "TESTDIR1/test.txt"
+	filepath := "test.txt"
 	content, err := readFile(filepath)
 	if err == nil {
 		t.Logf("Request content: \n%s\n", content)
@@ -128,10 +127,11 @@ func TestFullCircle(t *testing.T) {
 			t.Fatalf("Bad response from Put method: %s", respPut.Message)
 		}
 		t.Logf("Response message: %s.", respPut.Message)
-		time.Sleep(3 * time.Second)
 	} else {
 		t.Fatalf("We have problem with read file: %v", err)
 	}
+
+	time.Sleep(500 * time.Millisecond)
 
 	// Get
 	t.Logf("Request: Get. Origin: %s", origin)
@@ -148,7 +148,25 @@ func TestFullCircle(t *testing.T) {
 	}
 	t.Logf("Response message: %s.", respGet.Message)
 	t.Logf("Response content: \n%s\n", respGet.Content)
-	time.Sleep(3 * time.Second)
+
+	time.Sleep(500 * time.Millisecond)
+
+	// Remove
+	t.Logf("Request: Remove. Origin: %s", origin)
+	respRemove, err := client.Remove(context.Background(),
+		&pb.RemoveRequest{
+			Filename: "test.txt",
+			Origin:   origin,
+		})
+	if err != nil {
+		t.Fatalf("Fail to execute Remove method: %v", err)
+	}
+	if !respRemove.Executed {
+		t.Fatalf("Bad response from Remove method: %s", respRemove.Message)
+	}
+	t.Logf("Response message: %s.", respRemove.Message)
+
+	time.Sleep(500 * time.Millisecond)
 
 	// Unmount
 	t.Logf("Request: Unmount. Origin: %s", origin)
@@ -160,7 +178,8 @@ func TestFullCircle(t *testing.T) {
 		t.Fatalf("Bad response from Unmount method: %s", resp.Message)
 	}
 	t.Logf("Response message: %s.", resp.Message)
-	time.Sleep(1 * time.Second)
+
+	time.Sleep(500 * time.Millisecond)
 
 	// TODO: check if origin dir was unmounted
 
@@ -174,7 +193,8 @@ func TestFullCircle(t *testing.T) {
 		t.Fatalf("Bad response from Delete method: %s", resp.Message)
 	}
 	t.Logf("Response message: %s.", resp.Message)
-	time.Sleep(1 * time.Second)
+
+	time.Sleep(500 * time.Millisecond)
 
 	// TODO: check if origin dir was deleted
 }

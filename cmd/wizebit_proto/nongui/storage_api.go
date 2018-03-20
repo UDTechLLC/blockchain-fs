@@ -84,7 +84,7 @@ func PutFile(filename, origin string) error {
 }
 
 func GetFile(source, origin, destination string) error {
-	return RunCommand("xget", source, origin, destination)
+	return RunCommand("get", source, origin, destination)
 }
 
 func RemoveFile(filename, origin string) error {

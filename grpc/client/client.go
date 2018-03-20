@@ -10,7 +10,6 @@ import (
 	"google.golang.org/grpc"
 
 	pb "bitbucket.org/udt/wizefs/grpc/wizefsservice"
-	"bitbucket.org/udt/wizefs/internal/globals"
 	"bitbucket.org/udt/wizefs/internal/tlog"
 )
 
@@ -55,18 +54,18 @@ func main() {
 	resp, err := client.Create(context.Background(), &pb.FilesystemRequest{Origin: origin})
 	tlog.Info.Printf("Response: %v. Error: %v", resp, err)
 
-	time.Sleep(3 * time.Second)
+	time.Sleep(1 * time.Second)
 
 	// Mount
 	tlog.Info.Printf("Request: Mount. Origin: %s", origin)
 	resp, err = client.Mount(context.Background(), &pb.FilesystemRequest{Origin: origin})
 	tlog.Info.Printf("Response: %v. Error: %v", resp, err)
 
-	time.Sleep(3 * time.Second)
+	time.Sleep(1 * time.Second)
 
 	// Put
 	// TODO: HACK - just for local testing
-	filepath := globals.OriginDirPath + "TESTDIR1/test.txt"
+	filepath := "test.txt"
 	content, err := readFile(filepath)
 	if err == nil {
 		tlog.Info.Printf("Request content: \n%s\n", content)
@@ -81,7 +80,7 @@ func main() {
 		tlog.Info.Printf("Response: %v. Error: %v", respPut, err)
 	}
 
-	time.Sleep(3 * time.Second)
+	time.Sleep(1 * time.Second)
 
 	// Get
 	if err == nil {
@@ -96,14 +95,28 @@ func main() {
 		tlog.Info.Printf("Response contentb: \n%s\n", respGet.Content)
 	}
 
-	time.Sleep(3 * time.Second)
+	time.Sleep(1 * time.Second)
+
+	// Remove
+	if err == nil {
+		tlog.Info.Printf("Request: Remove. Origin: %s", origin)
+		respRemove, err := client.Remove(context.Background(),
+			&pb.RemoveRequest{
+				Filename: "test.txt",
+				Origin:   origin,
+			})
+		tlog.Info.Printf("Error: %v", err)
+		tlog.Info.Printf("Response message: %s.", respRemove.Message)
+	}
+
+	time.Sleep(1 * time.Second)
 
 	// Unmount
 	tlog.Info.Printf("Request: Unmount. Origin: %s", origin)
 	resp, err = client.Unmount(context.Background(), &pb.FilesystemRequest{Origin: origin})
 	tlog.Info.Printf("Response: %v. Error: %v", resp, err)
 
-	time.Sleep(3 * time.Second)
+	time.Sleep(1 * time.Second)
 
 	// Delete
 	tlog.Info.Printf("Request: Delete. Origin: %s", origin)

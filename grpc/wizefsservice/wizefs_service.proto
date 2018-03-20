@@ -17,6 +17,8 @@ service WizeFsService {
 	// client sends a request and gets a stream to read a sequence of messages
 	// server sends a sequence of messages
 	rpc Get(GetRequest) returns (GetResponse) {}
+	
+	rpc Remove(RemoveRequest) returns (RemoveResponse) {}
 }
 
 message FilesystemRequest {
@@ -48,4 +50,14 @@ message GetResponse {
 	bool executed = 1;		// true - without error, false - with error
 	string message = 2;		// info if was executed, error if was not
 	bytes content = 3;
+}
+
+message RemoveRequest {
+	string filename = 1;
+	string origin = 2;
+}
+
+message RemoveResponse {
+	bool executed = 1;		// true - without error, false - with error
+	string message = 2;		// info if was executed, error if was not
 }

@@ -6,7 +6,6 @@ import (
 	"io"
 	"net/http"
 
-	api "bitbucket.org/udt/wizefs/internal/command"
 	"github.com/gorilla/mux"
 )
 
@@ -47,7 +46,14 @@ func PutFile(w http.ResponseWriter, r *http.Request) {
 	io.Copy(&buf, file)
 	defer buf.Reset()
 
-	if exitCode, err := api.ApiPut(filename, origin, buf.Bytes()); err != nil {
+	bucket, ok := storage.Bucket(origin)
+	if !ok {
+		displayAppError(w, nil,
+			fmt.Sprintf("Bucket with ORIGIN: %s is not exist", origin),
+			http.StatusInternalServerError)
+		return
+	}
+	if exitCode, err := bucket.PutFile(filename, buf.Bytes()); err != nil {
 		displayAppError(w, err,
 			fmt.Sprintf("Error: %s. Exit code: %d", err.Error(), exitCode),
 			http.StatusInternalServerError)
@@ -77,7 +83,14 @@ func GetFile(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Get a File
-	content, exitCode, err := api.ApiGet(filename, origin, "", true)
+	bucket, ok := storage.Bucket(origin)
+	if !ok {
+		displayAppError(w, nil,
+			fmt.Sprintf("Bucket with ORIGIN: %s is not exist", origin),
+			http.StatusInternalServerError)
+		return
+	}
+	content, exitCode, err := bucket.GetFile(filename, "", true)
 	if err != nil {
 		displayAppError(w, err,
 			fmt.Sprintf("Error: %s. Exit code: %d", err.Error(), exitCode),
@@ -88,13 +101,12 @@ func GetFile(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Disposition", "attachment; filename="+filename)
 	w.Header().Set("Content-Type", r.Header.Get("Content-Type"))
 
-	if written, err := w.Write(content); err != nil {
+	if _, err := w.Write(content); err != nil {
 		displayAppError(w, err, "", http.StatusInternalServerError)
 		return
-	} else {
-		fmt.Println("Sending", written, "bytes for", filename)
+		//} else {
+		//	fmt.Println("Sending", written, "bytes for", filename)
 	}
-
 }
 
 func RemoveFile(w http.ResponseWriter, r *http.Request) {
@@ -111,7 +123,14 @@ func RemoveFile(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Remove a File
-	if exitCode, err := api.ApiRemove(filename, origin); err != nil {
+	bucket, ok := storage.Bucket(origin)
+	if !ok {
+		displayAppError(w, nil,
+			fmt.Sprintf("Bucket with ORIGIN: %s is not exist", origin),
+			http.StatusInternalServerError)
+		return
+	}
+	if exitCode, err := bucket.RemoveFile(filename); err != nil {
 		displayAppError(w, err,
 			fmt.Sprintf("Error: %s. Exit code: %d", err.Error(), exitCode),
 			http.StatusInternalServerError)

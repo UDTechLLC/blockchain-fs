@@ -1,56 +1,45 @@
-package config
+package core
 
 import (
 	"encoding/json"
 	"os"
 	"path/filepath"
 
+	"bitbucket.org/udt/wizefs/internal/globals"
 	"bitbucket.org/udt/wizefs/internal/tlog"
 )
 
 const (
-	ProgramName              = "wizefs"
-	ProgramVersion           = "0.0.7"
-	FilesystemCurrentVersion = 1
-	FilesystemConfigFilename = "wizefs.conf"
+	BucketConfigVersion  = 1
+	BucketConfigFilename = "wizefs.conf"
 )
 
-type FSType int
-
-const (
-	HackFS FSType = iota - 1 // -1
-	NoneFS
-	LoopbackFS
-	ZipFS
-	LZFS
-)
-
-type FilesystemConfig struct {
+type BucketConfig struct {
 	// Creator is the WizeFS version string
 	Creator string `json:"creator"`
 	// Version is the version this filesystem uses
-	Version    uint16 `json:"version"`
-	Origin     string `json:"origin"`
-	OriginPath string `json:"originpath"`
-	Type       FSType `json:"type"`
+	Version    uint16         `json:"version"`
+	Origin     string         `json:"origin"`
+	OriginPath string         `json:"originpath"`
+	Type       globals.FSType `json:"type"`
 
 	filename string
 }
 
-// TEST: TestFSConfigMake
-func NewFilesystemConfig(origin, originPath string, itype FSType) *FilesystemConfig {
-	return &FilesystemConfig{
-		Creator:    ProgramName + " ver. " + ProgramVersion,
-		Version:    FilesystemCurrentVersion,
+// TEST: TestBucketConfigMake
+func NewBucketConfig(origin, originPath string, itype globals.FSType) *BucketConfig {
+	return &BucketConfig{
+		Creator:    globals.ProjectName + " ver. " + globals.ProjectVersion,
+		Version:    BucketConfigVersion,
 		Origin:     origin,
 		OriginPath: originPath,
 		Type:       itype,
-		filename:   filepath.Join(originPath, FilesystemConfigFilename),
+		filename:   filepath.Join(originPath, BucketConfigFilename),
 	}
 }
 
-// TEST: TestFSConfigSave
-func (c *FilesystemConfig) Save() error {
+// TEST: TestBucketConfigSave
+func (c *BucketConfig) Save() error {
 	tmp := c.filename + ".tmp"
 	// 0400 permissions: wizefs.conf should be kept secret and never be written to.
 	fd, err := os.OpenFile(tmp, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0400)
@@ -80,5 +69,5 @@ func (c *FilesystemConfig) Save() error {
 	return err
 }
 
-// TEST: TestFSConfigLoad
-// TODO: load FilesystemConfig
+// TEST: TestBucketConfigLoad
+// TODO: load BucketConfig
