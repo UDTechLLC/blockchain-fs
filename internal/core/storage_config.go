@@ -7,6 +7,7 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"sync"
 
 	"bitbucket.org/udt/wizefs/internal/globals"
 	"bitbucket.org/udt/wizefs/internal/tlog"
@@ -36,6 +37,7 @@ type StorageConfig struct {
 	Mountpoints map[string]MountpointInfo `json:"mounted"`
 
 	filename string
+	mutex    sync.Mutex
 }
 
 // TEST: TestWizeConfigMake
@@ -144,6 +146,9 @@ func (wc *StorageConfig) UnmountFilesystem(mountpoint string) error {
 }
 
 func (wc *StorageConfig) Save() error {
+	wc.mutex.Lock()
+	defer wc.mutex.Unlock()
+
 	tmp := wc.filename + ".tmp"
 	// 0400 permissions: wizefs.conf should be kept secret and never be written to.
 	//fd, err := os.OpenFile(tmp, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0400)
@@ -175,6 +180,9 @@ func (wc *StorageConfig) Save() error {
 }
 
 func (wc *StorageConfig) Load() error {
+	wc.mutex.Lock()
+	defer wc.mutex.Unlock()
+
 	// Read from disk
 	js, err := ioutil.ReadFile(wc.filename)
 	if err != nil {
