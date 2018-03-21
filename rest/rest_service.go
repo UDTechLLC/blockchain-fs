@@ -26,7 +26,7 @@ func NewService(addr string) *Service {
 }
 
 // Start starts the service.
-func (s *Service) Start(shutdown chan int) error {
+func (s *Service) Start() error {
 	// Get the mux router object
 	router := mux.NewRouter().StrictSlash(false)
 
@@ -69,7 +69,7 @@ func (s *Service) Start(shutdown chan int) error {
 		if err != nil {
 			log.Printf("HTTP serve: %s", err)
 		}
-		shutdown <- 1
+		//shutdown <- 1
 	}()
 
 	return nil
