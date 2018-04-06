@@ -6,6 +6,7 @@ import (
 	"net/http"
 
 	"github.com/gorilla/mux"
+	"github.com/rs/cors"
 	"github.com/urfave/negroni"
 
 	"bitbucket.org/udt/wizefs/internal/core"
@@ -50,8 +51,16 @@ func (s *Service) Start() error {
 	// curl -X DELETE localhost:13000/buckets/REST1/files/test.txt
 	router.HandleFunc("/buckets/{origin}/files/{filename}", controllers.RemoveFile).Methods("DELETE")
 
+	c := cors.New(cors.Options{
+		AllowedOrigins: []string{"*"},
+		AllowedMethods: []string{"GET", "HEAD", "POST", "PUT", "OPTIONS"},
+		AllowedHeaders: []string{"Origin", "Authorization", "Access-Control-Allow-Origin", "Content-Type"},
+		ExposedHeaders: []string{"Content-Length", "Access-Control-Allow-Origin"},
+	})
+
 	// Create a negroni instance
 	n := negroni.Classic()
+	n.Use(c)
 	n.UseHandler(router)
 
 	server := http.Server{
