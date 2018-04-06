@@ -296,7 +296,12 @@ func (s *Storage) Unmount(origin string) (exitCode int, err error) {
 
 	tlog.Debug.Printf("Unmount Filesystem %s", mountpointPath)
 
-	s.doUnmount(mountpointPath)
+	err = s.doUnmount(mountpointPath)
+	if err != nil {
+		// TEST: TestUnmount
+		return globals.ExitMountPoint,
+			fmt.Errorf("doUnmount failed: %v", err)
+	}
 
 	if fstype == globals.LZFS {
 		// zip temp directory

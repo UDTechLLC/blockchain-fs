@@ -44,6 +44,7 @@ type appError struct {
 	Error      string `json:"error"`
 	Message    string `json:"message"`
 	HttpStatus int    `json:"status"`
+	ExitCode   int    `json:"exitcode"`
 }
 
 type errorResource struct {
@@ -56,11 +57,12 @@ func getProjectPath() string {
 	return testFilename[0:idx]
 }
 
-func displayAppError(w http.ResponseWriter, handlerError error, message string, code int) {
+func displayAppError(w http.ResponseWriter, handlerError error, message string, code int, exitCode int) {
 	errObj := appError{
 		Error:      handlerError.Error(),
 		Message:    message,
 		HttpStatus: code,
+		ExitCode:   exitCode,
 	}
 
 	fmt.Printf("[app error]: %s\n", handlerError)

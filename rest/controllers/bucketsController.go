@@ -9,6 +9,7 @@ import (
 	"syscall"
 
 	"bitbucket.org/udt/wizefs/internal/core"
+	"bitbucket.org/udt/wizefs/internal/globals"
 	"github.com/gorilla/mux"
 )
 
@@ -23,13 +24,18 @@ func Home(w http.ResponseWriter, r *http.Request) {
 	respondWithJSON(w, http.StatusOK, "HOME")
 }
 
+func Mint(w http.ResponseWriter, r *http.Request) {
+	respondWithJSON(w, http.StatusOK, "Mint")
+}
+
 func CreateBucket(w http.ResponseWriter, r *http.Request) {
 	var bucketResource BucketResource
 	// Decode the incoming Bucket json
 	err := json.NewDecoder(r.Body).Decode(&bucketResource)
 	if err != nil ||
 		bucketResource.Data.Origin == "" {
-		displayAppError(w, err, "Invalid Bucket data", http.StatusInternalServerError)
+		displayAppError(w, err, "Invalid Bucket data",
+			http.StatusInternalServerError, globals.ExitOrigin)
 		return
 	}
 
@@ -37,7 +43,7 @@ func CreateBucket(w http.ResponseWriter, r *http.Request) {
 	if exitCode, err := storage.Create(bucketResource.Data.Origin); err != nil {
 		displayAppError(w, err,
 			fmt.Sprintf("Error: %s Exit code: %d", err.Error(), exitCode),
-			http.StatusInternalServerError)
+			http.StatusInternalServerError, exitCode)
 		return
 	}
 
@@ -57,7 +63,7 @@ func DeleteBucket(w http.ResponseWriter, r *http.Request) {
 	if origin == "" {
 		displayAppError(w, nil,
 			"Please check request URL!",
-			http.StatusInternalServerError)
+			http.StatusInternalServerError, globals.ExitOrigin)
 		return
 	}
 
@@ -65,7 +71,7 @@ func DeleteBucket(w http.ResponseWriter, r *http.Request) {
 	if exitCode, err := storage.Delete(origin); err != nil {
 		displayAppError(w, err,
 			fmt.Sprintf("Error: %s Exit code: %d", err.Error(), exitCode),
-			http.StatusInternalServerError)
+			http.StatusInternalServerError, exitCode)
 		return
 	}
 
@@ -86,7 +92,7 @@ func MountBucket(w http.ResponseWriter, r *http.Request) {
 	if origin == "" {
 		displayAppError(w, nil,
 			"Please check request URL!",
-			http.StatusInternalServerError)
+			http.StatusInternalServerError, globals.ExitOrigin)
 		return
 	}
 
@@ -104,7 +110,7 @@ func MountBucket(w http.ResponseWriter, r *http.Request) {
 	if cerr != nil {
 		displayAppError(w, cerr,
 			fmt.Sprintf("starting command failed: %v", cerr),
-			http.StatusInternalServerError)
+			http.StatusInternalServerError, globals.ExitMountPoint)
 		return
 	}
 
@@ -114,13 +120,13 @@ func MountBucket(w http.ResponseWriter, r *http.Request) {
 			if waitstat, ok := exiterr.Sys().(syscall.WaitStatus); ok {
 				displayAppError(w, cerr,
 					fmt.Sprintf("wait returned an exit status: %d [%s]", waitstat.ExitStatus(), errbuf.String()[:errbuf.Len()-1]),
-					http.StatusInternalServerError)
+					http.StatusInternalServerError, waitstat.ExitStatus())
 				return
 			}
 		} else {
 			displayAppError(w, cerr,
 				fmt.Sprintf("wait returned an unknown error: %v [%s]", cerr, errbuf.String()[:errbuf.Len()-1]),
-				http.StatusInternalServerError)
+				http.StatusInternalServerError, globals.ExitMountPoint)
 			return
 		}
 	}
@@ -142,7 +148,7 @@ func UnmountBucket(w http.ResponseWriter, r *http.Request) {
 	if origin == "" {
 		displayAppError(w, nil,
 			"Please check request URL!",
-			http.StatusInternalServerError)
+			http.StatusInternalServerError, globals.ExitOrigin)
 		return
 	}
 
@@ -150,7 +156,7 @@ func UnmountBucket(w http.ResponseWriter, r *http.Request) {
 	if exitCode, err := storage.Unmount(origin); err != nil {
 		displayAppError(w, err,
 			fmt.Sprintf("Error: %s Exit code: %d", err.Error(), exitCode),
-			http.StatusInternalServerError)
+			http.StatusInternalServerError, exitCode)
 		return
 	}
 

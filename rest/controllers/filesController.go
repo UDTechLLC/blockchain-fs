@@ -8,6 +8,8 @@ import (
 	"net/http"
 
 	"github.com/gorilla/mux"
+
+	"bitbucket.org/udt/wizefs/internal/globals"
 )
 
 func PutFile(w http.ResponseWriter, r *http.Request) {
@@ -18,7 +20,7 @@ func PutFile(w http.ResponseWriter, r *http.Request) {
 	if origin == "" {
 		displayAppError(w, nil,
 			"Please check request URL!",
-			http.StatusInternalServerError)
+			http.StatusInternalServerError, globals.ExitOrigin)
 		return
 	}
 
@@ -26,7 +28,7 @@ func PutFile(w http.ResponseWriter, r *http.Request) {
 	if err := r.ParseMultipartForm(32 << 20); err != nil {
 		displayAppError(w, err,
 			"Parsing multipart form was failed! Check your request, please!",
-			http.StatusInternalServerError)
+			http.StatusInternalServerError, globals.ExitFile)
 		return
 	}
 
@@ -34,7 +36,7 @@ func PutFile(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		displayAppError(w, err,
 			"Openning file was failed! Check your request, please!",
-			http.StatusInternalServerError)
+			http.StatusInternalServerError, globals.ExitFile)
 		return
 	}
 	defer file.Close()
@@ -51,13 +53,13 @@ func PutFile(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		displayAppError(w, nil,
 			fmt.Sprintf("Bucket with ORIGIN: %s is not exist", origin),
-			http.StatusInternalServerError)
+			http.StatusInternalServerError, globals.ExitOrigin)
 		return
 	}
 	if exitCode, err := bucket.PutFile(filename, buf.Bytes()); err != nil {
 		displayAppError(w, err,
 			fmt.Sprintf("Error: %s. Exit code: %d", err.Error(), exitCode),
-			http.StatusInternalServerError)
+			http.StatusInternalServerError, exitCode)
 		return
 	}
 
@@ -78,7 +80,7 @@ func Put(w http.ResponseWriter, r *http.Request) {
 	if origin == "" {
 		displayAppError(w, nil,
 			"Please check request URL!",
-			http.StatusInternalServerError)
+			http.StatusInternalServerError, globals.ExitOrigin)
 		return
 	}
 
@@ -87,7 +89,8 @@ func Put(w http.ResponseWriter, r *http.Request) {
 	err := json.NewDecoder(r.Body).Decode(&putResource)
 	if err != nil ||
 		putResource.Data.Filename == "" {
-		displayAppError(w, err, "Invalid Put data", http.StatusInternalServerError)
+		displayAppError(w, err, "Invalid Put data",
+			http.StatusInternalServerError, globals.ExitFile)
 		return
 	}
 
@@ -95,13 +98,13 @@ func Put(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		displayAppError(w, nil,
 			fmt.Sprintf("Bucket with ORIGIN: %s is not exist", origin),
-			http.StatusInternalServerError)
+			http.StatusInternalServerError, globals.ExitOrigin)
 		return
 	}
 	if exitCode, err := bucket.PutFile(putResource.Data.Filename, []byte(putResource.Data.Content)); err != nil {
 		displayAppError(w, err,
 			fmt.Sprintf("Error: %s. Exit code: %d", err.Error(), exitCode),
-			http.StatusInternalServerError)
+			http.StatusInternalServerError, exitCode)
 		return
 	}
 
@@ -120,10 +123,17 @@ func GetFile(w http.ResponseWriter, r *http.Request) {
 	origin := vars["origin"]
 	filename := vars["filename"]
 
-	if origin == "" || filename == "" {
+	if origin == "" {
 		displayAppError(w, nil,
 			"Please check request URL!",
-			http.StatusInternalServerError)
+			http.StatusInternalServerError, globals.ExitOrigin)
+		return
+	}
+
+	if filename == "" {
+		displayAppError(w, nil,
+			"Please check request URL!",
+			http.StatusInternalServerError, globals.ExitFile)
 		return
 	}
 
@@ -132,14 +142,14 @@ func GetFile(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		displayAppError(w, nil,
 			fmt.Sprintf("Bucket with ORIGIN: %s is not exist", origin),
-			http.StatusInternalServerError)
+			http.StatusInternalServerError, globals.ExitOrigin)
 		return
 	}
 	content, exitCode, err := bucket.GetFile(filename, "", true)
 	if err != nil {
 		displayAppError(w, err,
 			fmt.Sprintf("Error: %s. Exit code: %d", err.Error(), exitCode),
-			http.StatusInternalServerError)
+			http.StatusInternalServerError, exitCode)
 		return
 	}
 
@@ -147,7 +157,7 @@ func GetFile(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", r.Header.Get("Content-Type"))
 
 	if _, err := w.Write(content); err != nil {
-		displayAppError(w, err, "", http.StatusInternalServerError)
+		displayAppError(w, err, "", http.StatusInternalServerError, globals.ExitFile)
 		return
 		//} else {
 		//	fmt.Println("Sending", written, "bytes for", filename)
@@ -163,7 +173,7 @@ func RemoveFile(w http.ResponseWriter, r *http.Request) {
 	if origin == "" || filename == "" {
 		displayAppError(w, nil,
 			"Please check request URL!",
-			http.StatusInternalServerError)
+			http.StatusInternalServerError, globals.ExitOrigin)
 		return
 	}
 
@@ -172,13 +182,13 @@ func RemoveFile(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		displayAppError(w, nil,
 			fmt.Sprintf("Bucket with ORIGIN: %s is not exist", origin),
-			http.StatusInternalServerError)
+			http.StatusInternalServerError, globals.ExitOrigin)
 		return
 	}
 	if exitCode, err := bucket.RemoveFile(filename); err != nil {
 		displayAppError(w, err,
 			fmt.Sprintf("Error: %s. Exit code: %d", err.Error(), exitCode),
-			http.StatusInternalServerError)
+			http.StatusInternalServerError, exitCode)
 		return
 	}
 

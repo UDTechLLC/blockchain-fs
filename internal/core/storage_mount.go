@@ -95,12 +95,14 @@ func (s *Storage) doMount(fstype globals.FSType,
 }
 
 // DoUnmount tries to umount "dir" and panics on error.
-func (s *Storage) doUnmount(dir string) {
+func (s *Storage) doUnmount(dir string) error {
 	err := s.unmountErr(dir)
 	if err != nil {
-		tlog.Warn.Println(err)
-		panic(err)
+		//tlog.Warn.Println(err)
+		//panic(err)
 	}
+
+	return err
 }
 
 // unmountErr tries to unmount "dir" and returns the resulting error.
