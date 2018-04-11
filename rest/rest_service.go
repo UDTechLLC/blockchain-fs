@@ -51,17 +51,11 @@ func (s *Service) Start() error {
 	// curl -X DELETE localhost:13000/buckets/REST1/files/test.txt
 	router.HandleFunc("/buckets/{origin}/files/{filename}", controllers.RemoveFile).Methods("DELETE")
 
-	c := cors.New(cors.Options{
-		AllowedOrigins: []string{"*"},
-		AllowedMethods: []string{"GET", "HEAD", "POST", "PUT", "OPTIONS"},
-		AllowedHeaders: []string{"Origin", "Authorization", "Access-Control-Allow-Origin", "Content-Type"},
-		ExposedHeaders: []string{"Content-Length", "Access-Control-Allow-Origin"},
-	})
+	corsHandler := cors.Default().Handler(router)
 
 	// Create a negroni instance
 	n := negroni.Classic()
-	n.Use(c)
-	n.UseHandler(router)
+	n.UseHandler(corsHandler)
 
 	server := http.Server{
 		Handler: n,
