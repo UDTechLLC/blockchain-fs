@@ -59,10 +59,14 @@ func getProjectPath() string {
 
 func displayAppError(w http.ResponseWriter, handlerError error, message string, code int, exitCode int) {
 	errObj := appError{
-		Error:      handlerError.Error(),
+		Error:      "nil",
 		Message:    message,
 		HttpStatus: code,
 		ExitCode:   exitCode,
+	}
+
+	if handlerError != nil {
+		errObj.Error = handlerError.Error()
 	}
 
 	fmt.Printf("[app error]: %s\n", handlerError)
