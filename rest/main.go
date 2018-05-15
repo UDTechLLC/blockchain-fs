@@ -23,6 +23,8 @@ func main() {
 		log.Fatalf("failed to start HTTP service: %s", err.Error())
 	}
 
+	regDigest()
+
 	log.Println("rest started successfully")
 
 	signal.Notify(terminate, Signals...)

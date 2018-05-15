@@ -15,5 +15,16 @@ services:
     volumes:
       - /root/.local/share/wize/fs
     container_name: wizefs-node
+    environment:
+          NODE_ID: ${NODE_ID}
+          NODE_ADD: ${NODE_ADD}
+          PUBLIC_IP: ${PUBLIC_IP}
+          USER_PRIVKEY: ${USER_PRIVKEY}
+          USER_PUBKEY: ${USER_PUBKEY}
+          USER_ADDRESS: ${USER_ADDRESS}
+          PASSWORD: ${PASSWORD}
+          SERVER_KEY: ${SERVER_KEY}
+          DIGEST_NODE: ${DIGEST_NODE}
+          MASTERNODE: ${MASTERNODE}
     ports:
       - "13000:13000"
