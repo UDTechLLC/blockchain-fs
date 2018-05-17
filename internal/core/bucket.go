@@ -34,9 +34,20 @@ func NewBucket(s *Storage, origin, originPath string, fstype globals.FSType) *Bu
 	}
 
 	bucket.Config = NewBucketConfig(origin, originPath, fstype)
-	bucket.Config.Save()
+	err := bucket.Config.Load()
+	if err != nil {
+		bucket.Config.Save()
+	}
 
 	return bucket
+}
+
+func (b *Bucket) IsMounted() bool {
+	return b.mounted
+}
+
+func (b *Bucket) SetMounted(value bool) {
+	b.mounted = value
 }
 
 func (b *Bucket) PutFile(originalFile string, content []byte) (exitCode int, err error) {
