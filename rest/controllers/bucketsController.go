@@ -24,10 +24,6 @@ func Home(w http.ResponseWriter, r *http.Request) {
 	respondWithJSON(w, http.StatusOK, "HOME")
 }
 
-func Mint(w http.ResponseWriter, r *http.Request) {
-	respondWithJSON(w, http.StatusOK, "Mint")
-}
-
 func CreateBucket(w http.ResponseWriter, r *http.Request) {
 	var bucketResource BucketResource
 	// Decode the incoming Bucket json
