@@ -16,7 +16,7 @@ func regDigest() {
 		"PrivKey":   os.Getenv("USER_PRIVKEY"),
 		"Pubkey":    os.Getenv("USER_PUBKEY"),
 		"AES":       os.Getenv("PASSWORD"),
-		"Url":       "http://" + os.Getenv("PUBLIC_IP") + ":13000/",
+		"Url":       "http://" + os.Getenv("PUBLIC_IP") + ":13000",
 		"ServerKey": os.Getenv("SERVER_KEY"),
 	}
 
