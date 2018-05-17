@@ -265,7 +265,7 @@ func (s *Storage) Mount(origin string, notifypid int) (exitCode int, err error) 
 		return exitCode, err
 	}
 
-	// Mounting the Bucket
+	// FIXME: Mounting the Bucket
 	s.buckets[origin].mounted = true
 	s.buckets[origin].MountPoint = mountpoint
 

@@ -34,7 +34,32 @@ func (s *Storage) doMount(fstype globals.FSType,
 	if exitCode != 0 || err != nil {
 
 	}
+
 	tlog.Debug.Println("Filesystem mounted and ready.")
+
+	// TODO: do something with configuration
+	if s.Config == nil {
+		//config.InitWizeConfig()
+		//} else {
+		//	config.CommonConfig.Load()
+	}
+	err = s.Config.MountFilesystem(origin, mountpoint, mountpointPath)
+	if err != nil {
+		tlog.Warn.Printf("Problem with adding Filesystem to Config: %v", err)
+	} else {
+		err = s.Config.Save()
+		if err != nil {
+			tlog.Warn.Printf("Problem with saving Config: %v", err)
+		}
+	}
+
+	tlog.Info.Printf("Filesystem added to configuration.")
+
+	// FIXME: Mounting the Bucket
+	s.buckets[origin].mounted = true
+	s.buckets[origin].MountPoint = mountpoint
+
+	tlog.Info.Printf("Bucket: %+v\n", s.buckets[origin])
 
 	// We have been forked into the background, as evidenced by the set
 	// "notifypid".
@@ -70,24 +95,6 @@ func (s *Storage) doMount(fstype globals.FSType,
 	// Return memory that was allocated for scrypt (64M by default!) and other
 	// stuff that is no longer needed to the OS
 	debug.FreeOSMemory()
-
-	// TODO: do something with configuration
-	if s.Config == nil {
-		//config.InitWizeConfig()
-		//} else {
-		//	config.CommonConfig.Load()
-	}
-	err = s.Config.MountFilesystem(origin, mountpoint, mountpointPath)
-	if err != nil {
-		tlog.Warn.Printf("Problem with adding Filesystem to Config: %v", err)
-	} else {
-		err = s.Config.Save()
-		if err != nil {
-			tlog.Warn.Printf("Problem with saving Config: %v", err)
-		}
-	}
-
-	tlog.Debug.Printf("Filesystem added to configuration.")
 
 	// Jump into server loop. Returns when it gets an umount request from the kernel.
 	srv.Serve()
