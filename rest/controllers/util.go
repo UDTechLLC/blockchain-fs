@@ -31,6 +31,12 @@ type BucketResponse struct {
 	Bucket  BucketResource `json:"bucket"`
 }
 
+type BucketStateResponse struct {
+	Success bool `json:"success"`
+	Created bool `json:"created"`
+	Mounted bool `json:"mounted"`
+}
+
 type PutModel struct {
 	Filename string `json:"name"`
 	Content  string `json:"content"`
