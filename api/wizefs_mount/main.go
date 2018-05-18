@@ -66,8 +66,8 @@ func main() {
 	// Check that ORIGIN exists
 	//fsinfo, ok := storage.Config.Filesystems[origin]
 	fsinfo, _, err := storage.Config.GetInfoByOrigin(origin)
-	if err != nil {
-		tlog.Warn.Printf("Did not find ORIGIN: %s in common config: %s", origin, err)
+	if fsinfo.OriginPath == "" {
+		tlog.Warn.Printf("Did not find ORIGIN: %s in common config", origin)
 		os.Exit(globals.ExitOrigin)
 	}
 	if fsinfo.MountpointKey != "" {
