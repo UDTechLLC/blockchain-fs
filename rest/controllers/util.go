@@ -31,6 +31,12 @@ type BucketResponse struct {
 	Bucket  BucketResource `json:"bucket"`
 }
 
+type BucketStateResponse struct {
+	Success bool `json:"success"`
+	Created bool `json:"created"`
+	Mounted bool `json:"mounted"`
+}
+
 type PutModel struct {
 	Filename string `json:"name"`
 	Content  string `json:"content"`
@@ -69,7 +75,7 @@ func displayAppError(w http.ResponseWriter, handlerError error, message string, 
 		errObj.Error = handlerError.Error()
 	}
 
-	fmt.Printf("[app error]: %s\n", handlerError)
+	fmt.Printf("[app error]: %+v\n", errObj)
 
 	respondWithJSON(w, code, errorResource{Data: errObj})
 }

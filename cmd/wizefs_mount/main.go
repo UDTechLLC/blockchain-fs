@@ -6,6 +6,7 @@ import (
 	"runtime"
 
 	"bitbucket.org/udt/wizefs/internal/core"
+	"bitbucket.org/udt/wizefs/internal/globals"
 	"bitbucket.org/udt/wizefs/internal/tlog"
 	"bitbucket.org/udt/wizefs/internal/util"
 )
@@ -66,9 +67,11 @@ func main() {
 	fsinfo, ok := storage.Config.Filesystems[origin]
 	if !ok {
 		tlog.Warn.Printf("Did not find ORIGIN: %s in common config.", origin)
+		os.Exit(globals.ExitOrigin)
 	}
 	if fsinfo.MountpointKey != "" {
 		tlog.Warn.Printf("This ORIGIN: %s is already mounted under MOUNTPOINT %s", origin, fsinfo.MountpointKey)
+		os.Exit(globals.ExitMountPoint)
 	}
 
 	// Fork a child into the background if "-fg" is not set AND we are mounting
@@ -94,5 +97,6 @@ func main() {
 	exitCode, err := storage.Mount(origin, args.notifypid)
 	if err != nil {
 		tlog.Warn.Println("Error with ApiMount: [%d] %v", exitCode, err)
+		os.Exit(exitCode)
 	}
 }
