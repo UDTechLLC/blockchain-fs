@@ -132,6 +132,7 @@ func MountBucket(w http.ResponseWriter, r *http.Request) {
 
 	// FIXME: Mounting the Bucket
 	fsinfo, _, err := storage.Config.GetInfoByOrigin(origin)
+	bucket, ok := storage.Bucket(origin)
 	if err == nil {
 		if ok {
 			bucket.SetMounted(true)
