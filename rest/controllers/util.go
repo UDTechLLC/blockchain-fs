@@ -75,7 +75,7 @@ func displayAppError(w http.ResponseWriter, handlerError error, message string, 
 		errObj.Error = handlerError.Error()
 	}
 
-	fmt.Printf("[app error]: %s\n", handlerError)
+	fmt.Printf("[app error]: %+v\n", errObj)
 
 	respondWithJSON(w, code, errorResource{Data: errObj})
 }

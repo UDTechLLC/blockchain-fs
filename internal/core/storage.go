@@ -55,6 +55,10 @@ func NewStorage() *Storage {
 	return storage
 }
 
+func (s *Storage) String() string {
+	return fmt.Sprintf("Path: %s, Buckets count: %d", s.DirPath, len(s.buckets))
+}
+
 func (s *Storage) Bucket(origin string) (*Bucket, bool) {
 	bucket, ok := s.buckets[origin]
 	return bucket, ok

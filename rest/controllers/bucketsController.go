@@ -17,7 +17,7 @@ var storage *core.Storage
 
 func init() {
 	storage = core.NewStorage()
-	fmt.Printf("storage: %v\n", storage)
+	fmt.Printf("storage buckets: %s\n", storage)
 }
 
 func Home(w http.ResponseWriter, r *http.Request) {
@@ -128,7 +128,7 @@ func MountBucket(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// print mountApp stdout buffer
-	fmt.Println(outbuf.String())
+	//fmt.Println(outbuf.String())
 
 	// FIXME: Mounting the Bucket
 	fsinfo, _, err := storage.Config.GetInfoByOrigin(origin)
@@ -140,7 +140,7 @@ func MountBucket(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	fmt.Printf("Bucket: %+v\n", bucket)
+	//fmt.Printf("Bucket: %+v\n", bucket)
 
 	//w.WriteHeader(http.StatusNoContent)
 	respondWithJSON(w, http.StatusOK,
