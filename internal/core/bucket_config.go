@@ -2,8 +2,10 @@ package core
 
 import (
 	"encoding/json"
+	"io/ioutil"
 	"os"
 	"path/filepath"
+	"sync"
 
 	"bitbucket.org/udt/wizefs/internal/globals"
 	"bitbucket.org/udt/wizefs/internal/tlog"
@@ -24,6 +26,7 @@ type BucketConfig struct {
 	Type       globals.FSType `json:"type"`
 
 	filename string
+	mutex    sync.Mutex
 }
 
 // TEST: TestBucketConfigMake
@@ -40,6 +43,9 @@ func NewBucketConfig(origin, originPath string, itype globals.FSType) *BucketCon
 
 // TEST: TestBucketConfigSave
 func (c *BucketConfig) Save() error {
+	c.mutex.Lock()
+	defer c.mutex.Unlock()
+
 	tmp := c.filename + ".tmp"
 	// 0400 permissions: wizefs.conf should be kept secret and never be written to.
 	fd, err := os.OpenFile(tmp, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0400)
@@ -71,3 +77,23 @@ func (c *BucketConfig) Save() error {
 
 // TEST: TestBucketConfigLoad
 // TODO: load BucketConfig
+func (c *BucketConfig) Load() error {
+	c.mutex.Lock()
+	defer c.mutex.Unlock()
+
+	// Read from disk
+	js, err := ioutil.ReadFile(c.filename)
+	if err != nil {
+		tlog.Warn.Printf("Load config file: ReadFile: %v, %s\n", err, err.Error())
+		return err
+	}
+
+	// Unmarshal
+	err = json.Unmarshal(js, &c)
+	if err != nil {
+		tlog.Warn.Printf("Failed to unmarshal config file")
+		return err
+	}
+
+	return nil
+}

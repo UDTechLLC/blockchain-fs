@@ -1,7 +1,7 @@
 version: "3"
 services:
   
-  rest:
+  rest1:
     build: .
 
 # FUSE inside Docker: https://stackoverflow.com/questions/48402218/fuse-inside-docker
@@ -14,7 +14,7 @@ services:
       - apparmor:unconfined
     volumes:
       - /root/.local/share/wize/fs
-    container_name: wizefs-node
+    container_name: wizefs-node1
     environment:
           NODE_ID: ${NODE_ID}
           NODE_ADD: ${NODE_ADD}
@@ -28,3 +28,59 @@ services:
           MASTERNODE: ${MASTERNODE}
     ports:
       - "13000:13000"
+
+  rest2:
+    build: .
+
+# FUSE inside Docker: https://stackoverflow.com/questions/48402218/fuse-inside-docker
+    devices:
+      - "/dev/fuse:/dev/fuse"
+#    privileged: true
+    cap_add:
+      - SYS_ADMIN
+    security_opt:
+      - apparmor:unconfined
+    volumes:
+      - /root/.local/share/wize/fs
+    container_name: wizefs-node2
+    environment:
+          NODE_ID: ${NODE_ID}
+          NODE_ADD: ${NODE_ADD}
+          PUBLIC_IP: ${PUBLIC_IP}
+          USER_PRIVKEY: ${USER_PRIVKEY}
+          USER_PUBKEY: ${USER_PUBKEY}
+          USER_ADDRESS: ${USER_ADDRESS}
+          PASSWORD: ${PASSWORD}
+          SERVER_KEY: ${SERVER_KEY}
+          DIGEST_NODE: ${DIGEST_NODE}
+          MASTERNODE: ${MASTERNODE}
+    ports:
+      - "13001:13000"
+
+  rest3:
+    build: .
+
+# FUSE inside Docker: https://stackoverflow.com/questions/48402218/fuse-inside-docker
+    devices:
+      - "/dev/fuse:/dev/fuse"
+#    privileged: true
+    cap_add:
+      - SYS_ADMIN
+    security_opt:
+      - apparmor:unconfined
+    volumes:
+      - /root/.local/share/wize/fs
+    container_name: wizefs-node3
+    environment:
+          NODE_ID: ${NODE_ID}
+          NODE_ADD: ${NODE_ADD}
+          PUBLIC_IP: ${PUBLIC_IP}
+          USER_PRIVKEY: ${USER_PRIVKEY}
+          USER_PUBKEY: ${USER_PUBKEY}
+          USER_ADDRESS: ${USER_ADDRESS}
+          PASSWORD: ${PASSWORD}
+          SERVER_KEY: ${SERVER_KEY}
+          DIGEST_NODE: ${DIGEST_NODE}
+          MASTERNODE: ${MASTERNODE}
+    ports:
+      - "13002:13000"

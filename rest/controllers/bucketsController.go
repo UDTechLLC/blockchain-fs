@@ -17,7 +17,7 @@ var storage *core.Storage
 
 func init() {
 	storage = core.NewStorage()
-	fmt.Printf("storage: %v\n", storage)
+	fmt.Printf("storage buckets: %s\n", storage)
 }
 
 func Home(w http.ResponseWriter, r *http.Request) {
@@ -127,6 +127,21 @@ func MountBucket(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	// print mountApp stdout buffer
+	//fmt.Println(outbuf.String())
+
+	// FIXME: Mounting the Bucket
+	fsinfo, _, err := storage.Config.GetInfoByOrigin(origin)
+	bucket, ok := storage.Bucket(origin)
+	if err == nil {
+		if ok {
+			bucket.SetMounted(true)
+			bucket.MountPoint = fsinfo.MountpointKey
+		}
+	}
+
+	//fmt.Printf("Bucket: %+v\n", bucket)
+
 	//w.WriteHeader(http.StatusNoContent)
 	respondWithJSON(w, http.StatusOK,
 		&BucketResponse{
@@ -162,5 +177,32 @@ func UnmountBucket(w http.ResponseWriter, r *http.Request) {
 			Success: true,
 			Message: "Bucket was unmounted!",
 			Bucket:  BucketResource{Data: BucketModel{Origin: origin}},
+		})
+}
+
+func StateBucket(w http.ResponseWriter, r *http.Request) {
+	// Get origin from the incoming url
+	vars := mux.Vars(r)
+	origin := vars["origin"]
+
+	if origin == "" {
+		displayAppError(w, nil,
+			"Please check request URL!",
+			http.StatusInternalServerError, globals.ExitOrigin)
+		return
+	}
+
+	mounted := false
+	bucket, created := storage.Bucket(origin)
+	fmt.Printf("Bucket: %+v\n", bucket)
+	if created && bucket != nil {
+		mounted = bucket.IsMounted()
+	}
+
+	respondWithJSON(w, http.StatusOK,
+		&BucketStateResponse{
+			Success: true,
+			Created: created,
+			Mounted: mounted,
 		})
 }
