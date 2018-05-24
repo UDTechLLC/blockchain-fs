@@ -14,7 +14,6 @@ var httpAddr string = ":13000"
 var (
 	Signals = []os.Signal{syscall.SIGINT, syscall.SIGTERM, syscall.SIGQUIT, syscall.SIGKILL, syscall.SIGHUP}
 )
-var StartTime time.Time
 
 func init() {
 	controllers.StartTime = time.Now()
