@@ -55,6 +55,10 @@ func NewStorage() *Storage {
 	return storage
 }
 
+func (s *Storage) String() string {
+	return fmt.Sprintf("Path: %s, Buckets count: %d", s.DirPath, len(s.buckets))
+}
+
 func (s *Storage) Bucket(origin string) (*Bucket, bool) {
 	bucket, ok := s.buckets[origin]
 	return bucket, ok
@@ -265,7 +269,7 @@ func (s *Storage) Mount(origin string, notifypid int) (exitCode int, err error) 
 		return exitCode, err
 	}
 
-	// Mounting the Bucket
+	// FIXME: Mounting the Bucket
 	s.buckets[origin].mounted = true
 	s.buckets[origin].MountPoint = mountpoint
 

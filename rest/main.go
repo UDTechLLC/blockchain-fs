@@ -5,6 +5,8 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
+	"time"
+	"bitbucket.org/udt/wizefs/rest/controllers"
 )
 
 var httpAddr string = ":13000"
@@ -12,6 +14,10 @@ var httpAddr string = ":13000"
 var (
 	Signals = []os.Signal{syscall.SIGINT, syscall.SIGTERM, syscall.SIGQUIT, syscall.SIGKILL, syscall.SIGHUP}
 )
+
+func init() {
+	controllers.StartTime = time.Now()
+}
 
 func main() {
 	// http://www.bite-code.com/2015/07/22/implementing-graceful-shutdown-for-docker-containers-in-go/

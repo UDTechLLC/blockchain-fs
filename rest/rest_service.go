@@ -32,6 +32,7 @@ func (s *Service) Start() error {
 	router := mux.NewRouter().StrictSlash(false)
 
 	router.HandleFunc("/", controllers.Home)
+	router.HandleFunc("/state", controllers.EchoHandler).Methods("POST")
 
 	// curl -X POST localhost:13000/buckets -d '{"data":{"origin":"REST1"}}'
 	router.HandleFunc("/buckets", controllers.CreateBucket).Methods("POST")
@@ -41,6 +42,8 @@ func (s *Service) Start() error {
 	router.HandleFunc("/buckets/{origin}/mount", controllers.MountBucket).Methods("POST")
 	// curl -X POST localhost:13000/buckets/REST1/unmount
 	router.HandleFunc("/buckets/{origin}/unmount", controllers.UnmountBucket).Methods("POST")
+	// curl -X GET localhost:13000/buckets/REST1/state
+	router.HandleFunc("/buckets/{origin}/state", controllers.StateBucket).Methods("GET")
 
 	// curl -F "filename=@/home/sergey/test.txt" -X POST localhost:13000/buckets/REST1/putfile
 	router.HandleFunc("/buckets/{origin}/putfile", controllers.PutFile).Methods("POST")
@@ -53,7 +56,7 @@ func (s *Service) Start() error {
 
 	//corsHandler := cors.Default().Handler(router)
 	c := cors.New(cors.Options{
-		AllowedMethods:    []string{"GET", "HEAD", "POST", "PUT", "OPTIONS", "DELETE"},
+		AllowedMethods: []string{"GET", "HEAD", "POST", "PUT", "OPTIONS", "DELETE"},
 	})
 
 	// Create a negroni instance
