@@ -32,6 +32,7 @@ func (s *Service) Start() error {
 	router := mux.NewRouter().StrictSlash(false)
 
 	router.HandleFunc("/", controllers.Home)
+	router.HandleFunc("/state", controllers.EchoHandler).Methods("POST")
 
 	// curl -X POST localhost:13000/buckets -d '{"data":{"origin":"REST1"}}'
 	router.HandleFunc("/buckets", controllers.CreateBucket).Methods("POST")
