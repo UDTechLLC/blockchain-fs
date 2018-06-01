@@ -12,7 +12,7 @@ import (
 
 	"github.com/urfave/cli"
 
-	"bitbucket.org/udt/wizefs/internal/config"
+	//"bitbucket.org/udt/wizefs/internal/config"
 	"bitbucket.org/udt/wizefs/internal/globals"
 )
 
@@ -120,7 +120,7 @@ func expect(t *testing.T, a interface{}, b interface{}) {
 
 func testCmdCreateFilesystem(t *testing.T) {
 	// INIT
-	config.InitWizeConfig()
+	//config.InitWizeConfig()
 
 	// GIVEN
 	mockCtx := createMockContext(t, []string{"UNITTEST"})
@@ -146,7 +146,7 @@ func testCmdMountFilesystem(t *testing.T) {
 // So we can test it only with bash tests
 func testCmdMountLZFS1(t *testing.T) {
 	// INIT
-	config.InitWizeConfig()
+	//config.InitWizeConfig()
 
 	// GIVEN
 	// How to add supporting --fg and --notifypid to ForkChild?
