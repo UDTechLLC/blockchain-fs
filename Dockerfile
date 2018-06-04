@@ -16,13 +16,13 @@ WORKDIR /go/src/bitbucket.org/udt/wizefs
 #RUN go get -v ./...
 
 # Just build CLI App and REST API Service
-RUN go build -o ./cmd/wizefs_cli/wizefs_cli -v ./cmd/wizefs_cli
-RUN go build -o ./cmd/wizefs_mount/wizefs_mount -v ./cmd/wizefs_mount
-RUN go build -o ./rest/rest_service -v ./rest
+RUN go build -o ./api/wizefs_cli/wizefs_cli -v ./api/wizefs_cli
+RUN go build -o ./api/wizefs_mount/wizefs_mount -v ./api/wizefs_mount
+RUN go build -o ./api/rest/rest_service -v ./api/rest
 
 # if dev setting will use pilu/fresh for code reloading via docker-compose volume sharing with local machine
 #CMD ["./rest/rest_service"]
-ENTRYPOINT ["./rest/rest_service"]
+ENTRYPOINT ["./api/rest/rest_service"]
 
 # REST API Service listens on port 13000.
 EXPOSE 13000
