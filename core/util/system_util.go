@@ -37,11 +37,11 @@ func ForkChild() int {
 	err := c.Start()
 
 	if err != nil {
-		tlog.Warn.Printf("forkChild: starting %s failed: %v", name, err)
+		tlog.Warnf("forkChild: starting %s failed: %v", name, err)
 		return globals.ExitForkChild
 	}
 
-	tlog.Debug.Printf("forkChild: starting %s with PID = %d", name, pid)
+	tlog.Debugf("forkChild: starting %s with PID = %d", name, pid)
 
 	err = c.Wait()
 	if err != nil {
@@ -50,7 +50,7 @@ func ForkChild() int {
 				os.Exit(waitstat.ExitStatus())
 			}
 		}
-		tlog.Warn.Printf("forkChild: wait returned an unknown error: %v", err)
+		tlog.Warnf("forkChild: wait returned an unknown error: %v", err)
 		return globals.ExitForkChild
 	}
 

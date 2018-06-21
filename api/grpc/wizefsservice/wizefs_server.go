@@ -78,7 +78,7 @@ func (s *wizefsServer) Mount(ctx context.Context, request *FilesystemRequest) (r
 	}
 
 	appPath := projectPath + mountApp
-	tlog.Info.Println("appPath:", appPath)
+	tlog.Infof("appPath: %s", appPath)
 	c := exec.Command(appPath, origin)
 	cerr := c.Start()
 	if cerr != nil {

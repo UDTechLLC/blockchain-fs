@@ -35,7 +35,7 @@ func (s *Storage) doMount(fstype globals.FSType,
 
 	}
 
-	tlog.Debug.Println("Filesystem mounted and ready.")
+	tlog.Debug("Filesystem mounted and ready.")
 
 	// TODO: do something with configuration
 	if s.Config == nil {
@@ -45,21 +45,21 @@ func (s *Storage) doMount(fstype globals.FSType,
 	}
 	err = s.Config.MountFilesystem(origin, mountpoint, mountpointPath)
 	if err != nil {
-		tlog.Warn.Printf("Problem with adding Filesystem to Config: %v", err)
+		tlog.Warnf("Problem with adding Filesystem to Config: %v", err)
 	} else {
 		err = s.Config.Save()
 		if err != nil {
-			tlog.Warn.Printf("Problem with saving Config: %v", err)
+			tlog.Warnf("Problem with saving Config: %v", err)
 		}
 	}
 
-	tlog.Info.Printf("Filesystem added to configuration.")
+	tlog.Info("Filesystem added to configuration.")
 
 	// FIXME: Mounting the Bucket
 	s.buckets[origin].mounted = true
 	s.buckets[origin].MountPoint = mountpoint
 
-	tlog.Info.Printf("Bucket: %+v\n", s.buckets[origin])
+	tlog.Infof("Bucket: %+v\n", s.buckets[origin])
 
 	// We have been forked into the background, as evidenced by the set
 	// "notifypid".
@@ -75,7 +75,7 @@ func (s *Storage) doMount(fstype globals.FSType,
 		// to exit a running script that has called gocryptfs.
 		_, err = syscall.Setsid()
 		if err != nil {
-			tlog.Warn.Printf("Setsid: %v", err)
+			tlog.Warnf("Setsid: %v", err)
 		}
 		// Send SIGUSR1 to our parent
 		s.sendUsr1(notifypid)
@@ -132,7 +132,7 @@ func (s *Storage) setOpenFileLimit() {
 	var lim syscall.Rlimit
 	err := syscall.Getrlimit(syscall.RLIMIT_NOFILE, &lim)
 	if err != nil {
-		tlog.Warn.Printf("Getting RLIMIT_NOFILE failed: %v", err)
+		tlog.Warnf("Getting RLIMIT_NOFILE failed: %v", err)
 		return
 	}
 	if lim.Cur >= 4096 {
@@ -141,7 +141,7 @@ func (s *Storage) setOpenFileLimit() {
 	lim.Cur = 4096
 	err = syscall.Setrlimit(syscall.RLIMIT_NOFILE, &lim)
 	if err != nil {
-		tlog.Warn.Printf("Setting RLIMIT_NOFILE to %+v failed: %v", lim, err)
+		tlog.Warnf("Setting RLIMIT_NOFILE to %+v failed: %v", lim, err)
 		//         %+v output: "{Cur:4097 Max:4096}" ^
 	}
 }
@@ -157,7 +157,7 @@ func (s *Storage) initFuseFrontend(fstype globals.FSType, originPath, mountpoint
 	}
 
 	jsonBytes, _ := json.MarshalIndent(frontendArgs, "", "\t")
-	tlog.Debug.Printf("frontendArgs: %s", string(jsonBytes))
+	tlog.Debugf("frontendArgs: %s", string(jsonBytes))
 
 	// Prepare root
 	root := s.prepareRoot(frontendArgs)
@@ -202,9 +202,9 @@ func (s *Storage) initFuseFrontend(fstype globals.FSType, originPath, mountpoint
 
 	srv, err := fuse.NewServer(conn.RawFS(), mountpointPath, &mountOpts)
 	if err != nil {
-		tlog.Warn.Printf("fuse.NewServer failed: %v\n", err)
+		tlog.Warnf("fuse.NewServer failed: %v\n", err)
 		if runtime.GOOS == "darwin" {
-			tlog.Warn.Println("Maybe you should run: /Library/Filesystems/osxfuse.fs/Contents/Resources/load_osxfuse")
+			tlog.Warn("Maybe you should run: /Library/Filesystems/osxfuse.fs/Contents/Resources/load_osxfuse")
 		}
 		os.Exit(globals.ExitFuseNewServer)
 		//return nil, globals.ExitFuseNewServer, err
@@ -241,12 +241,12 @@ func (s *Storage) prepareRoot(args fusefrontend.Args) (root nodefs.Node) {
 		var err error
 		root, err = zipfs.NewArchiveFileSystem(args.OriginDir)
 		if err != nil {
-			tlog.Warn.Printf("NewArchiveFileSystem failed: %v", err)
+			tlog.Warnf("NewArchiveFileSystem failed: %v", err)
 			os.Exit(globals.ExitOrigin)
 		}
 
 	default:
-		tlog.Warn.Printf("Strange type of Filesystem: %d", args.Type)
+		tlog.Warnf("Strange type of Filesystem: %d", args.Type)
 		root = nil
 	}
 
@@ -261,10 +261,10 @@ func (s *Storage) handleSigint(srv *fuse.Server, mountpoint string) {
 		<-ch
 		err := srv.Unmount()
 		if err != nil {
-			tlog.Warn.Print(err)
+			tlog.Warn(err)
 			if runtime.GOOS == "linux" {
 				// MacOSX does not support lazy unmount
-				tlog.Warn.Println("Trying lazy unmount")
+				tlog.Warn("Trying lazy unmount")
 				cmd := exec.Command("fusermount", "-u", "-z", mountpoint)
 				cmd.Stdout = os.Stdout
 				cmd.Stderr = os.Stderr
@@ -282,7 +282,7 @@ func (s *Storage) redirectStdFds() {
 	// to the fd numbers.
 	pr, pw, err := os.Pipe()
 	if err != nil {
-		tlog.Warn.Printf("redirectStdFds: could not create pipe: %v", err)
+		tlog.Warnf("redirectStdFds: could not create pipe: %v", err)
 		return
 	}
 	tag := fmt.Sprintf("%s-%d-logger", tlog.ProgramName, os.Getpid())
@@ -290,7 +290,7 @@ func (s *Storage) redirectStdFds() {
 	cmd.Stdin = pr
 	err = cmd.Start()
 	if err != nil {
-		tlog.Warn.Printf("redirectStdFds: could not start logger: %v", err)
+		tlog.Warnf("redirectStdFds: could not start logger: %v", err)
 		return
 	}
 	// The logger now reads on "pr". We can close it.
@@ -298,23 +298,23 @@ func (s *Storage) redirectStdFds() {
 	// Redirect stout and stderr to "pw".
 	err = syscallcompat.Dup3(int(pw.Fd()), 1, 0)
 	if err != nil {
-		tlog.Warn.Printf("redirectStdFds: stdout dup error: %v", err)
+		tlog.Warnf("redirectStdFds: stdout dup error: %v", err)
 	}
 	syscallcompat.Dup3(int(pw.Fd()), 2, 0)
 	if err != nil {
-		tlog.Warn.Printf("redirectStdFds: stderr dup error: %v", err)
+		tlog.Warnf("redirectStdFds: stderr dup error: %v", err)
 	}
 	// Our stout and stderr point to "pw". We can close the extra copy.
 	pw.Close()
 	// Redirect stdin to /dev/null
 	nullFd, err := os.Open("/dev/null")
 	if err != nil {
-		tlog.Warn.Printf("redirectStdFds: could not open /dev/null: %v", err)
+		tlog.Warnf("redirectStdFds: could not open /dev/null: %v", err)
 		return
 	}
 	err = syscallcompat.Dup3(int(nullFd.Fd()), 0, 0)
 	if err != nil {
-		tlog.Warn.Printf("redirectStdFds: stdin dup error: %v", err)
+		tlog.Warnf("redirectStdFds: stdin dup error: %v", err)
 	}
 	nullFd.Close()
 }
@@ -324,11 +324,11 @@ func (s *Storage) redirectStdFds() {
 func (s *Storage) sendUsr1(pid int) {
 	p, err := os.FindProcess(pid)
 	if err != nil {
-		tlog.Warn.Printf("sendUsr1: FindProcess: %v", err)
+		tlog.Warnf("sendUsr1: FindProcess: %v", err)
 		return
 	}
 	err = p.Signal(syscall.SIGUSR1)
 	if err != nil {
-		tlog.Warn.Printf("sendUsr1: Signal: %v", err)
+		tlog.Warnf("sendUsr1: Signal: %v", err)
 	}
 }

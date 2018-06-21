@@ -105,11 +105,11 @@ func (s *Storage) Create(origin string) (exitCode int, err error) {
 			"temp/" + strings.Replace(origin, ".", "_", -1)
 	}
 
-	tlog.Debug.Printf("Creating new Filesystem %s on path %s...\n", origin, originPath)
+	tlog.Debugf("Creating new Filesystem %s on path %s...\n", origin, originPath)
 
 	// create Directory if it's not exist
 	if _, err := os.Stat(originPath); os.IsNotExist(err) {
-		tlog.Debug.Printf("Create new directory: %s", originPath)
+		tlog.Debugf("Create new directory: %s", originPath)
 		os.MkdirAll(originPath, 0755)
 	} else {
 		// TODO: what we should done when origin is exist already?
@@ -132,7 +132,7 @@ func (s *Storage) Create(origin string) (exitCode int, err error) {
 
 	// TODO: HACK for gRPC methods
 	if s.Config == nil {
-		tlog.Info.Println("CommonConfig == nil")
+		tlog.Info("CommonConfig == nil")
 		//config.InitWizeConfig()
 	}
 	err = s.Config.CreateFilesystem(origin, originPath, fstype)
@@ -175,15 +175,15 @@ func (s *Storage) Delete(origin string) (exitCode int, err error) {
 			fmt.Errorf("Deleting zip files are not support now")
 	}
 
-	tlog.Debug.Printf("Delete existing Filesystem: %s", origin)
+	tlog.Debugf("Delete existing Filesystem: %s", origin)
 
 	// delete Directory if it's exist
 	// TODO: check permissions
 	if _, err := os.Stat(originPath); os.IsNotExist(err) {
 		// TODO: what we should done when origin is exist already?
-		tlog.Warn.Printf("Directory %s is not exist!", originPath)
+		tlog.Warnf("Directory %s is not exist!", originPath)
 	} else {
-		tlog.Debug.Printf("Delete existing directory: %s", originPath)
+		tlog.Debugf("Delete existing directory: %s", originPath)
 		os.RemoveAll(originPath)
 	}
 
@@ -194,13 +194,13 @@ func (s *Storage) Delete(origin string) (exitCode int, err error) {
 	if _, err := os.Stat(mountpointPath); os.IsNotExist(err) {
 		//tlog.Warn.Printf("Directory %s is not exist!", mountpointPath)
 	} else {
-		tlog.Debug.Printf("Delete existing directory: %s", mountpointPath)
+		tlog.Debugf("Delete existing directory: %s", mountpointPath)
 		os.RemoveAll(mountpointPath)
 	}
 
 	// TODO: HACK for gRPC methods
 	if s.Config == nil {
-		tlog.Info.Println("CommonConfig == nil")
+		tlog.Info("CommonConfig == nil")
 		//config.InitWizeConfig()
 	}
 	err = s.Config.DeleteFilesystem(origin)
@@ -254,13 +254,13 @@ func (s *Storage) Mount(origin string, notifypid int) (exitCode int, err error) 
 	mountpointPath := s.DirPath + mountpoint
 
 	if _, err := os.Stat(mountpointPath); os.IsNotExist(err) {
-		tlog.Debug.Printf("Create new directory: %s", mountpointPath)
+		tlog.Debugf("Create new directory: %s", mountpointPath)
 		os.MkdirAll(mountpointPath, 0755)
 	} else {
-		tlog.Warn.Printf("Directory %s is exist already!", mountpointPath)
+		tlog.Warnf("Directory %s is exist already!", mountpointPath)
 	}
 
-	tlog.Debug.Printf("Mount Filesystem %s into %s", originPath, mountpointPath)
+	tlog.Debugf("Mount Filesystem %s into %s", originPath, mountpointPath)
 
 	// Do mounting with options
 	exitCode, err = s.doMount(fstype, origin, originPath, mountpoint, mountpointPath, notifypid)
@@ -298,7 +298,7 @@ func (s *Storage) Unmount(origin string) (exitCode int, err error) {
 	mountpoint := s.getMountpoint(origin, fstype)
 	mountpointPath := s.DirPath + mountpoint
 
-	tlog.Debug.Printf("Unmount Filesystem %s", mountpointPath)
+	tlog.Debugf("Unmount Filesystem %s", mountpointPath)
 
 	err = s.doUnmount(mountpointPath)
 	if err != nil {
@@ -326,15 +326,15 @@ func (s *Storage) Unmount(origin string) (exitCode int, err error) {
 	}
 
 	if _, err := os.Stat(mountpointPath); os.IsNotExist(err) {
-		tlog.Warn.Printf("Directory %s is not exist!", mountpointPath)
+		tlog.Warnf("Directory %s is not exist!", mountpointPath)
 	} else {
-		tlog.Debug.Printf("Delete existing directory: %s", mountpointPath)
+		tlog.Debugf("Delete existing directory: %s", mountpointPath)
 		os.RemoveAll(mountpointPath)
 	}
 
 	// TODO: HACK for gRPC methods
 	if s.Config == nil {
-		tlog.Info.Println("CommonConfig == nil")
+		tlog.Info("CommonConfig == nil")
 		//config.InitWizeConfig()
 	}
 	err = s.Config.UnmountFilesystem(mountpoint)

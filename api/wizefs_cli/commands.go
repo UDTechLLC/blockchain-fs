@@ -33,11 +33,11 @@ var Commands = []cli.Command{
 		Aliases: []string{"c"},
 		Usage:   "Create new Bucket to Storage",
 		Before: func(c *cli.Context) error {
-			tlog.Debug.Printf("Before create...")
+			tlog.Debug("Before create...")
 			return nil
 		},
 		After: func(c *cli.Context) error {
-			tlog.Debug.Printf("After create...")
+			tlog.Debug("After create...")
 			return nil
 		},
 		Action: command.CmdCreateFilesystem,
@@ -53,11 +53,11 @@ var Commands = []cli.Command{
 		Aliases: []string{"m"},
 		Usage:   "Mount Bucket",
 		Before: func(c *cli.Context) error {
-			tlog.Debug.Printf("Before mount...")
+			tlog.Debug("Before mount...")
 			return nil
 		},
 		After: func(c *cli.Context) error {
-			tlog.Debug.Printf("After mount...")
+			tlog.Debug("After mount...")
 			return nil
 		},
 		Action: command.CmdMountFilesystem,
@@ -97,7 +97,7 @@ func CommandNotFound(c *cli.Context, command string) {
 // CommandBefore implements action before run command
 func CommandBefore(c *cli.Context) error {
 	if c.GlobalBool("debug") {
-		tlog.Debug.Enabled = true
+		tlog.LogDebug = true
 	}
 	return nil
 }

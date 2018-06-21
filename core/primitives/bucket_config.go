@@ -71,7 +71,7 @@ func (c *BucketConfig) Save() error {
 		return err
 	}
 	err = os.Rename(tmp, c.filename)
-	tlog.Debug.Printf("Save config file %s", c.filename)
+	tlog.Debugf("Save config file %s", c.filename)
 	return err
 }
 
@@ -84,14 +84,14 @@ func (c *BucketConfig) Load() error {
 	// Read from disk
 	js, err := ioutil.ReadFile(c.filename)
 	if err != nil {
-		tlog.Warn.Printf("Load config file: ReadFile: %v, %s\n", err, err.Error())
+		tlog.Warnf("Load config file: ReadFile: %v, %s\n", err, err.Error())
 		return err
 	}
 
 	// Unmarshal
 	err = json.Unmarshal(js, &c)
 	if err != nil {
-		tlog.Warn.Printf("Failed to unmarshal config file")
+		tlog.Warnf("Failed to unmarshal config file")
 		return err
 	}
 

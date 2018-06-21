@@ -53,13 +53,15 @@ func getdents(fd int) ([]fuse.DirEntry, error) {
 	for offset < len(buf) {
 		s := *(*unix.Dirent)(unsafe.Pointer(&buf[offset]))
 		if s.Reclen == 0 {
-			tlog.Warn.Printf("Getdents: corrupt entry #%d: Reclen=0 at offset=%d. Returning EBADR",
+			//tlog.Warn.Printf("Getdents: corrupt entry #%d: Reclen=0 at offset=%d. Returning EBADR",
+			tlog.Warn("Getdents: corrupt entry #%d: Reclen=0 at offset=%d. Returning EBADR",
 				numEntries, offset)
 			// EBADR = Invalid request descriptor
 			return nil, syscall.EBADR
 		}
 		if int(s.Reclen) > maxReclen {
-			tlog.Warn.Printf("Getdents: corrupt entry #%d: Reclen=%d > %d. Returning EBADR",
+			//tlog.Warn.Printf("Getdents: corrupt entry #%d: Reclen=%d > %d. Returning EBADR",
+			tlog.Warn("Getdents: corrupt entry #%d: Reclen=%d > %d. Returning EBADR",
 				numEntries, s.Reclen, maxReclen)
 			return nil, syscall.EBADR
 		}
@@ -109,7 +111,8 @@ func getdentsName(s unix.Dirent) (string, error) {
 		}
 	}
 	if l < 1 {
-		tlog.Warn.Printf("Getdents: invalid name length l=%d. Returning EBADR", l)
+		//tlog.Warn.Printf("Getdents: invalid name length l=%d. Returning EBADR", l)
+		tlog.Warn("Getdents: invalid name length l=%d. Returning EBADR", l)
 		// EBADR = Invalid request descriptor
 		return "", syscall.EBADR
 	}
@@ -131,7 +134,8 @@ func convertDType(dirfd int, name string, dtype uint8) (uint32, error) {
 	}
 	// DT_UNKNOWN: we have to call stat()
 	dtUnknownWarnOnce.Do(func() {
-		tlog.Warn.Printf("Getdents: convertDType: received DT_UNKNOWN, falling back to stat")
+		//tlog.Warn.Printf("Getdents: convertDType: received DT_UNKNOWN, falling back to stat")
+		tlog.Warn("Getdents: convertDType: received DT_UNKNOWN, falling back to stat")
 	})
 	var st unix.Stat_t
 	err := Fstatat(dirfd, name, &st, unix.AT_SYMLINK_NOFOLLOW)

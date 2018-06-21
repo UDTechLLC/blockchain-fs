@@ -65,7 +65,7 @@ func (b *Bucket) PutFile(originalFile string, content []byte) (exitCode int, err
 
 	// TODO: HACK for gRPC methods
 	if b.storage.Config == nil {
-		tlog.Info.Println("CommonConfig == nil")
+		tlog.Info("CommonConfig == nil")
 		//config.InitWizeConfig()
 	}
 
@@ -85,7 +85,7 @@ func (b *Bucket) PutFile(originalFile string, content []byte) (exitCode int, err
 			//	"FILE argument is not absolute path to file.",
 			//	globals.Other)
 
-			tlog.Debug.Println("HACK: FILE argument is not absolute path to file.")
+			tlog.Debug("HACK: FILE argument is not absolute path to file.")
 
 			// HACK: for temporary testing
 			originalFile, _ = filepath.Abs(originalFile)
@@ -134,7 +134,7 @@ func (b *Bucket) GetFile(originalFile, destinationFilePath string, getContentOnl
 
 	// TODO: HACK for gRPC methods
 	if b.storage.Config == nil {
-		tlog.Info.Println("CommonConfig == nil")
+		tlog.Info("CommonConfig == nil")
 		//config.InitWizeConfig()
 	}
 
@@ -205,7 +205,7 @@ func (b *Bucket) RemoveFile(originalFile string) (exitCode int, err error) {
 
 	// TODO: HACK for gRPC methods
 	if b.storage.Config == nil {
-		tlog.Info.Println("CommonConfig == nil")
+		tlog.Info("CommonConfig == nil")
 		//config.InitWizeConfig()
 	}
 
@@ -260,7 +260,7 @@ func (b Bucket) copyFile(origFile, destFile string, origContent []byte) (destCon
 		oldFile, err = os.Open(origFile)
 		defer oldFile.Close()
 		if err != nil {
-			tlog.Warn.Printf("Open: %v", err)
+			tlog.Warn("Open: %v", err)
 			return
 		}
 	}
@@ -271,7 +271,7 @@ func (b Bucket) copyFile(origFile, destFile string, origContent []byte) (destCon
 		newFile, err = os.Create(destFile)
 		defer newFile.Close()
 		if err != nil {
-			tlog.Warn.Printf("Create: %v", err)
+			tlog.Warn("Create: %v", err)
 			return
 		}
 	}
@@ -282,7 +282,7 @@ func (b Bucket) copyFile(origFile, destFile string, origContent []byte) (destCon
 		bytes64, err = io.Copy(newFile, oldFile)
 		bytesWritten = int(bytes64)
 		if err != nil {
-			tlog.Warn.Printf("Copy: %v", err)
+			tlog.Warn("Copy: %v", err)
 			return
 		}
 
@@ -290,7 +290,7 @@ func (b Bucket) copyFile(origFile, destFile string, origContent []byte) (destCon
 	case origContent != nil && destFile != "":
 		bytesWritten, err = newFile.Write(origContent)
 		if err != nil {
-			tlog.Warn.Printf("Copy: %v", err)
+			tlog.Warn("Copy: %v", err)
 			return
 		}
 
@@ -298,7 +298,7 @@ func (b Bucket) copyFile(origFile, destFile string, origContent []byte) (destCon
 	case destFile == "":
 		destContent, err = ioutil.ReadAll(oldFile)
 		if err != nil {
-			tlog.Warn.Printf("Copy: %v", err)
+			tlog.Warn("Copy: %v", err)
 			return
 		}
 		bytesWritten = len(destContent)
@@ -312,12 +312,12 @@ func (b Bucket) copyFile(origFile, destFile string, origContent []byte) (destCon
 		// Flushes memory to disk
 		err = newFile.Sync()
 		if err != nil {
-			tlog.Warn.Printf("Sync: %v", err)
+			tlog.Warn("Sync: %v", err)
 			return
 		}
 	}
 
-	tlog.Debug.Printf("Copied %d bytes.", bytesWritten)
+	tlog.Debug("Copied %d bytes.", bytesWritten)
 
 	return
 }

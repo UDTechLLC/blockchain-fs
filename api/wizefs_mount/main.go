@@ -48,8 +48,8 @@ func main() {
 		runtime.GOMAXPROCS(4)
 	}
 
-	tlog.Debug.Enabled = true
-	tlog.Info.Println("Before mount")
+	tlog.LogDebug = true
+	tlog.Info("Before mount")
 
 	// Parse all command-line options (i.e. arguments starting with "-")
 	// into "args". Path arguments are parsed below.
@@ -67,11 +67,11 @@ func main() {
 	//fsinfo, ok := storage.Config.Filesystems[origin]
 	fsinfo, _, err := storage.Config.GetInfoByOrigin(origin)
 	if fsinfo.OriginPath == "" {
-		tlog.Warn.Printf("Did not find ORIGIN: %s in common config", origin)
+		tlog.Warnf("Did not find ORIGIN: %s in common config", origin)
 		os.Exit(globals.ExitOrigin)
 	}
 	if fsinfo.MountpointKey != "" {
-		tlog.Warn.Printf("This ORIGIN: %s is already mounted under MOUNTPOINT %s", origin, fsinfo.MountpointKey)
+		tlog.Warnf("This ORIGIN: %s is already mounted under MOUNTPOINT %s", origin, fsinfo.MountpointKey)
 		os.Exit(globals.ExitMountPoint)
 	}
 
@@ -90,14 +90,14 @@ func main() {
 		} else {
 			// The user has passed some flags, but ORIGIN is missing. State
 			// what is wrong.
-			tlog.Info.Println("ORIGIN argument is missing")
+			tlog.Info("ORIGIN argument is missing")
 		}
 		os.Exit(1)
 	}
 
 	exitCode, err := storage.Mount(origin, args.notifypid)
 	if err != nil {
-		tlog.Warn.Println("Error with ApiMount: [%d] %v", exitCode, err)
+		tlog.Warnf("Error with ApiMount: [%d] %v", exitCode, err)
 		os.Exit(exitCode)
 	}
 }

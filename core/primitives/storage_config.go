@@ -73,7 +73,7 @@ func (wc *StorageConfig) CreateFilesystem(origin, originPath string, itype globa
 		MountpointKey: "",
 	}
 
-	tlog.Debug.Println("Add filesystem to the created map! ", wc)
+	tlog.Debugf("Add filesystem to the created map! ", wc)
 
 	return nil
 }
@@ -89,7 +89,7 @@ func (wc *StorageConfig) DeleteFilesystem(origin string) error {
 
 	delete(wc.Filesystems, origin)
 
-	tlog.Debug.Println("Delete filesystem from the created map! ", wc)
+	tlog.Debugf("Delete filesystem from the created map! ", wc)
 
 	return nil
 }
@@ -116,7 +116,7 @@ func (wc *StorageConfig) MountFilesystem(origin, mountpoint, mountpointpath stri
 		MountpointKey: mountpoint,
 	}
 
-	tlog.Debug.Println("Add filesystem to the mounted map! ", wc)
+	tlog.Debugf("Add filesystem to the mounted map! ", wc)
 
 	return nil
 }
@@ -140,7 +140,7 @@ func (wc *StorageConfig) UnmountFilesystem(mountpoint string) error {
 		MountpointKey: "",
 	}
 
-	tlog.Debug.Println("Delete filesystem from the mounted map! ", wc)
+	tlog.Debugf("Delete filesystem from the mounted map! ", wc)
 
 	return nil
 }
@@ -195,7 +195,7 @@ func (wc *StorageConfig) Load() error {
 	// Unmarshal
 	err = json.Unmarshal(js, &wc)
 	if err != nil {
-		tlog.Warn.Printf("Failed to unmarshal config file")
+		tlog.Warn("Failed to unmarshal config file")
 		return err
 	}
 
@@ -210,19 +210,19 @@ func (wc *StorageConfig) CheckOriginGetMountpoint(origin string) (mountpointPath
 	var fsinfo FilesystemInfo
 	fsinfo, ok = wc.Filesystems[origin]
 	if !ok {
-		tlog.Warn.Printf("Filesystem %s is not exist!", origin)
+		tlog.Warnf("Filesystem %s is not exist!", origin)
 		return "", errors.New("Filesystem is not exist!")
 	}
 
 	if fsinfo.MountpointKey == "" {
-		tlog.Warn.Printf("Filesystem %s is not mounted!", origin)
+		tlog.Warnf("Filesystem %s is not mounted!", origin)
 		return "", errors.New("Filesystem is not mounted!")
 	}
 
 	var mpinfo MountpointInfo
 	mpinfo, ok = wc.Mountpoints[fsinfo.MountpointKey]
 	if !ok {
-		tlog.Warn.Printf("Mounted filesystem %s is not exist!", fsinfo.MountpointKey)
+		tlog.Warnf("Mounted filesystem %s is not exist!", fsinfo.MountpointKey)
 		return "", errors.New("Mounted filesystem is not exist!")
 	}
 
@@ -272,13 +272,13 @@ func (wc *StorageConfig) GetInfoByOrigin(origin string) (fsinfo FilesystemInfo, 
 
 	fsinfo, ok := wc.Filesystems[origin]
 	if !ok {
-		tlog.Warn.Printf("Filesystem %s is not exist!", origin)
+		tlog.Warnf("Filesystem %s is not exist!", origin)
 		return FilesystemInfo{}, MountpointInfo{}, errors.New("Filesystem is not exist!")
 	}
 
 	mpinfo, ok = wc.Mountpoints[fsinfo.MountpointKey]
 	if !ok {
-		tlog.Warn.Printf("Mounted filesystem %s is not exist!", fsinfo.MountpointKey)
+		tlog.Warnf("Mounted filesystem %s is not exist!", fsinfo.MountpointKey)
 		return fsinfo, MountpointInfo{}, errors.New("Mounted filesystem is not exist!")
 	}
 

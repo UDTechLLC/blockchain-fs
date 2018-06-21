@@ -19,7 +19,7 @@ func main() {
 	flag.Parse()
 	lis, err := net.Listen("tcp", fmt.Sprintf("localhost:%d", *port))
 	if err != nil {
-		tlog.Fatal.Printf("failed to listen: %v", err)
+		tlog.Fatalf("failed to listen: %v", err)
 	}
 
 	grpcServer := grpc.NewServer()
