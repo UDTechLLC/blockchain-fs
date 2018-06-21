@@ -7,7 +7,7 @@ import (
 
 const (
 	ProjectName    = "WizeFS"
-	ProjectVersion = "0.2.1"
+	ProjectVersion = "0.3.0"
 )
 
 type FSType int

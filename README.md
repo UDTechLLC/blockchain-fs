@@ -8,42 +8,42 @@ go version go1.9.2
 
 
 wizefs_cli application is located here:
-`$GOPATH/src/bitbucket.org/udt/wizefs/cmd/wizefs_cli`
+`$GOPATH/src/bitbucket.org/udt/wizefs/api/wizefs_cli`
 
 You should go to this directory and run `go build`.
 
 Also you can run from root directory `$GOPATH/src/bitbucket.org/udt/wizefs` this command:
 
-`go build -o ./cmd/wizefs_cli/wizefs_cli -v ./cmd/wizefs_cli`
+`go build -o ./api/wizefs_cli/wizefs_cli -v ./api/wizefs_cli`
 
 or you can build it right in the root directory:
 
-`go build -v ./cmd/wizefs_cli`
+`go build -v ./api/wizefs_cli`
 
 
 ### gRPC Server and Client
 
 
 gRPC applications are located at the **grpc** directory:
-`$GOPATH/src/bitbucket.org/udt/wizefs/grpc`
+`$GOPATH/src/bitbucket.org/udt/wizefs/api/grpc`
 
 You should build **wizefs_mount application** before building gRPC Server and gRPC Client.
 
 wizefs_mount application is located here:
-`$GOPATH/src/bitbucket.org/udt/wizefs/cmd/wizefs_mount`
+`$GOPATH/src/bitbucket.org/udt/wizefs/api/wizefs_mount`
 
 You should go to this directory and run `go build`.
 
 Also you can run from root directory `$GOPATH/src/bitbucket.org/udt/wizefs` this command:
 
-`go build -o ./cmd/wizefs_mount/wizefs_mount -v ./cmd/wizefs_mount`
+`go build -o ./api/wizefs_mount/wizefs_mount -v ./api/wizefs_mount`
 
-Then you should build 2 commands independently by going to the appropriate folder in advance: `grpc/server` and `grpc/client`.
+Then you should build 2 commands independently by going to the appropriate folder in advance: `api/grpc/server` and `api/grpc/client`.
 
 ### REST Service
 
 REST Service is located at the **rest** directory:
-`$GOPATH/src/bitbucket.org/udt/wizefs/rest`
+`$GOPATH/src/bitbucket.org/udt/wizefs/api/rest`
 
 You should go to this directory and run `go build`.
 
@@ -320,6 +320,12 @@ curl -X POST localhost:13000/buckets/ORIGIN/unmount
 
 ```
 curl -F "filename=@/PATH/FILE" -X POST localhost:13000/buckets/ORIGIN/putfile
+```
+
+### Put file to bucket ORIGIN with POST data
+
+```
+curl -X POST localhost:13000/buckets/ORIGIN/put -d '{"data":{"name":"...","content":"..."}}'
 ```
 
 ### Get file FILE from bucket ORIGIN
