@@ -70,6 +70,13 @@ func Fatalf(format string, args ...interface{}) {
 	}
 }
 
+func WithField(key string, value interface{}) *logrus.Entry {
+	if logger != nil {
+		return logger.WithField(key, value)
+	}
+	return nil
+}
+
 func WithFields(fields logrus.Fields) *logrus.Entry {
 	if logger != nil {
 		return logger.WithFields(fields)
@@ -78,11 +85,10 @@ func WithFields(fields logrus.Fields) *logrus.Entry {
 }
 
 func init() {
-	logrus.SetFormatter(&logrus.JSONFormatter{})
-	logrus.SetOutput(os.Stdout)
-
 	logger = logrus.New()
 
+	//logger.Formatter = new(logrus.JSONFormatter)
+	logger.Out = os.Stdout
 	logger.SetLevel(logrus.InfoLevel)
 }
 
