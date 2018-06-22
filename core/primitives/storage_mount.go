@@ -190,9 +190,9 @@ func (s *Storage) initFuseFrontend(fstype globals.FSType, originPath, mountpoint
 
 	// Set values shown in "df -T" and friends
 	// First column, "Filesystem"
-	mountOpts.FsName = tlog.ProgramName
+	mountOpts.FsName = globals.ProjectLowerName
 	// Second column, "Type", will be shown as "fuse." + Name
-	mountOpts.Name = tlog.ProgramName
+	mountOpts.Name = globals.ProjectLowerName
 
 	// Add a volume name if running osxfuse. Otherwise the Finder will show it as
 	// something like "osxfuse Volume 0 (wizefs)".
@@ -285,7 +285,7 @@ func (s *Storage) redirectStdFds() {
 		tlog.Warnf("redirectStdFds: could not create pipe: %v", err)
 		return
 	}
-	tag := fmt.Sprintf("%s-%d-logger", tlog.ProgramName, os.Getpid())
+	tag := fmt.Sprintf("%s-%d-logger", globals.ProjectLowerName, os.Getpid())
 	cmd := exec.Command("/usr/bin/logger", "-t", tag)
 	cmd.Stdin = pr
 	err = cmd.Start()

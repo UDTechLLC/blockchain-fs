@@ -6,13 +6,25 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-const (
-	// ProgramName is used in log reports.
-	ProgramName = "wizefs"
-	wpanicMsg   = "-wpanic turns this warning into a panic: "
-)
-
 var logger *logrus.Logger
+
+func NewLogger() *logrus.Logger {
+	if logger != nil {
+		return logger
+	}
+
+	l := logrus.New()
+
+	//l.Formatter = new(logrus.JSONFormatter)
+	l.Out = os.Stdout
+	l.SetLevel(logrus.InfoLevel)
+
+	return l
+}
+
+func init() {
+	logger = NewLogger()
+}
 
 func SetLevel(level logrus.Level) {
 	logger.SetLevel(level)
@@ -84,14 +96,7 @@ func WithFields(fields logrus.Fields) *logrus.Entry {
 	return nil
 }
 
-func init() {
-	logger = logrus.New()
-
-	//logger.Formatter = new(logrus.JSONFormatter)
-	logger.Out = os.Stdout
-	logger.SetLevel(logrus.InfoLevel)
-}
-
+// Deprecated
 // SwitchToSyslog redirects the output of this logger to syslog.
 //func (l *toggledLogger) SwitchToSyslog(p syslog.Priority) {
 //	w, err := syslog.New(p, ProgramName)
