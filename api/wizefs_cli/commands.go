@@ -97,7 +97,7 @@ func CommandNotFound(c *cli.Context, command string) {
 // CommandBefore implements action before run command
 func CommandBefore(c *cli.Context) error {
 	if c.GlobalBool("debug") {
-		tlog.LogDebug = true
+		tlog.SetDebugLevel()
 	}
 	return nil
 }

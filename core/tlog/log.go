@@ -91,7 +91,13 @@ var (
 
 var logger *logrus.Logger
 
-var LogDebug = false
+func SetLevel(level logrus.Level) {
+	logger.SetLevel(level)
+}
+
+func SetDebugLevel() {
+	logger.SetLevel(logrus.DebugLevel)
+}
 
 func Warn(args ...interface{}) {
 	if logger != nil {
@@ -106,13 +112,13 @@ func Warnf(format string, args ...interface{}) {
 }
 
 func Debug(args ...interface{}) {
-	if logger != nil && LogDebug {
+	if logger != nil {
 		logger.Debug(args)
 	}
 }
 
 func Debugf(format string, args ...interface{}) {
-	if logger != nil && LogDebug {
+	if logger != nil {
 		logger.Debugf(format, args)
 	}
 }
@@ -159,9 +165,10 @@ func init() {
 
 	logrus.SetFormatter(&logrus.JSONFormatter{})
 	logrus.SetOutput(os.Stdout)
-	logrus.SetLevel(logrus.WarnLevel)
 
 	logger = logrus.New()
+
+	logger.SetLevel(logrus.InfoLevel)
 
 	//Debug = &toggledLogger{
 	//	Logger: log.New(os.Stdout, "", 0),

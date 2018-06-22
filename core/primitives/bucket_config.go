@@ -84,7 +84,7 @@ func (c *BucketConfig) Load() error {
 	// Read from disk
 	js, err := ioutil.ReadFile(c.filename)
 	if err != nil {
-		tlog.Warnf("Load config file: ReadFile: %v, %s\n", err, err.Error())
+		tlog.Debugf("Load config file: ReadFile: %v, %s", err, err.Error())
 		return err
 	}
 
