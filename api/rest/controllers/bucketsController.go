@@ -115,7 +115,7 @@ func MountBucket(w http.ResponseWriter, r *http.Request) {
 		if exiterr, ok := cerr.(*exec.ExitError); ok {
 			if waitstat, ok := exiterr.Sys().(syscall.WaitStatus); ok {
 				displayAppError(w, cerr,
-					fmt.Sprintf("wait returned an exit status: %d [%s]", waitstat.ExitStatus(), errbuf.String()[:errbuf.Len()-1]),
+					fmt.Sprintf("wait returned an exit status: %d [%s]", waitstat.ExitStatus(), errbuf.String()),
 					http.StatusInternalServerError, waitstat.ExitStatus())
 				return
 			}
