@@ -3,12 +3,6 @@
 	"ignore": "test",
 	"package": [
 		{
-			"checksumSHA1": "+TKtBzv23ywvmmqRiGEjUba4YmI=",
-			"path": "github.com/dgrijalva/jwt-go",
-			"revision": "dbeaa9332f19a944acb5736b4456cfcc02140e29",
-			"revisionTime": "2017-10-19T21:57:19Z"
-		},
-		{
 			"checksumSHA1": "WX1+2gktHcBmE9MGwFSGs7oqexU=",
 			"path": "github.com/golang/protobuf/proto",
 			"revision": "bbd03ef6da3a115852eaf24c8a1c46aeb39aa175",
@@ -73,18 +67,6 @@
 			"path": "github.com/hanwen/go-fuse/zipfs",
 			"revision": "9060525339d688b3e8313f25eee96690d7314a60",
 			"revisionTime": "2018-01-31T22:01:37Z"
-		},
-		{
-			"checksumSHA1": "iMNr7e2q3N+QKw0cx8kh4uJPT24=",
-			"path": "github.com/leedark/ui",
-			"revision": "1d24d7c8d63fe97295ee37250ef9ad4344dfd92e",
-			"revisionTime": "2018-02-27T13:34:32Z"
-		},
-		{
-			"checksumSHA1": "Yvzge1YQcD/wSDXLD5qNHqmI/0s=",
-			"path": "github.com/mitchellh/mapstructure",
-			"revision": "00c29f56e2386353d58c599509e8dc3801b0d716",
-			"revisionTime": "2018-02-20T23:01:11Z"
 		},
 		{
 			"checksumSHA1": "irZ2UaBAK2v3VA/qJ6k2VTtbt4o=",
