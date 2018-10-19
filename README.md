@@ -342,3 +342,6 @@ curl -X DELETE localhost:13000/buckets/ORIGIN/files/FILE
 * Develop third filesystem type (3) to combine ZipFS and LoopbackFS ideas
 * Develop filesystem design for future versions
 * etc
+
+
+MIT © UDTechLLC https://github.com/UDTechLLC
